@@ -1,0 +1,36 @@
+{
+  "name": "maduser/argon",
+  "description": "A lightweight PHP framework for wiring up applications using a service container approach.",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Julien Duseyau",
+      "email": "julien.duseyau@gmail.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Maduser\\Argon\\": "src/",
+      "Maduser\\Console\\": "../datastore-app/maduser/Console/",
+      "Maduser\\FileSystem\\": "../datastore-app/maduser//FileSystem/",
+      "Maduser\\DataStore\\": "../datastore-app/maduser//DataStore/",
+      "Maduser\\Support\\": "../datastore-app/maduser//Support/"
+    }
+  },
+  "require": {
+    "php": ">=8.0",
+    "illuminate/database": "^11.23"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.5"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Maduser\\Argon\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit"
+  }
+}

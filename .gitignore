@@ -1,0 +1,4 @@
+/build/
+.phpunit.result.cache
+argon.zip
+/docs/
