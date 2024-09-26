@@ -3,16 +3,17 @@
 namespace Maduser\Argon\Container;
 
 use Exception;
+use ReflectionClass;
 use ReflectionException;
 
 /**
- * Class Provider
+ * Class ServiceContainer
  *
  * Manages services, singletons, bindings, and providers, with dependency injection and resolution.
  *
  * @package Maduser\Argon\Container
  */
-class Provider
+class ServiceContainer
 {
     private Registry $providers;
     private Registry $bindings;
@@ -20,8 +21,17 @@ class Provider
     private Resolver $resolver;
     private Factory $injector;
 
+    private array $setterHooks = [];
+
+    protected bool $autoResolveUnregistered = true;
+
+    public function setAutoResolveUnregistered(bool $value): void
+    {
+        $this->autoResolveUnregistered = $value;
+    }
+
     /**
-     * Provider constructor.
+     * ServiceContainer constructor.
      *
      * @param array|null $providers An array of service providers
      * @param array|null $bindings  An array of interface to class bindings
@@ -29,7 +39,7 @@ class Provider
     public function __construct(?array $providers = [], ?array $bindings = [])
     {
         $this->injector = new Factory($this);
-        $this->resolver = new Resolver($this);  // Initializes the resolver with the current provider
+        $this->resolver = new Resolver($this);  // Initializes the resolver with the current container
         $this->setBindings($bindings);
         $this->setProviders($providers);
         $this->singletons = new Registry();
@@ -57,9 +67,9 @@ class Provider
     }
 
     /**
-     * Registers a service or provider in the container.
+     * Registers a service or container in the container.
      *
-     * @param string          $name   The name of the service or provider
+     * @param string          $name   The name of the service or container
      * @param string|callable $class  The class name or a callable to resolve the service
      * @param array|null      $params Optional parameters to be passed (for providers)
      *
@@ -67,20 +77,36 @@ class Provider
      */
     public function register(string $name, string|callable $class, array $params = null): void
     {
-        if (is_string($class) && is_subclass_of($class, ServiceProvider::class)) {
-            $providerInstance = $this->injector->make($class, $params);
-            $this->providers->add($name, $providerInstance);
+        $instance = $this->handleSetterHooks($name, $class);
+        $this->providers->add($name, $instance ?: $class);
+    }
 
-            if (method_exists($providerInstance, 'register')) {
-                $providerInstance->register();
-            } else {
-                throw new Exception("Provider class '$class' must have a register() method.");
+    /**
+     * Adds a setter hook for a specific type.
+     *
+     * @param string   $type    The type or interface to hook into.
+     * @param callable $handler The handler to invoke.
+     */
+    public function addSetterHook(string $type, callable $handler): void
+    {
+        $this->setterHooks[$type] = $handler;
+    }
+
+    /**
+     * Handles setter hooks when a service is registered.
+     *
+     * @param string $serviceName The name of the service being registered.
+     * @param string $className   The class name of the service.
+     */
+    private function handleSetterHooks(string $serviceName, string $className): mixed
+    {
+        foreach ($this->setterHooks as $type => $handler) {
+            if (is_subclass_of($className, $type) || $className === $type) {
+                return $handler($className);
             }
-        } else {
-            dump([$name, $class]);
-            $this->providers->add($name, $class);
-            dump($this->providers);
         }
+
+        return null;
     }
 
     /**
@@ -102,7 +128,7 @@ class Provider
     }
 
     /**
-     * Resolves a service from the provider using the resolver (handles hooks).
+     * Resolves a service from the container using the resolver (handles hooks).
      *
      * @param string     $name   The name of the service to resolve
      * @param array|null $params Optional parameters for instantiation
@@ -131,7 +157,7 @@ class Provider
     }
 
     /**
-     * Binds an interface to a class in the provider.
+     * Binds an interface to a class in the container.
      *
      * @param string $interface The interface name
      * @param string $class     The class to bind to the interface
@@ -164,11 +190,11 @@ class Provider
     }
 
     /**
-     * Checks if a provider or singleton is registered.
+     * Checks if a container or singleton is registered.
      *
-     * @param string $name The name of the provider or singleton
+     * @param string $name The name of the container or singleton
      *
-     * @return bool True if the provider or singleton is registered, false otherwise
+     * @return bool True if the container or singleton is registered, false otherwise
      */
     public function hasProvider(string $name): bool
     {
@@ -182,12 +208,12 @@ class Provider
     }
 
     /**
-     * Gets a provider or singleton, or throws an exception if not found.
+     * Gets a container or singleton, or throws an exception if not found.
      *
-     * @param string $name The name of the provider or singleton
+     * @param string $name The name of the container or singleton
      *
-     * @return mixed The provider instance
-     * @throws Exception If the provider or singleton cannot be found
+     * @return mixed The container instance
+     * @throws Exception If the container or singleton cannot be found
      */
     public function getProvider(string $name): mixed
     {
@@ -208,15 +234,25 @@ class Provider
             return $this->providers->get($alias);
         }
 
-        throw new Exception("Provider or singleton '{$name}' not found.");
+        // Check if the class exists and is instantiable before throwing an exception
+        if ($this->autoResolveUnregistered && class_exists($name)) {
+            $reflectionClass = new ReflectionClass($name);
+            if ($reflectionClass->isInstantiable()) {
+                return $name;
+            } else {
+                throw new Exception("Class '{$name}' is not instantiable.");
+            }
+        }
+
+        throw new Exception("ServiceContainer or singleton '{$name}' not found.");
     }
 
     /**
-     * Attempts to get a provider or singleton, or returns null if not found.
+     * Attempts to get a container or singleton, or returns null if not found.
      *
-     * @param string $name The name of the provider or singleton
+     * @param string $name The name of the container or singleton
      *
-     * @return mixed|null The provider instance or null if not found
+     * @return mixed|null The container instance or null if not found
      */
     public function findProvider(string $name): mixed
     {

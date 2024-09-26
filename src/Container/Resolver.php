@@ -15,9 +15,9 @@ use Exception;
 class Resolver
 {
     /**
-     * @var Provider The service provider managing bindings, singletons, and providers
+     * @var ServiceContainer The service container managing bindings, singletons, and providers
      */
-    private Provider $provider;
+    private ServiceContainer $provider;
 
     /**
      * @var array Pre-resolution hooks
@@ -32,9 +32,9 @@ class Resolver
     /**
      * Resolver constructor.
      *
-     * @param Provider $provider The service provider instance
+     * @param ServiceContainer $provider The service container instance
      */
-    public function __construct(Provider $provider)
+    public function __construct(ServiceContainer $provider)
     {
         $this->provider = $provider;
     }
@@ -74,7 +74,7 @@ class Resolver
     {
         $instance = null;
 
-        // Get the registered provider or singleton, or throw an exception if not found
+        // Get the registered container or singleton, or throw an exception if not found
         $registeredService = $this->provider->getProvider($serviceName);
 
         // Handle pre-resolution hooks
@@ -124,11 +124,11 @@ class Resolver
         return $instance;
     }
     /**
-     * Checks if a service is registered as a singleton or provider.
+     * Checks if a service is registered as a singleton or container.
      *
      * @param string $name The name of the service or class
      *
-     * @return mixed|null The registered singleton or provider if available, null otherwise
+     * @return mixed|null The registered singleton or container if available, null otherwise
      */
     public function registered(string $name): mixed
     {
@@ -136,11 +136,11 @@ class Resolver
     }
 
     /**
-     * Checks if a provider is registered for a given name.
+     * Checks if a container is registered for a given name.
      *
-     * @param string $name The name of the service or provider
+     * @param string $name The name of the service or container
      *
-     * @return bool True if the provider exists, false otherwise
+     * @return bool True if the container exists, false otherwise
      */
     public function has(string $name): bool
     {

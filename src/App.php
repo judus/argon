@@ -7,7 +7,7 @@ namespace Maduser\Argon;
 
 use Closure;
 use Exception;
-use Maduser\Argon\Container\Provider;
+use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Kernel\EnvApp\CliApp;
 use Maduser\Argon\Kernel\EnvApp\DebugApp;
 use Maduser\Argon\Kernel\EnvApp\EmbeddedApp;
@@ -92,7 +92,7 @@ class App extends Container
     }
 
     /**
-     * Sets the ErrorHandler by resolving it via the provider or using a given instance.
+     * Sets the ErrorHandler by resolving it via the container or using a given instance.
      *
      * @param string|ErrorHandler $errorHandler The error handler class name or instance
      *
@@ -179,23 +179,23 @@ class App extends Container
     }
 
     /**
-     * Starts a new provider context.
+     * Starts a new container context.
      */
     protected static function startContext(): void
     {
-        // Push the current provider onto the stack
+        // Push the current container onto the stack
         self::$contextStack[] = self::getProvider();
 
-        // Create a new provider for the new context
-        self::$provider = new Provider();
+        // Create a new container for the new context
+        self::$provider = new ServiceContainer();
     }
 
     /**
-     * Ends the current provider context.
+     * Ends the current container context.
      */
     protected static function endContext(): void
     {
-        // Pop the context stack to restore the previous provider
+        // Pop the context stack to restore the previous container
         if (!empty(self::$contextStack)) {
             self::$provider = array_pop(self::$contextStack);
         }

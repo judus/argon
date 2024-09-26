@@ -7,8 +7,10 @@ use Maduser\Argon\App;
 
 abstract class ServiceProvider
 {
+    public function __construct(protected ServiceContainer $container) {}
+
     /**
-     * Resolve the service this provider offers.
+     * Resolve the service this container offers.
      *
      * @return mixed
      */
@@ -35,7 +37,7 @@ abstract class ServiceProvider
     {
         $bindings = $this->bindings();
         if (!empty($bindings)) {
-            App::bind($bindings);
+            $this->container->bind($bindings);
         }
     }
 
@@ -48,7 +50,7 @@ abstract class ServiceProvider
     {
         $providers = $this->providers();
         if (!empty($providers)) {
-            App::register($providers);
+            $this->container->register($providers);
         }
     }
 
@@ -131,7 +133,7 @@ abstract class ServiceProvider
     }
 
     /**
-     * Return the provider's class name.
+     * Return the container's class name.
      *
      * @return string
      */

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Tests\Unit;
 
 use Maduser\Argon\App;
-use Maduser\Argon\Container\Provider;
+use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Kernel\EnvApp\CliApp;
 use Maduser\Argon\Kernel\ErrorHandler;
 use Maduser\Argon\Kernel\Kernel;
@@ -70,19 +70,19 @@ class AppTest extends TestCase
         // Initialize the app with CliApp
         App::init(CliApp::class);
 
-        // Save the original provider instance
+        // Save the original container instance
         $originalProvider = App::getProvider();
 
         // Start a new context using the dispatch method
         App::dispatch(function () use ($originalProvider) {
-            // After starting a new context, the provider should be different
+            // After starting a new context, the container should be different
             $newProvider = App::getProvider();
 
-            // Assert that the new provider is not the same as the original
+            // Assert that the new container is not the same as the original
             $this->assertNotSame($originalProvider, $newProvider);
         });
 
-        // Ensure the original provider is restored after dispatch
+        // Ensure the original container is restored after dispatch
         $restoredProvider = App::getProvider();
         $this->assertSame($originalProvider, $restoredProvider);
     }
@@ -116,10 +116,10 @@ class AppTest extends TestCase
         return $booted->getValue(null);
     }
 
-    protected function getOriginalProvider(): Provider
+    protected function getOriginalProvider(): ServiceContainer
     {
         $refApp = new \ReflectionClass(App::class);
-        $provider = $refApp->getProperty('provider');
+        $provider = $refApp->getProperty('container');
         $provider->setAccessible(true);
 
         return $provider->getValue(null);

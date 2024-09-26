@@ -4,36 +4,36 @@ namespace Maduser\Argon;
 
 use Closure;
 use Exception;
-use Maduser\Argon\Container\Provider;
+use Maduser\Argon\Container\ServiceContainer;
 use ReflectionException;
 
 class Container
 {
     /**
-     * Gets the current provider instance, initializing the application if necessary.
+     * Gets the current container instance, initializing the application if necessary.
      *
-     * @return Provider The service provider instance
+     * @return Provider The service container instance
      * @throws Exception If initialization fails
      */
-    protected static Provider $provider;
+    protected static ServiceContainer $provider;
 
     /**
-     * Gets the Provider, initializing it lazily if not already set.
+     * Gets the ServiceContainer, initializing it lazily if not already set.
      *
-     * @return Provider The service provider instance
+     * @return Provider The service container instance
      * @throws Exception
      */
-    public static function getProvider(): Provider
+    public static function getProvider(): ServiceContainer
     {
         if (!isset(self::$provider)) {
-            self::$provider = new Provider();
+            self::$provider = new ServiceContainer();
         }
 
         return self::$provider;
     }
 
     /**
-     * Registers one or more services in the current provider context.
+     * Registers one or more services in the current container context.
      *
      * @param string|array $services A service name and class, or an array of services (name => class)
      * @param string|null  $class    The class to register (if $services is a string)
@@ -46,7 +46,7 @@ class Container
     }
 
     /**
-     * Binds an interface to a concrete class in the provider or accepts an array of bindings.
+     * Binds an interface to a concrete class in the container or accepts an array of bindings.
      *
      * @param string|array $interface The interface name or an array of interface => class bindings
      * @param string|null  $class     The class to bind to the interface (if $interface is a string)
@@ -59,7 +59,7 @@ class Container
     }
 
     /**
-     * Registers a singleton service in the provider.
+     * Registers a singleton service in the container.
      *
      * @param string     $name   The name of the singleton
      * @param mixed|null $object The singleton instance or closure
@@ -72,7 +72,7 @@ class Container
     }
 
     /**
-     * Resolves a service from the provider, injecting dependencies as needed.
+     * Resolves a service from the container, injecting dependencies as needed.
      *
      * @param string     $name   The name of the service to resolve
      * @param array|null $params Optional parameters for instantiation

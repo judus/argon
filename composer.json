@@ -11,11 +11,12 @@
   ],
   "autoload": {
     "psr-4": {
+      "App\\": "./",
       "Maduser\\Argon\\": "src/",
       "Maduser\\Console\\": "../datastore-app/maduser/Console/",
-      "Maduser\\FileSystem\\": "../datastore-app/maduser//FileSystem/",
-      "Maduser\\DataStore\\": "../datastore-app/maduser//DataStore/",
-      "Maduser\\Support\\": "../datastore-app/maduser//Support/"
+      "Maduser\\FileSystem\\": "../datastore-app/maduser/FileSystem/",
+      "Maduser\\DataStore\\": "../datastore-app/maduser/DataStore/",
+      "Maduser\\Support\\": "../datastore-app/maduser/Support/"
     }
   },
   "require": {

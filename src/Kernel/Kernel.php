@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Kernel;
 
-use Maduser\Argon\Container\Provider;
+use Maduser\Argon\Container\ServiceContainer;
 use Throwable;
 
 abstract class Kernel
 {
     protected string $errorHandler = ErrorHandler::class;
 
-    protected Provider $provider;
+    protected ServiceContainer $provider;
     private bool $booted = false;
 
-    public function __construct(Provider $provider)
+    public function __construct(ServiceContainer $provider)
     {
         $this->provider = $provider;
     }

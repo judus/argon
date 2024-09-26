@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Tests\Unit\Container;
 
-use Maduser\Argon\Container\Provider;
+use Maduser\Argon\Container\ServiceContainer;
 use PHPUnit\Framework\TestCase;
 
 class ProviderTest extends TestCase
 {
     public function testRegisterAndResolveService(): void
     {
-        // Create a new provider
-        $provider = new Provider();
+        // Create a new container
+        $provider = new ServiceContainer();
 
         // Register a service
         $provider->register('testService', \stdClass::class);
@@ -25,8 +25,8 @@ class ProviderTest extends TestCase
 
     public function testSingletonRegistration(): void
     {
-        // Create a new provider
-        $provider = new Provider();
+        // Create a new container
+        $provider = new ServiceContainer();
 
         // Register a singleton
         $singletonInstance = new \stdClass();

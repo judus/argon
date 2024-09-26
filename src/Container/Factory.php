@@ -14,14 +14,14 @@ use ReflectionNamedType;
  *
  * Responsible for creating instances of classes, handling dependency injection via reflection.
  *
- * @package Maduser\Minimal\Provider
+ * @package Maduser\Minimal\ServiceContainer
  */
 class Factory
 {
     /**
-     * @var Provider The service provider that manages bindings, singletons, and providers
+     * @var ServiceContainer The service container that manages bindings, singletons, and providers
      */
-    private Provider $provider;
+    private ServiceContainer $container;
 
     /**
      * Cache for reflection classes to improve performance.
@@ -33,11 +33,11 @@ class Factory
     /**
      * Factory constructor.
      *
-     * @param Provider $provider The service provider instance
+     * @param ServiceContainer $container
      */
-    public function __construct(Provider $provider)
+    public function __construct(ServiceContainer $container)
     {
-        $this->provider = $provider;
+        $this->container = $container;
     }
 
     /**
@@ -119,7 +119,7 @@ class Factory
 
             if ($paramType instanceof ReflectionNamedType && !$paramType->isBuiltin()) {
                 // Resolve class dependency
-                $dependencies[] = $this->provider->resolve($paramType->getName());
+                $dependencies[] = $this->container->resolve($paramType->getName());
             } elseif ($parameter->isOptional()) {
                 // Use default parameter value if available
                 $dependencies[] = $parameter->getDefaultValue();
