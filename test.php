@@ -2,7 +2,6 @@
 
 namespace App;
 
-use Hamcrest\Core\Set;
 use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Container\ServiceProvider;
 use Maduser\Argon\Hooks\HookServiceProviderPostResolution;
@@ -16,6 +15,23 @@ $container = new ServiceContainer();
 $container->addSetterHook(ServiceProvider::class, new HookServiceProviderSetter($container));
 $container->addPostResolutionHook(RequestValidation::class, new HookRequestValidationPostResolution($container));
 $container->addPostResolutionHook(ServiceProvider::class, new HookServiceProviderPostResolution($container));
+
+class SingletonObject
+{
+    public int $value = 0;
+
+    public function __construct() {}
+}
+
+class SomeObject
+{
+    public SingletonObject $singletonObject;
+
+    public function __construct(SingletonObject $singletonObject)
+    {
+        $this->singletonObject = $singletonObject;
+    }
+}
 
 class RequestValidation {
     public function validate()
@@ -88,20 +104,7 @@ echo $userController2->getSomeValue(). PHP_EOL; // Hello World
 
     dump('------------------------------------------');
 
-class SingletonObject
-{
-    public int $value = 0;
-}
 
-class SomeObject
-{
-    public SingletonObject $singletonObject;
-
-    public function __construct(SingletonObject $singletonObject)
-    {
-        $this->singletonObject = $singletonObject;
-    }
-}
 
 $container->singleton(SingletonObject::class);
 $container->register('some-object', SomeObject::class);

@@ -20,8 +20,6 @@ class HookRequestValidationPostResolution
      */
     public function __invoke(mixed $instance, ?ServiceDescriptor $descriptor = null): mixed
     {
-        dump(HookRequestValidationPostResolution::class . ' invoked');
-
         $instance->validate();
 
         return $instance;

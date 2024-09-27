@@ -12,5 +12,5 @@ interface Middleware
      *
      * @return mixed
      */
-    public function handle(mixed $payload, Closure $next): mixed;
+    public function handle(mixed $payload, \Closure $next): mixed;
 }

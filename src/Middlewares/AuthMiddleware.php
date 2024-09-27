@@ -6,7 +6,7 @@ use Closure;
 
 class AuthMiddleware implements Middleware
 {
-    public function handle($payload, Closure $next): mixed
+    public function handle($payload, \Closure $next): mixed
     {
         echo "Auth check before operation\n";
 

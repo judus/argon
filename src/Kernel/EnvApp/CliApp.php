@@ -3,6 +3,7 @@
 namespace Maduser\Argon\Kernel\EnvApp;
 
 use Maduser\Argon\Kernel\Kernel;
+use Maduser\Console\CommandManager;
 
 class CliApp extends Kernel
 {
@@ -18,22 +19,22 @@ class CliApp extends Kernel
     public function boot(): void
     {
         // Register the Console service if the class exists
-        if (class_exists('Maduser\Console\Console')) {
-            $this->provider->register('Console', 'Maduser\Console\Console');
+        if (class_exists('\Maduser\Console\Console')) {
+            $this->provider->register('Console', '\Maduser\Console\Console');
             $this->console = $this->provider->resolve('Console');
         }
 
         // Register the CommandManager service if the class exists
-        if (class_exists('Maduser\Console\CommandManager')) {
-            $this->provider->singleton('CommandManager', new \Maduser\Console\CommandManager());
+        if (class_exists('\Maduser\Console\CommandManager')) {
+            $this->provider->singleton('CommandManager', '\Maduser\Console\CommandManager');
             $this->commandManager = $this->provider->resolve('CommandManager');
         }
 
         // Register the MiddlewarePipeline service if the class exists
-        if (class_exists('Maduser\Minimal\Middlewares\MiddlewarePipeline')) {
-            $this->provider->singleton('Pipeline', new \Maduser\Minimal\Middlewares\MiddlewarePipeline());
-            $this->pipeline = $this->provider->resolve('Pipeline');
-        }
+//        if (class_exists('Maduser\Minimal\Middlewares\MiddlewarePipeline')) {
+//            $this->provider->singleton('Pipeline', MiddlewarePipeline::class);
+//            $this->pipeline = $this->provider->resolve('Pipeline');
+//        }
     }
 
     /**

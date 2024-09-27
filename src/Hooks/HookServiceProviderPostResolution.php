@@ -20,7 +20,6 @@ readonly class HookServiceProviderPostResolution
      */
     public function __invoke(mixed $instance, ?ServiceDescriptor $descriptor = null): mixed
     {
-        dump(HookServiceProviderPostResolution::class . ' invoked');
         return $instance->resolve();
     }
 }

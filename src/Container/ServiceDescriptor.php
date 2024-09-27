@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Maduser\Argon\Container;
 
 class ServiceDescriptor
@@ -23,25 +25,6 @@ class ServiceDescriptor
         $this->isSingleton = $isSingleton;
         $this->defaultParams = $defaultParams;
         $this->container = $container;
-    }
-
-    // Return the resolved instance, or resolve if not yet instantiated
-    public function getInstance(): mixed
-    {
-        // Check if we already have an instance
-        if ($this->resolvedInstance !== null) {
-            return $this->resolvedInstance;
-        }
-
-        // Resolve the instance if not already done
-        $instance = $this->container->resolve($this->name);
-
-        // Cache the instance if it's a singleton
-        if ($this->isSingleton) {
-            $this->resolvedInstance = $instance;
-        }
-
-        return $instance;
     }
 
     public function getResolvedInstance(): ?object

@@ -19,7 +19,6 @@ class HookServiceProviderSetter
 
     public function __invoke(ServiceDescriptor $descriptor, string $alias)
     {
-        dump(HookServiceProviderSetter::class . ' invoked');
         $instance = $this->container->make($descriptor->getClassName());
         $instance->register();
 

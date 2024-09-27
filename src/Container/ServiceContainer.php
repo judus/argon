@@ -75,10 +75,6 @@ class ServiceContainer
      */
     public function register(string $alias, string $class, ?array $params = []): ServiceDescriptor
     {
-        if ($alias === self::class) {
-            throw new \Exception("Attempting to register the ServiceContainer itself is not allowed.");
-        }
-
         $descriptor = new ServiceDescriptor($alias, $class, false, $params, $this);
         $this->providers->add($alias, $descriptor);
 
@@ -305,5 +301,17 @@ class ServiceContainer
     public function getBinding(string $interface): ?string
     {
         return $this->bindings->get($interface);
+    }
+
+    /**
+     * Create an alias for an existing service.
+     *
+     * @param string $alias  The alias name
+     * @param string $target The original service name
+     */
+    public function alias(string $alias, string $target): void
+    {
+        // Register an alias in the container
+        $this->providers->add($alias, $this->getServiceDescriptor($target));
     }
 }
