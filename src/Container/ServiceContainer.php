@@ -23,7 +23,7 @@ class ServiceContainer
 
     private array $setterHooks = [];
 
-    protected bool $autoResolveUnregistered = true;
+    public bool $autoResolveUnregistered = true;
 
     public function setAutoResolveUnregistered(bool $value): void
     {
@@ -43,7 +43,6 @@ class ServiceContainer
         $this->setBindings($bindings);
         $this->setProviders($providers);
         $this->singletons = new Registry();
-        $this->singleton(self::class, $this);
     }
 
     /**
@@ -69,16 +68,29 @@ class ServiceContainer
     /**
      * Registers a service or container in the container.
      *
-     * @param string          $name   The name of the service or container
-     * @param string|callable $class  The class name or a callable to resolve the service
-     * @param array|null      $params Optional parameters to be passed (for providers)
+     * @param string     $alias  The name of the service or container
+     * @param string     $class  The class name or a callable to resolve the service
+     * @param array|null $params Optional parameters to be passed (for providers)
      *
-     * @throws Exception
      */
-    public function register(string $name, string|callable $class, array $params = null): void
+    public function register(string $alias, string $class, ?array $params = []): ServiceDescriptor
     {
-        $instance = $this->handleSetterHooks($name, $class);
-        $this->providers->add($name, $instance ?: $class);
+        if ($alias === self::class) {
+            throw new \Exception("Attempting to register the ServiceContainer itself is not allowed.");
+        }
+
+        $descriptor = new ServiceDescriptor($alias, $class, false, $params, $this);
+        $this->providers->add($alias, $descriptor);
+
+        // Handle setter hooks
+        $this->handleSetterHooks($descriptor, $alias);
+
+        return $descriptor;
+    }
+
+    public function getServiceDescriptor(string $alias): ?ServiceDescriptor
+    {
+        return $this->providers->get($alias);
     }
 
     /**
@@ -95,76 +107,82 @@ class ServiceContainer
     /**
      * Handles setter hooks when a service is registered.
      *
-     * @param string $serviceName The name of the service being registered.
-     * @param string $className   The class name of the service.
+     * @param string $class
      */
-    private function handleSetterHooks(string $serviceName, string $className): mixed
+    private function handleSetterHooks(ServiceDescriptor $descriptor, string $alias): void
     {
+        $class = $descriptor->getClassName();
+
         foreach ($this->setterHooks as $type => $handler) {
-            if (is_subclass_of($className, $type) || $className === $type) {
-                return $handler($className);
+            if (is_subclass_of($class, $type) || $class === $type) {
+                $handler($descriptor, $alias);
+
+                return;
             }
         }
-
-        return null;
     }
 
     /**
      * Registers a singleton. If already registered, it returns the instance.
      *
-     * @param string     $name   The name of the singleton
-     * @param mixed|null $object The singleton instance or closure to resolve it
+     * @param string      $alias The name of the singleton
+     * @param string|null $class
+     * @param array|null  $params
      *
      * @return mixed The registered singleton instance
      */
-    public function singleton(string $name, mixed $object = null): mixed
+    public function singleton(string $alias, ?string $class = null, ?array $params = []): ServiceDescriptor
     {
-        if ($object) {
-            $object = is_callable($object) ? $object() : $object;
-            $this->singletons->add($name, $object);
-        }
+        // If class is not provided, assume it's the same as alias
+        $class = $class ?? $alias;
 
-        return $this->singletons->get($name);
+        // Create the ServiceDescriptor with the singleton flag set to true
+        $descriptor = new ServiceDescriptor($alias, $class, true, $params, $this);
+
+        // Register the descriptor in the providers list
+        $this->providers->add($alias, $descriptor);
+
+        // Handle setter hooks
+        $this->handleSetterHooks($descriptor, $alias);
+
+        // Return the descriptor
+        return $descriptor;
     }
 
     /**
      * Resolves a service from the container using the resolver (handles hooks).
      *
-     * @param string     $name   The name of the service to resolve
+     * @param string $alias
      * @param array|null $params Optional parameters for instantiation
      *
      * @return mixed The resolved service instance
      * @throws Exception
      */
-    public function resolve(string $name, ?array $params = []): mixed
+    public function resolve(string $alias, ?array $params = []): mixed
     {
-        return $this->resolver->resolve($name, $params);
+        return $this->resolver->resolve($alias, $params);
     }
+
 
     /**
      * Creates a new instance of a class using the injector.
      *
-     * @param string     $name   The class name to instantiate
+     * @param string     $class  The class name to instantiate
      * @param array|null $params Optional parameters for instantiation
      *
      * @return object The instantiated class
      * @throws ReflectionException
      * @throws Exception
      */
-    public function make(string $name, ?array $params = []): object
+    public function make(string $class, ?array $params = []): object
     {
-        return $this->injector->make($name, $params);
+        return $this->injector->make($class, $params);
     }
 
-    /**
-     * Binds an interface to a class in the container.
-     *
-     * @param string $interface The interface name
-     * @param string $class     The class to bind to the interface
-     */
-    public function bind(string $interface, string $class): void
+
+    public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
     {
-        $this->bindings->add($interface, $class);
+        return $this->resolver->resolveOrMake($aliasOrClass, $params);
     }
 
     /**
@@ -210,22 +228,22 @@ class ServiceContainer
     /**
      * Gets a container or singleton, or throws an exception if not found.
      *
-     * @param string $name The name of the container or singleton
+     * @param string $alias The name of the container or singleton
      *
      * @return mixed The container instance
      * @throws Exception If the container or singleton cannot be found
      */
-    public function getProvider(string $name): mixed
+    public function geProvider(string $alias): mixed
     {
-        if ($this->singletons->has($name)) {
-            return $this->singletons->get($name);
+        if ($this->singletons->has($alias)) {
+            return $this->singletons->get($alias);
         }
 
-        if ($this->providers->has($name)) {
-            return $this->providers->get($name);
+        if ($this->providers->has($alias)) {
+            return $this->providers->get($alias);
         }
 
-        $alias = basename(str_replace('\\', '/', $name));
+        $alias = basename(str_replace('\\', '/', $alias));
         if ($this->singletons->has($alias)) {
             return $this->singletons->get($alias);
         }
@@ -235,31 +253,57 @@ class ServiceContainer
         }
 
         // Check if the class exists and is instantiable before throwing an exception
-        if ($this->autoResolveUnregistered && class_exists($name)) {
-            $reflectionClass = new ReflectionClass($name);
+        if ($this->autoResolveUnregistered && class_exists($alias)) {
+            $reflectionClass = new ReflectionClass($alias);
             if ($reflectionClass->isInstantiable()) {
-                return $name;
+                return $alias;
             } else {
-                throw new Exception("Class '{$name}' is not instantiable.");
+                throw new Exception("Class '{$alias}' is not instantiable.");
             }
         }
 
-        throw new Exception("ServiceContainer or singleton '{$name}' not found.");
+        throw new Exception("ServiceContainer or singleton '{$alias}' not found.");
     }
 
     /**
      * Attempts to get a container or singleton, or returns null if not found.
      *
-     * @param string $name The name of the container or singleton
+     * @param string $alias
      *
      * @return mixed|null The container instance or null if not found
      */
-    public function findProvider(string $name): mixed
+    public function findProvider(string $alias): mixed
     {
         try {
-            return $this->getProvider($name);
+            return $this->geProvider($alias);
         } catch (Exception $e) {
             return null;
         }
+    }
+
+    public function providers(): Registry
+    {
+        return $this->providers;
+    }
+
+    /**
+     * Binds an interface to a class in the container.
+     *
+     * @param string $interface The interface name
+     * @param string $concrete
+     */
+    public function bind(string $interface, string $concrete): void
+    {
+        $this->bindings->add($interface, $concrete);
+    }
+
+    public function hasBinding(string $interface): bool
+    {
+        return $this->bindings->has($interface);
+    }
+
+    public function getBinding(string $interface): ?string
+    {
+        return $this->bindings->get($interface);
     }
 }

@@ -17,7 +17,9 @@ class Resolver
     /**
      * @var ServiceContainer The service container managing bindings, singletons, and providers
      */
-    private ServiceContainer $provider;
+    private ServiceContainer $container;
+
+    private array $reflectionCache = [];
 
     /**
      * @var array Pre-resolution hooks
@@ -36,7 +38,7 @@ class Resolver
      */
     public function __construct(ServiceContainer $provider)
     {
-        $this->provider = $provider;
+        $this->container = $provider;
     }
 
     /**
@@ -64,86 +66,94 @@ class Resolver
     /**
      * Resolves a service or class by checking singletons, providers, bindings, and hooks.
      *
-     * @param string     $serviceName The name of the service or class
-     * @param array|null $params      Optional parameters for instantiation
+     * @param string     $alias  The name of the service or class
+     * @param array|null $params Optional parameters for instantiation
      *
      * @return mixed The resolved service or class instance
      * @throws Exception If the service or class cannot be resolved
      */
-    public function resolve(string $serviceName, ?array $params = []): mixed
+    public function resolve(string $alias, ?array $params = []): mixed
     {
-        $instance = null;
+        $descriptor = $this->container->getServiceDescriptor($alias);
 
-        // Get the registered container or singleton, or throw an exception if not found
-        $registeredService = $this->provider->getProvider($serviceName);
-
-        // Handle pre-resolution hooks
-        $instance = $this->handlePreResolutionHooks($registeredService, $params);
-
-        // If no pre-hooks resolved the instance, let's create it now
-        if (!$instance && is_string($registeredService)) {
-            // Only call make if the registeredService is a string (class name)
-            $instance = $this->provider->make($registeredService, $params);
+        if (!$descriptor) {
+            throw new \Exception("Service '$alias' not found.");
         }
 
-        // If $registeredService is already an object, we don't need to call make()
-        if (is_object($registeredService)) {
-            $instance = $registeredService;
+        if ($instance = $descriptor->getResolvedInstance()) {
+            return $instance;
         }
 
-        // Handle post-resolution hooks
-        return $this->handlePostResolutionHooks($instance);
+        if (!$instance = $this->handlePreResolutionHooks($descriptor, $params)) {
+            $instance = $this->container->make($descriptor->getClassName(), $params);
+        }
+
+        $instance = $this->handlePostResolutionHooks($instance, $descriptor);
+
+        if ($descriptor->isSingleton()) {
+            $descriptor->setResolvedInstance($instance);
+        }
+
+        return $instance;
     }
 
-    private function handlePreResolutionHooks(mixed $registeredService, ?array $params = []): mixed
+    public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
     {
-        if (is_object($registeredService)) {
-            return null;  // Skip pre-hooks if it's already an instance
+        if (!$descriptor = $this->container->getServiceDescriptor($aliasOrClass)) {
+            $instance = $this->container->make($aliasOrClass, $params);
+
+            return $this->handlePostResolutionHooks($instance);
         }
 
+        return $this->resolve($aliasOrClass, $params);
+    }
+
+
+    private function handlePreResolutionHooks(ServiceDescriptor $descriptor, ?array $params = []): mixed
+    {
+        $className = $descriptor->getClassName();
+
         foreach ($this->preResolutionHooks as $type => $handler) {
-            if (is_subclass_of($registeredService, $type) || $registeredService === $type) {
-                $instance = $handler($registeredService, $params);
-                if ($instance !== null) {
-                    return $instance;
-                }
+            if (is_subclass_of($className, $type) || $className === $type) {
+                return $handler($descriptor, $params);
             }
         }
 
         return null;
     }
 
-    private function handlePostResolutionHooks(mixed $instance): mixed
+    private function handlePostResolutionHooks(mixed $instance, ?ServiceDescriptor $descriptor = null ): mixed
     {
         foreach ($this->postResolutionHooks as $type => $handler) {
             if (is_subclass_of($instance, $type) || $instance === $type) {
-                return $handler($instance);
+                return $handler($instance, $descriptor);
             }
         }
 
         return $instance;
     }
+
     /**
      * Checks if a service is registered as a singleton or container.
      *
-     * @param string $name The name of the service or class
+     * @param string $alias The name of the service or class
      *
      * @return mixed|null The registered singleton or container if available, null otherwise
      */
-    public function registered(string $name): mixed
+    public function registered(string $alias): mixed
     {
-        return $this->provider->findProvider($name);
+        return $this->container->findProvider($alias);
     }
 
     /**
      * Checks if a container is registered for a given name.
      *
-     * @param string $name The name of the service or container
+     * @param string $alias
      *
      * @return bool True if the container exists, false otherwise
      */
-    public function has(string $name): bool
+    public function has(string $alias): bool
     {
-        return $this->provider->hasProvider($name);
+        return $this->container->hasProvider($alias);
     }
 }

@@ -72,6 +72,7 @@ class Factory
         }
     }
 
+
     /**
      * Retrieve a ReflectionClass from the cache or create one.
      *
@@ -117,11 +118,30 @@ class Factory
         foreach ($parameters as $parameter) {
             $paramType = $parameter->getType();
 
-            if ($paramType instanceof ReflectionNamedType && !$paramType->isBuiltin()) {
-                // Resolve class dependency
-                $dependencies[] = $this->container->resolve($paramType->getName());
+            if ($paramType instanceof \ReflectionNamedType && !$paramType->isBuiltin()) {
+
+                // Check if the parameter type is the ServiceContainer itself
+                if ($paramType->getName() === ServiceContainer::class || is_subclass_of($paramType->getName(),
+                        ServiceContainer::class)) {
+                    // Directly inject the container for ServiceProviders
+                    $dependencies[] = $this->container;
+
+                } else {
+                    // Check if there is a binding for interfaces to concrete classes
+                    $paramClassName = $paramType->getName();
+
+                    if ($this->container->hasBinding($paramClassName)) {
+                        // Resolve interface binding to concrete class
+                        $concreteClass = $this->container->getBinding($paramClassName);
+                        $dependencies[] = $this->container->resolveOrMake($concreteClass); // Use make for instantiation
+                    } else {
+                        // Use make for class instantiation, not resolve
+                        $dependencies[] = $this->container->resolveOrMake($paramClassName);
+                    }
+                }
+
             } elseif ($parameter->isOptional()) {
-                // Use default parameter value if available
+                // Use the default parameter value if available
                 $dependencies[] = $parameter->getDefaultValue();
             } else {
                 // Handle named non-class parameters or use array order fallback
@@ -132,4 +152,5 @@ class Factory
 
         return $dependencies;
     }
+
 }
