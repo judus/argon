@@ -12,7 +12,7 @@ class Container
     /**
      * Gets the current container instance, initializing the application if necessary.
      *
-     * @return Container The service container instance
+     * @return Provider The service container instance
      * @throws Exception If initialization fails
      */
     protected static ServiceContainer $provider;
@@ -20,7 +20,8 @@ class Container
     /**
      * Gets the ServiceContainer, initializing it lazily if not already set.
      *
-     * @return ServiceContainer The service container instance
+     * @return Provider The service container instance
+     * @throws Exception
      */
     public static function getProvider(): ServiceContainer
     {
@@ -97,5 +98,18 @@ class Container
     public static function make(string $name, ?array $params = []): object
     {
         return self::getProvider()->make($name, $params);
+    }
+
+    /**
+     * Adds a type hook to the resolver, which triggers a specific handler for that type.
+     *
+     * @param string            $type    The type (class/interface) to watch for
+     * @param Closure|callable $handler The handler (closure or callable class) to execute
+     *
+     * @throws Exception
+     */
+    public static function addTypeHook(string $type, Closure|callable $handler): void
+    {
+        self::getProvider()->getResolver()->addTypeHook($type, $handler);
     }
 }

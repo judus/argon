@@ -1,6 +1,6 @@
 <?php
 
-namespace Maduser\Argon\Tests\Unit\Container;
+namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Registry;
 use PHPUnit\Framework\TestCase;

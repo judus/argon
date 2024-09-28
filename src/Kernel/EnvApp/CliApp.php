@@ -31,10 +31,10 @@ class CliApp extends Kernel
         }
 
         // Register the MiddlewarePipeline service if the class exists
-        //        if (class_exists('Maduser\Minimal\Middlewares\MiddlewarePipeline')) {
-        //            $this->provider->singleton('Pipeline', MiddlewarePipeline::class);
-        //            $this->pipeline = $this->provider->resolve('Pipeline');
-        //        }
+//        if (class_exists('Maduser\Minimal\Middlewares\MiddlewarePipeline')) {
+//            $this->provider->singleton('Pipeline', MiddlewarePipeline::class);
+//            $this->pipeline = $this->provider->resolve('Pipeline');
+//        }
     }
 
     /**
@@ -45,12 +45,9 @@ class CliApp extends Kernel
     public function handle(?callable $callback = null): void
     {
         if ($this->pipeline) {
-            $this->pipeline->process(
-                $this,
-                function () use ($callback) {
-                    $this->operation($callback);
-                }
-            );
+            $this->pipeline->process($this, function () use ($callback) {
+                $this->operation($callback);
+            });
         } else {
             $this->operation($callback);
         }
@@ -99,11 +96,8 @@ class CliApp extends Kernel
     {
         global $argv;
 
-        // Skip dispatching if PHPUnit's --coverage-html is passed
-        $options = getopt('', ['coverage-html', 'configuration:']);
-
-        // If either --coverage-html or --configuration is present, exit early
-        if (isset($options['coverage-html']) || isset($options['configuration'])) {
+        // Skip dispatching if running PHPUnit
+        if (is_null($commandName) && (defined('PHPUNIT_COMPOSER_INSTALL') || defined('__PHPUNIT_PHAR__'))) {
             return;
         }
 

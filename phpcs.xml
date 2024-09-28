@@ -1,19 +1,16 @@
 <?xml version="1.0"?>
-<ruleset name="Project Rules">
+<ruleset name="MaduserStandard">
+    <description>Maduser's project coding standard</description>
 
-    <!-- Define the coding standard to use -->
+    <!-- Define the coding standard -->
     <rule ref="PSR12"/>
 
-    <!-- Include or exclude directories/files -->
+    <!-- Specify the directories to check -->
     <file>src/</file>
-    <exclude-pattern>*/tests/*</exclude-pattern>
+    <file>tests/</file>
 
-    <!-- Report types (error/warning) -->
-    <arg name="report" value="summary"/>
-
-    <!-- Define custom coding standards or sniffs -->
-    <!--
-    <rule ref="Generic.WhiteSpace.DisallowTabIndent"/>
-    -->
-
+    <!-- Add any file extensions to include (optional) -->
+    <extensions>
+        <extension name="php"/>
+    </extensions>
 </ruleset>

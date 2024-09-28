@@ -30,10 +30,27 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "Maduser\\Argon\\Tests\\": "tests/"
+      "Tests\\App\\": "tests/app/",
+      "Tests\\Mocks\\": "tests/assets/mocks/",
+      "Tests\\Unit\\": "tests/unit/",
+      "Tests\\Integration\\": "tests/integration/",
+      "Tests\\Environment\\": "tests/environment/"
     }
   },
   "scripts": {
-    "test": "phpunit"
+    "test": "phpunit",
+    "check": [
+      "@test",
+      "./vendor/bin/psalm",
+      "./vendor/bin/phpcs --standard=PSR12 src/"
+    ],
+    "fix": [
+      "@test",
+      "./vendor/bin/psalm --alter --issues=MissingReturnType,MissingParamType,InvalidReturnType,InvalidParamType,MissingPropertyType,MissingClosureReturnType,InvalidPropertyType,NullableReturnType",
+      "./vendor/bin/phpcbf --standard=PSR12 src/",
+      "@test"
+    ],
+    "watch": "find src/ | entr -r composer check",
+    "watch-fix": "find src/ | entr -r composer fix"
   }
 }
