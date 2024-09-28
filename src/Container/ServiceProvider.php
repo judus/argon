@@ -9,6 +9,11 @@ abstract class ServiceProvider
 {
     protected ServiceContainer $container;
 
+    public function __construct(ServiceContainer $container)
+    {
+        $this->container = $container;
+    }
+
     /**
      * Resolve the service this container offers.
      *
