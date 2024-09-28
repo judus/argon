@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<ruleset name="MaduserStandard">
+    <description>Maduser's project coding standard</description>
+
+    <!-- Define the coding standard -->
+    <rule ref="PSR12"/>
+
+    <!-- Specify the directories to check -->
+    <file>src/</file>
+    <file>tests/</file>
+
+    <!-- Add any file extensions to include (optional) -->
+    <extensions>
+        <extension name="php"/>
+    </extensions>
+</ruleset>

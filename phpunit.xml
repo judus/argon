@@ -6,7 +6,9 @@
     <!-- The default testsuite -->
     <testsuites>
         <testsuite name="unit">
-            <directory suffix="Test.php">tests/</directory>
+            <directory suffix="Test.php">tests/unit/</directory>
+            <directory suffix="Test.php">tests/integration/</directory>
+            <directory suffix="Test.php">tests/environment/</directory>
         </testsuite>
     </testsuites>
 
@@ -14,6 +16,7 @@
     <coverage processUncoveredFiles="true">
         <include>
             <directory>src</directory>
+            <directory>tests/app</directory>
         </include>
     </coverage>
 </phpunit>
