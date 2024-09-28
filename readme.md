@@ -508,8 +508,3 @@ This project is licensed under the MIT License.
 ## Author
 
 - **Julien Duseyau**
-
----
-
-I hope this updated README provides a comprehensive overview of your repository, including the new example usage
-section. Let me know if there's anything else you'd like to add or change!
