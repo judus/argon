@@ -27,7 +27,7 @@ structure. It offers features such as:
 Install via Composer:
 
 ```bash
-composer require argon/framework
+composer require maduser/argon
 ```
 
 ## Getting Started
