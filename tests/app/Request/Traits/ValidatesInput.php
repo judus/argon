@@ -10,6 +10,8 @@ trait ValidatesInput
      * @param string       $field
      * @param mixed        $value
      * @param string|array $rules
+     *
+     * @return void
      */
     protected function validateField(string $field, $value, $rules)
     {
@@ -33,7 +35,7 @@ trait ValidatesInput
      * @param string $field
      * @param mixed  $value
      */
-    protected function required(string $field, $value)
+    protected function required(string $field, $value): void
     {
         if (is_null($value) || trim($value) === '') {
             $this->errors[$field][] = "$field is required.";
@@ -46,7 +48,7 @@ trait ValidatesInput
      * @param string $field
      * @param mixed  $value
      */
-    protected function integer(string $field, $value)
+    protected function integer(string $field, $value): void
     {
         if (!is_numeric($value)) {
             $this->errors[$field][] = "$field must be an integer.";
@@ -59,7 +61,7 @@ trait ValidatesInput
      * @param string $field
      * @param mixed  $value
      */
-    protected function string(string $field, $value)
+    protected function string(string $field, $value): void
     {
         if (!is_string($value)) {
             $this->errors[$field][] = "$field must be a string.";
@@ -72,7 +74,7 @@ trait ValidatesInput
      * @param string $field
      * @param mixed  $value
      */
-    protected function email(string $field, $value)
+    protected function email(string $field, $value): void
     {
         if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
             $this->errors[$field][] = "$field must be a valid email address.";

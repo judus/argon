@@ -59,7 +59,7 @@ class AppTest extends TestCase
     public function testKernelBooting(): void
     {
         // Initialize the app and ensure the kernel boots correctly
-        $app = App::init(CliApp::class);
+        App::init(CliApp::class);
 
         // Verify the kernel is booted
         $this->assertTrue($this->isKernelBooted());

@@ -9,6 +9,15 @@ use Maduser\Argon\Container\Factory;
 use Maduser\Argon\Container\ServiceContainer;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
+use Tests\Mocks\ClassWithContainerDependency;
+use Tests\Mocks\ClassWithDefaultValues;
+use Tests\Mocks\ClassWithDependency;
+use Tests\Mocks\ClassWithInterfaceDependency;
+use Tests\Mocks\ClassWithOptionalParameters;
+use Tests\Mocks\DependencyClass;
+use Tests\Mocks\ExampleInterface;
+use Tests\Mocks\ImplementationClass;
+use Tests\Mocks\SimpleClass;
 
 class FactoryTest extends TestCase
 {
@@ -21,14 +30,18 @@ class FactoryTest extends TestCase
         $this->factory = new Factory($this->container);
     }
 
-    // Test 1: Test instantiation of a class without dependencies
+    /**
+     * @throws ReflectionException
+     */
     public function testInstantiateClassWithoutDependencies(): void
     {
         $instance = $this->factory->make(SimpleClass::class);
         $this->assertInstanceOf(SimpleClass::class, $instance);
     }
 
-    // Test 2: Test instantiation of a class with dependencies
+    /**
+     * @throws ReflectionException
+     */
     public function testInstantiateClassWithDependencies(): void
     {
         $this->container->singleton(DependencyClass::class);
@@ -37,7 +50,9 @@ class FactoryTest extends TestCase
         $this->assertInstanceOf(DependencyClass::class, $instance->dependency);
     }
 
-    // Test 3: Test instantiation with optional parameters
+    /**
+     * @throws ReflectionException
+     */
     public function testInstantiationWithOptionalParameters(): void
     {
         $instance = $this->factory->make(ClassWithOptionalParameters::class);
@@ -45,7 +60,9 @@ class FactoryTest extends TestCase
         $this->assertEquals('default', $instance->param);
     }
 
-    // Test 4: Test handling of interface bindings
+    /**
+     * @throws ReflectionException
+     */
     public function testHandlingOfInterfaceBindings(): void
     {
         $this->container->bind(ExampleInterface::class, ImplementationClass::class);
@@ -54,15 +71,20 @@ class FactoryTest extends TestCase
         $this->assertInstanceOf(ImplementationClass::class, $instance->interfaceDependency);
     }
 
-    // Test 5: Test injection of the ServiceContainer
+    /**
+     * @throws ReflectionException
+     */
     public function testInjectionOfServiceContainer(): void
     {
+        /** @var ClassWithContainerDependency $instance */
         $instance = $this->factory->make(ClassWithContainerDependency::class);
         $this->assertInstanceOf(ClassWithContainerDependency::class, $instance);
         $this->assertInstanceOf(ServiceContainer::class, $instance->container);
     }
 
-    // Test 6: Test error handling for non-reflectable classes
+    /**
+     * @throws ReflectionException
+     */
     public function testErrorHandlingForNonReflectableClass(): void
     {
         $this->expectException(Exception::class);
@@ -70,81 +92,13 @@ class FactoryTest extends TestCase
         $this->factory->make('NonExistentClass');
     }
 
-    // Test 7: Test handling of default parameter values
+    /**
+     * @throws ReflectionException
+     */
     public function testHandlingOfDefaultParameterValues(): void
     {
         $instance = $this->factory->make(ClassWithDefaultValues::class, ['param1' => 'custom']);
         $this->assertEquals('custom', $instance->param1);
         $this->assertEquals(42, $instance->param2); // Default value should be 42
-    }
-}
-
-// Mock classes for testing
-
-class SimpleClass
-{
-}
-
-class DependencyClass
-{
-}
-
-class ClassWithDependency
-{
-    public DependencyClass $dependency;
-
-    public function __construct(DependencyClass $dependency)
-    {
-        $this->dependency = $dependency;
-    }
-}
-
-class ClassWithOptionalParameters
-{
-    public string $param;
-
-    public function __construct(string $param = 'default')
-    {
-        $this->param = $param;
-    }
-}
-
-interface ExampleInterface
-{
-}
-
-class ImplementationClass implements ExampleInterface
-{
-}
-
-class ClassWithInterfaceDependency
-{
-    public ExampleInterface $interfaceDependency;
-
-    public function __construct(ExampleInterface $interfaceDependency)
-    {
-        $this->interfaceDependency = $interfaceDependency;
-    }
-}
-
-class ClassWithContainerDependency
-{
-    public ServiceContainer $container;
-
-    public function __construct(ServiceContainer $container)
-    {
-        $this->container = $container;
-    }
-}
-
-class ClassWithDefaultValues
-{
-    public string $param1;
-    public int $param2;
-
-    public function __construct(string $param1, int $param2 = 42)
-    {
-        $this->param1 = $param1;
-        $this->param2 = $param2;
     }
 }

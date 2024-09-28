@@ -8,6 +8,9 @@ use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Container\ServiceDescriptor;
 use ReflectionException;
 
+/**
+ * @psalm-immutable
+ */
 class HookServiceProviderSetter
 {
     private $container;

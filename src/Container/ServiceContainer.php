@@ -25,23 +25,18 @@ class ServiceContainer
 
     public bool $autoResolveUnregistered = true;
 
-    public function setAutoResolveUnregistered(bool $value): void
-    {
-        $this->autoResolveUnregistered = $value;
-    }
-
     /**
      * ServiceContainer constructor.
      *
-     * @param array|null $providers An array of service providers
-     * @param array|null $bindings  An array of interface to class bindings
+     * @param array $providers An array of service providers
+     * @param array $bindings  An array of interface to class bindings
      */
-    public function __construct(?array $providers = [], ?array $bindings = [])
+    public function __construct(array $providers = [], array $bindings = [])
     {
         $this->injector = new Factory($this);
         $this->resolver = new Resolver($this);  // Initializes the resolver with the current container
-        $this->setBindings($bindings);
-        $this->setProviders($providers);
+        $this->providers = new Registry($bindings);
+        $this->bindings = new Registry($providers);
         $this->singletons = new Registry();
     }
 
@@ -66,37 +61,42 @@ class ServiceContainer
     }
 
     /**
-     * Registers a service or container in the container.
+     * Register multiple providers or a single provider in the container.
      *
-     * @param string     $alias  The name of the service or container
-     * @param string     $class  The class name or a callable to resolve the service
-     * @param array|null $params Optional parameters to be passed (for providers)
+     * @param string|array<string, string> $alias  The alias or an array of providers
+     * @param string|null                  $class  The class name (if $alias is a string)
+     * @param array|null                   $params Parameters for the class (optional)
+     *
+     * @return ServiceDescriptor|null Returns a ServiceDescriptor for single registration, null for multiple
+     * @throws Exception
      */
-    public function register(string $alias, string $class, ?array $params = []): ServiceDescriptor
+    public function register(string|array $alias, ?string $class = null, ?array $params = []): ?ServiceDescriptor
     {
-        $descriptor = new ServiceDescriptor($alias, $class, false, $params, $this);
-        $this->providers->add($alias, $descriptor);
+        if (is_array($alias)) {
+            // Handle array of providers
+            foreach ($alias as $providerAlias => $providerClass) {
+                $descriptor = new ServiceDescriptor($providerAlias, $providerClass, false, $params, $this);
+                $this->providers->add($providerAlias, $descriptor);
+                $this->handleSetterHooks($descriptor, $providerAlias);
+            }
 
-        // Handle setter hooks
-        $this->handleSetterHooks($descriptor, $alias);
+            return null;
+        } else {
+            if (is_null($class)) {
+                throw new Exception('Class name must be provided for single provider registration.');
+            }
+            // Handle single provider registration
+            $descriptor = new ServiceDescriptor($alias, $class, false, $params, $this);
+            $this->providers->add($alias, $descriptor);
+            $this->handleSetterHooks($descriptor, $alias);
 
-        return $descriptor;
+            return $descriptor;
+        }
     }
 
     public function getServiceDescriptor(string $alias): ?ServiceDescriptor
     {
         return $this->providers->get($alias);
-    }
-
-    /**
-     * Adds a setter hook for a specific type.
-     *
-     * @param string   $type    The type or interface to hook into.
-     * @param callable $handler The handler to invoke.
-     */
-    public function addSetterHook(string $type, callable $handler): void
-    {
-        $this->setterHooks[$type] = $handler;
     }
 
     /**
@@ -181,28 +181,6 @@ class ServiceContainer
     }
 
     /**
-     * Adds a pre-resolution hook.
-     *
-     * @param string   $type    The class or interface to hook into
-     * @param callable $handler The handler to invoke for this type
-     */
-    public function addPreResolutionHook(string $type, callable $handler): void
-    {
-        $this->resolver->addPreResolutionHook($type, $handler);
-    }
-
-    /**
-     * Adds a post-resolution hook.
-     *
-     * @param string   $type    The class or interface to hook into
-     * @param callable $handler The handler to invoke for this type
-     */
-    public function addPostResolutionHook(string $type, callable $handler): void
-    {
-        $this->resolver->addPostResolutionHook($type, $handler);
-    }
-
-    /**
      * Checks if a container or singleton is registered.
      *
      * @param string $name The name of the container or singleton
@@ -276,20 +254,23 @@ class ServiceContainer
         }
     }
 
-    public function providers(): Registry
-    {
-        return $this->providers;
-    }
-
     /**
      * Binds an interface to a class in the container.
      *
-     * @param string $interface The interface name
-     * @param string $concrete
+     * @param string|array<string, string> $interface The interface name or an array of mappings
+     * @param string|null  $concrete  The concrete class (if $interface is a string)
      */
-    public function bind(string $interface, string $concrete): void
+    public function bind(string|array $interface, ?string $concrete = null): void
     {
-        $this->bindings->add($interface, $concrete);
+        if (is_array($interface)) {
+            // Handle array of bindings
+            foreach ($interface as $int => $class) {
+                $this->bindings->add($int, $class);
+            }
+        } else {
+            // Handle single binding
+            $this->bindings->add($interface, $concrete);
+        }
     }
 
     public function hasBinding(string $interface): bool
@@ -302,15 +283,8 @@ class ServiceContainer
         return $this->bindings->get($interface);
     }
 
-    /**
-     * Create an alias for an existing service.
-     *
-     * @param string $alias  The alias name
-     * @param string $target The original service name
-     */
-    public function alias(string $alias, string $target): void
+    public function getResolver(): Resolver
     {
-        // Register an alias in the container
-        $this->providers->add($alias, $this->getServiceDescriptor($target));
+        return $this->resolver;
     }
 }

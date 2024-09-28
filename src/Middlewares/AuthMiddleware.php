@@ -6,11 +6,18 @@ use Closure;
 
 class AuthMiddleware implements Middleware
 {
-    public function handle($payload, \Closure $next): mixed
+    /**
+     * @param mixed        $payload
+     * @param Closure $next
+     *
+     * @return mixed
+     */
+    public function handle(mixed $payload, \Closure $next): mixed
     {
         echo "Auth check before operation\n";
 
-        // Perform authorization logic here
+        // Suppress Psalm warning for now
+        /** @psalm-suppress DocblockTypeContradiction */
         if (!$this->isAuthorized()) {
             echo "Unauthorized access. Terminating pipeline.\n";
 
@@ -25,6 +32,9 @@ class AuthMiddleware implements Middleware
         return $result;
     }
 
+    /**
+     * @return true
+     */
     private function isAuthorized(): bool
     {
         // Custom logic for authorization

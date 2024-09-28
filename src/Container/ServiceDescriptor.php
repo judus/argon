@@ -6,12 +6,14 @@ namespace Maduser\Argon\Container;
 
 class ServiceDescriptor
 {
-    private string $name;
     private string $className;
     private bool $isSingleton;
+
+
+    private ?object $resolvedInstance = null;
+    private string $name;
     private ?array $defaultParams;
     private ?ServiceContainer $container;
-    private ?object $resolvedInstance = null;
 
     public function __construct(
         string $name,

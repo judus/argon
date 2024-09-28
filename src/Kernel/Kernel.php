@@ -63,7 +63,7 @@ abstract class Kernel
      */
     public function handle(?callable $callback = null): void
     {
-        $callback && $callback();
+        !is_null($callback) && $callback();
     }
 
     /**
@@ -96,12 +96,22 @@ abstract class Kernel
      * @param string $errstr
      * @param string $errfile
      * @param int    $errline
+     * @param array $errcontext
+     *
+     * @return bool|null
      */
-    public function handleError(int $errno, string $errstr, string $errfile, int $errline): void
-    {
+    public function handleError(
+        int $errno,
+        string $errstr,
+        string $errfile,
+        int $errline,
+        array $errcontext = []
+    ): ?bool {
         // Default error handling logic
         echo "An error occurred: [$errno] $errstr in $errfile on line $errline" . PHP_EOL;
         error_log("Error [$errno]: $errstr in $errfile on line $errline");
+
+        return null;
     }
 
     /**

@@ -8,6 +8,9 @@ use PHPUnit\Framework\TestCase;
 
 class RequestValidationTest extends TestCase
 {
+    /**
+     * @throws Exception
+     */
     public function testOptionalFields(): void
     {
         $data = [
@@ -16,6 +19,11 @@ class RequestValidationTest extends TestCase
         ];
 
         $request = new class ($data) extends RequestValidation {
+            /**
+             * @return string[]
+             *
+             * @psalm-return array{name: 'required|string', email: 'required|email', age: 'integer'}
+             */
             public function rules(): array
             {
                 return [
@@ -26,8 +34,7 @@ class RequestValidationTest extends TestCase
             }
         };
 
-        $result = $request->validate();
-        $this->assertTrue($result);
+        $request->validate();
         $this->assertEmpty($request->errors());
 
         // Validate the validated() method returns only the validated fields
@@ -42,6 +49,11 @@ class RequestValidationTest extends TestCase
         ];
 
         $request = new class ($data) extends RequestValidation {
+            /**
+             * @return string[]
+             *
+             * @psalm-return array{name: 'required|string', email: 'required|email'}
+             */
             public function rules(): array
             {
                 return [
@@ -66,6 +78,11 @@ class RequestValidationTest extends TestCase
         ];
 
         $request = new class ($data) extends RequestValidation {
+            /**
+             * @return string[]
+             *
+             * @psalm-return array{name: 'required|string', email: 'required|email'}
+             */
             public function rules(): array
             {
                 return [
@@ -89,6 +106,11 @@ class RequestValidationTest extends TestCase
         ];
 
         $request = new class ($data) extends RequestValidation {
+            /**
+             * @return string[]
+             *
+             * @psalm-return array{name: 'required|string', email: 'required|email', age: 'integer'}
+             */
             public function rules(): array
             {
                 return [
@@ -119,6 +141,11 @@ class RequestValidationTest extends TestCase
         ];
 
         $request = new class ($data) extends RequestValidation {
+            /**
+             * @return string[]
+             *
+             * @psalm-return array{name: 'required|string', email: 'required|email', age: 'integer'}
+             */
             public function rules(): array
             {
                 return [
@@ -131,7 +158,11 @@ class RequestValidationTest extends TestCase
 
         // Since validation stops at first error for "name", expect only the first error for "name"
         $this->expectException(Exception::class);
-        $this->expectExceptionMessage('{"name":["name is required."],"email":["email must be a valid email address."],"age":["age must be an integer."]}');
+        $this->expectExceptionMessage(
+            '{"name":["name is required."],' .
+            '"email":["email must be a valid email address."],' .
+            '"age":["age must be an integer."]}'
+        );
         $request->validate();
     }
 }

@@ -20,8 +20,6 @@ class Resolver
      */
     private ServiceContainer $container;
 
-    private array $reflectionCache = [];
-
     /**
      * @var array Pre-resolution hooks
      */
@@ -29,6 +27,7 @@ class Resolver
 
     /**
      * @var array Post-resolution hooks
+     * @psalm-var array<string, callable|string>
      */
     private array $postResolutionHooks = [];
 
@@ -123,38 +122,21 @@ class Resolver
         return null;
     }
 
-    private function handlePostResolutionHooks(mixed $instance, ?ServiceDescriptor $descriptor = null): mixed
+    private function handlePostResolutionHooks(object $instance, ?ServiceDescriptor $descriptor = null): mixed
     {
         foreach ($this->postResolutionHooks as $type => $handler) {
-            if (is_subclass_of($instance, $type) || $instance === $type) {
-                return $handler($instance, $descriptor);
+            // Ensure $type is a valid class name before comparing
+            if (is_subclass_of($instance, $type) || get_class($instance) === $type) {
+                // Call the handler if it's callable, else handle the string case
+                if (is_callable($handler)) {
+                    return $handler($instance, $descriptor);
+                } else {
+                    // Handle non-callable $handler logic (if necessary)
+                    // If $handler is a string, perhaps resolve or log it, depending on your use case
+                }
             }
         }
 
         return $instance;
-    }
-
-    /**
-     * Checks if a service is registered as a singleton or container.
-     *
-     * @param string $alias The name of the service or class
-     *
-     * @return mixed|null The registered singleton or container if available, null otherwise
-     */
-    public function registered(string $alias): mixed
-    {
-        return $this->container->findProvider($alias);
-    }
-
-    /**
-     * Checks if a container is registered for a given name.
-     *
-     * @param string $alias
-     *
-     * @return bool True if the container exists, false otherwise
-     */
-    public function has(string $alias): bool
-    {
-        return $this->container->hasProvider($alias);
     }
 }

@@ -12,20 +12,21 @@ class Container
     /**
      * Gets the current container instance, initializing the application if necessary.
      *
-     * @return Provider The service container instance
+     * @return ServiceContainer The service container instance
      * @throws Exception If initialization fails
      */
-    protected static ServiceContainer $provider;
+    protected static ?ServiceContainer $provider = null;
 
     /**
      * Gets the ServiceContainer, initializing it lazily if not already set.
      *
-     * @return Provider The service container instance
+     * @return ServiceContainer The service container instance
+     *
      * @throws Exception
      */
     public static function getProvider(): ServiceContainer
     {
-        if (!isset(self::$provider)) {
+        if (is_null(self::$provider)) {
             self::$provider = new ServiceContainer();
         }
 
@@ -43,32 +44,6 @@ class Container
     public static function register(string|array $services, ?string $class = null): void
     {
         self::getProvider()->register($services, $class);
-    }
-
-    /**
-     * Binds an interface to a concrete class in the container or accepts an array of bindings.
-     *
-     * @param string|array $interface The interface name or an array of interface => class bindings
-     * @param string|null  $class     The class to bind to the interface (if $interface is a string)
-     *
-     * @throws Exception If binding fails
-     */
-    public static function bind(string|array $interface, ?string $class = null): void
-    {
-        self::getProvider()->bind($interface, $class);
-    }
-
-    /**
-     * Registers a singleton service in the container.
-     *
-     * @param string     $name   The name of the singleton
-     * @param mixed|null $object The singleton instance or closure
-     *
-     * @throws Exception If registration fails
-     */
-    public static function singleton(string $name, mixed $object = null): void
-    {
-        self::getProvider()->singleton($name, $object);
     }
 
     /**
@@ -98,18 +73,5 @@ class Container
     public static function make(string $name, ?array $params = []): object
     {
         return self::getProvider()->make($name, $params);
-    }
-
-    /**
-     * Adds a type hook to the resolver, which triggers a specific handler for that type.
-     *
-     * @param string            $type    The type (class/interface) to watch for
-     * @param Closure|callable $handler The handler (closure or callable class) to execute
-     *
-     * @throws Exception
-     */
-    public static function addTypeHook(string $type, Closure|callable $handler): void
-    {
-        self::getProvider()->getResolver()->addTypeHook($type, $handler);
     }
 }

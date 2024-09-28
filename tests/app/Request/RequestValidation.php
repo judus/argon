@@ -2,6 +2,7 @@
 
 namespace Tests\App\Request;
 
+use Exception;
 use Tests\App\Request\Traits\ValidatesInput;
 
 class RequestValidation
@@ -19,7 +20,7 @@ class RequestValidation
     /**
      * Defines the validation rules for the request.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function rules(): array
     {
@@ -29,8 +30,9 @@ class RequestValidation
     /**
      * Perform validation.
      *
-     * @return bool
-     * @throws \Exception
+     * @return true
+     *
+     * @throws Exception
      */
     public function validate(): bool
     {
@@ -41,7 +43,7 @@ class RequestValidation
         }
 
         if (!empty($this->errors)) {
-            throw new \Exception("Validation failed: " . json_encode($this->errors));
+            throw new Exception("Validation failed: " . json_encode($this->errors));
         }
 
         return true;

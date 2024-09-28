@@ -118,4 +118,3 @@ class RegistryTest extends TestCase
         $this->assertFalse($registry->valid());
     }
 }
-

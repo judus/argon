@@ -95,6 +95,8 @@ class Factory
      * @param ReflectionClass $reflectionClass The reflection of the class
      *
      * @return \ReflectionMethod|null The constructor method or null if none exists
+     *
+     * @psalm-pure
      */
     private function getConstructor(ReflectionClass $reflectionClass): ?\ReflectionMethod
     {
@@ -107,8 +109,11 @@ class Factory
      * @param array      $parameters The constructor parameters
      * @param array|null $params     The provided parameters
      *
-     * @return array Resolved dependencies
+     * @return (ServiceContainer|mixed|null)[] Resolved dependencies
+     *
      * @throws Exception If dependencies cannot be resolved
+     *
+     * @psalm-return list{0?: ServiceContainer|mixed|null,...}
      */
     private function resolveDependencies(array $parameters, ?array $params): array
     {

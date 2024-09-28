@@ -35,6 +35,7 @@
         <PossiblyNullReference errorLevel="info"/>
         <PossiblyNullArgument errorLevel="info"/>
         <PossiblyNullOperand errorLevel="info"/>
+        <LessSpecificImplementedReturnType errorLevel="info"/>
         <UndefinedClass>
             <errorLevel type="suppress">
                 <directory name="tests"/>

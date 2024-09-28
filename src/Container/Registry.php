@@ -13,7 +13,8 @@ use Iterator;
  * A container class that implements ArrayAccess and Iterator,
  * allowing array-like access and iteration over stored items.
  *
- * @template-implements ArrayAccess<int>
+ * @template-implements ArrayAccess<int, mixed>
+ * @template-implements Iterator<int, mixed>
  *
  * @package Maduser\Argon
  */
@@ -108,9 +109,9 @@ class Registry implements ArrayAccess, Iterator
     /**
      * Returns the key of the current element.
      *
-     * @return string|int|null The key of the current element
+     * @return mixed The key of the current element
      */
-    public function key(): string|int|null
+    public function key(): mixed
     {
         return key($this->items);
     }
@@ -201,7 +202,7 @@ class Registry implements ArrayAccess, Iterator
      */
     public function each(callable $callback): static
     {
-        $container = new static();
+        $container = new self();
 
         foreach ($this->items as $key => $item) {
             $container->add($key, $callback($item));

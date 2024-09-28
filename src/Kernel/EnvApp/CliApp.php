@@ -77,7 +77,7 @@ class CliApp extends Kernel
      */
     private function executeCallback(?callable $callback, array $arguments): void
     {
-        if ($callback) {
+        if (!is_null($callback)) {
             if ($this->console) {
                 $callback($this->console, ...$arguments);
             } else {
@@ -101,13 +101,13 @@ class CliApp extends Kernel
             return;
         }
 
-        if (!$commandName && $this->console) {
+        if (!is_null($commandName) && is_null($this->console)) {
             $this->listAvailableCommands();
 
             return;
         }
 
-        if ($commandName) {
+        if (is_string($commandName)) {
             $this->commandManager->dispatch($commandName, $arguments);
         }
     }

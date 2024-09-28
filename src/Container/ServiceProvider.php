@@ -9,11 +9,6 @@ abstract class ServiceProvider
 {
     protected ServiceContainer $container;
 
-    public function __construct(ServiceContainer $container)
-    {
-        $this->container = $container;
-    }
-
     /**
      * Resolve the service this container offers.
      *
@@ -93,6 +88,8 @@ abstract class ServiceProvider
      * Provide configuration.
      *
      * @return array
+     *
+     * @psalm-return array<string, mixed>
      */
     public function config(): array
     {
@@ -103,6 +100,8 @@ abstract class ServiceProvider
      * Provide bindings (interface to class mappings).
      *
      * @return array
+     *
+     * @psalm-return array<string, class-string>
      */
     public function bindings(): array
     {
@@ -113,6 +112,8 @@ abstract class ServiceProvider
      * Provide other service providers.
      *
      * @return array
+     *
+     * @psalm-return array<string, class-string>
      */
     public function providers(): array
     {
@@ -122,7 +123,7 @@ abstract class ServiceProvider
     /**
      * Provide commands to register.
      *
-     * @return array
+     * @return array<string, class-string>
      */
     public function commands(): array
     {

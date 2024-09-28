@@ -2,6 +2,6 @@
 
 namespace Tests\Mocks;
 
-class SomeObject
+class DependencyClass
 {
 }
