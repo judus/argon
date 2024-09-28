@@ -1,9 +1,9 @@
 <?php
 
-namespace Maduser\Argon\Tests\Unit\Mocks;
+namespace Tests\Unit\Mocks;
 
 use Exception;
-use Maduser\Argon\Mocks\RequestValidation;
+use Tests\App\Request\RequestValidation;
 use PHPUnit\Framework\TestCase;
 
 class RequestValidationTest extends TestCase

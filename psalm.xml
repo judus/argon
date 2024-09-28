@@ -5,8 +5,8 @@
         xmlns="https://getpsalm.org/schema/config"
         xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
 >
+    <!-- Project files and directories -->
     <projectFiles>
-        <directory name="mocks"/>
         <directory name="src"/>
         <directory name="tests"/>
         <ignoreFiles>
@@ -14,6 +14,7 @@
         </ignoreFiles>
     </projectFiles>
 
+    <!-- Issue handlers -->
     <issueHandlers>
         <MissingPropertyType errorLevel="suppress"/>
         <PossiblyInvalidMethodCall errorLevel="suppress"/>

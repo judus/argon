@@ -1,6 +1,0 @@
-watcher:
-  directories:
-    - src
-    - tests
-  fileMask: '*.php'
-  triggerTimeout: 500
