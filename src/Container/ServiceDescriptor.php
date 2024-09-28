@@ -47,4 +47,3 @@ class ServiceDescriptor
         return $this->className;
     }
 }
-

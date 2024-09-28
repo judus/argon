@@ -16,7 +16,9 @@ class DebugApp extends Kernel
     public function handle(?callable $callback = null): void
     {
         try {
-            /** @var Debugger $debugger */
+            /**
+ * @var Debugger $debugger
+*/
             $debugger = $this->provider->resolve('Debugger');
             $debugger->start(); // Start debugging session
 
@@ -24,7 +26,6 @@ class DebugApp extends Kernel
 
             $debugger->stop(); // Stop debugging session
             $debugger->report(); // Output debugging information
-
         } catch (\Exception $e) {
             $this->getErrorHandler()->handleException($e);
         }

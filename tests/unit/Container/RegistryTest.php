@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 
 class RegistryTest extends TestCase
 {
-    public function testArrayAccessSetAndGet()
+    public function testArrayAccessSetAndGet(): void
     {
         $registry = new Registry();
         $registry['foo'] = 'bar';
@@ -16,7 +16,7 @@ class RegistryTest extends TestCase
         $this->assertEquals('bar', $registry['foo']);
     }
 
-    public function testArrayAccessUnset()
+    public function testArrayAccessUnset(): void
     {
         $registry = new Registry();
         $registry['foo'] = 'bar';
@@ -25,14 +25,14 @@ class RegistryTest extends TestCase
         $this->assertFalse(isset($registry['foo']));
     }
 
-    public function testArrayAccessGetNonExistentKey()
+    public function testArrayAccessGetNonExistentKey(): void
     {
         $registry = new Registry();
 
         $this->assertNull($registry['foo']);
     }
 
-    public function testIterator()
+    public function testIterator(): void
     {
         $registry = new Registry(['one' => 1, 'two' => 2, 'three' => 3]);
 
@@ -50,7 +50,7 @@ class RegistryTest extends TestCase
         $this->assertEquals($expectedValues, $values);
     }
 
-    public function testAddAndGet()
+    public function testAddAndGet(): void
     {
         $registry = new Registry();
         $registry->add('key1', 'value1');
@@ -59,7 +59,7 @@ class RegistryTest extends TestCase
         $this->assertNull($registry->get('non-existent-key'));
     }
 
-    public function testHas()
+    public function testHas(): void
     {
         $registry = new Registry();
         $registry->add('key1', 'value1');
@@ -68,7 +68,7 @@ class RegistryTest extends TestCase
         $this->assertFalse($registry->has('key2'));
     }
 
-    public function testSetAndAll()
+    public function testSetAndAll(): void
     {
         $items = ['key1' => 'value1', 'key2' => 'value2'];
         $registry = new Registry();
@@ -77,7 +77,7 @@ class RegistryTest extends TestCase
         $this->assertEquals($items, $registry->all());
     }
 
-    public function testEach()
+    public function testEach(): void
     {
         $registry = new Registry(['one' => 1, 'two' => 2, 'three' => 3]);
         $newRegistry = $registry->each(function ($item) {
@@ -89,14 +89,14 @@ class RegistryTest extends TestCase
         $this->assertEquals(['one' => 2, 'two' => 4, 'three' => 6], $newRegistry->all());
     }
 
-    public function testRewind()
+    public function testRewind(): void
     {
         $registry = new Registry(['one' => 1, 'two' => 2, 'three' => 3]);
         $registry->rewind();
         $this->assertEquals(1, $registry->current());
     }
 
-    public function testCurrentNextKeyValid()
+    public function testCurrentNextKeyValid(): void
     {
         $registry = new Registry(['one' => 1, 'two' => 2, 'three' => 3]);
 

@@ -28,7 +28,9 @@ abstract class Kernel
      */
     public function bootKernel(): void
     {
-        if ($this->booted) return;
+        if ($this->booted) {
+            return;
+        }
 
         $this->boot();
 
@@ -75,14 +77,16 @@ abstract class Kernel
         echo "An exception occurred: " . $exception->getMessage() . PHP_EOL;
 
         // Log the exception details as a string
-        error_log(sprintf(
-            "Exception [%s]: %s in %s on line %d\nStack trace:\n%s",
-            get_class($exception),
-            $exception->getMessage(),
-            $exception->getFile(),
-            $exception->getLine(),
-            $exception->getTraceAsString()
-        ));
+        error_log(
+            sprintf(
+                "Exception [%s]: %s in %s on line %d\nStack trace:\n%s",
+                get_class($exception),
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine(),
+                $exception->getTraceAsString()
+            )
+        );
     }
 
     /**

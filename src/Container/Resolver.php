@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
@@ -122,7 +123,7 @@ class Resolver
         return null;
     }
 
-    private function handlePostResolutionHooks(mixed $instance, ?ServiceDescriptor $descriptor = null ): mixed
+    private function handlePostResolutionHooks(mixed $instance, ?ServiceDescriptor $descriptor = null): mixed
     {
         foreach ($this->postResolutionHooks as $type => $handler) {
             if (is_subclass_of($instance, $type) || $instance === $type) {

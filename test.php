@@ -100,11 +100,7 @@ $userController->action();
 $userController2 = $container->resolve('UserController');
 echo $userController2->getSomeValue(). PHP_EOL; // Hello World
 
-
-
-    dump('------------------------------------------');
-
-
+dump('------------------------------------------');
 
 $container->singleton(SingletonObject::class);
 $container->register('some-object', SomeObject::class);

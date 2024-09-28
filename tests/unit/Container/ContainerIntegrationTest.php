@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Maduser\Argon\Tests\unit\Container;
 
 use Exception;
@@ -8,7 +10,7 @@ use Maduser\Argon\Container\ServiceProvider;
 use Maduser\Argon\Hooks\HookRequestValidationPostResolution;
 use Maduser\Argon\Hooks\HookServiceProviderPostResolution;
 use Maduser\Argon\Hooks\HookServiceProviderSetter;
-use Maduser\Argon\mocks\RequestValidation;
+use Maduser\Argon\Mocks\RequestValidation;
 use Maduser\Argon\Mocks\SingletonObject;
 use Maduser\Argon\Mocks\SomeObject;
 use Maduser\Argon\Mocks\UserControllerServiceProvider;
@@ -35,7 +37,7 @@ class ContainerIntegrationTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testUserControllerSingleton()
+    public function testUserControllerSingleton(): void
     {
         // Register UserController as a singleton
         $this->container->singleton('UserController', UserControllerServiceProvider::class);
@@ -55,7 +57,7 @@ class ContainerIntegrationTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testSingletonObjectInSomeObject()
+    public function testSingletonObjectInSomeObject(): void
     {
         // Register SingletonObject as a singleton
         $this->container->singleton(SingletonObject::class);
@@ -72,6 +74,4 @@ class ContainerIntegrationTest extends TestCase
         // Assert that the singleton object retains the same value
         $this->assertEquals(10, $obj2->singletonObject->value);
     }
-
-
 }

@@ -46,14 +46,14 @@ class AppTest extends TestCase
         $this->assertInstanceOf(CliApp::class, $kernel);
     }
 
-    public function testDefaultKernelIsSet()
+    public function testDefaultKernelIsSet(): void
     {
         // Ensure the default kernel is correctly set during initialization
         App::init();
         $kernel = App::getKernel();
 
         // Assert that kernel is an instance of Kernel
-        $this->assertNotNull($kernel);
+        $this->assertInstanceOf(Kernel::class, $kernel);
     }
 
     public function testKernelBooting(): void

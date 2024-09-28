@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<ruleset name="Project Rules">
+
+    <!-- Define the coding standard to use -->
+    <rule ref="PSR12"/>
+
+    <!-- Include or exclude directories/files -->
+    <file>src/</file>
+    <exclude-pattern>*/tests/*</exclude-pattern>
+
+    <!-- Report types (error/warning) -->
+    <arg name="report" value="summary"/>
+
+    <!-- Define custom coding standards or sniffs -->
+    <!--
+    <rule ref="Generic.WhiteSpace.DisallowTabIndent"/>
+    -->
+
+</ruleset>

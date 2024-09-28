@@ -1,6 +1,5 @@
 <?php
 
-
 declare(strict_types=1);
 
 namespace Maduser\Argon;
@@ -15,6 +14,9 @@ use Maduser\Argon\Kernel\EnvApp\WebApp;
 use Maduser\Argon\Kernel\ErrorHandler;
 use Maduser\Argon\Kernel\Kernel;
 
+/**
+ * @psalm-api App
+ */
 class App extends Container
 {
     private static ?Kernel $kernel = null;
@@ -47,9 +49,7 @@ class App extends Container
             self::$kernel = self::createKernel($kernelClass);
 
             $appErrorHandler = self::$kernel->getErrorHandler();
-            if ($appErrorHandler) {
-                self::setErrorHandler($appErrorHandler);
-            }
+            self::setErrorHandler($appErrorHandler);
 
             if (!self::$booted) {
                 self::$kernel->bootKernel();
@@ -83,11 +83,15 @@ class App extends Container
      * @param string|null $kernelClass Optional kernel class.
      *
      * @return Kernel The created kernel instance
+     * @throws Exception
      */
     protected static function createKernel(?string $kernelClass = null): Kernel
     {
         $kernelClass = $kernelClass ?? self::getDefaultKernelClass();
 
+        /**
+ * @psalm-suppress LessSpecificReturnStatement
+*/
         return new $kernelClass(self::getProvider());
     }
 
@@ -147,7 +151,7 @@ class App extends Container
     /**
      * Dispatches a callback in an isolated service container context.
      *
-     * @param Closure     $callback The callback to execute
+     * @param Closure     $callback    The callback to execute
      * @param string|null $kernelClass
      *
      * @throws Exception
@@ -174,7 +178,6 @@ class App extends Container
         if (!isset(self::$kernel)) {
             self::$kernel = self::createKernel();
         }
-
         return self::$kernel;
     }
 

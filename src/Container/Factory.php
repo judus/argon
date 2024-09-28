@@ -66,7 +66,6 @@ class Factory
 
             // Instantiate the class with the resolved dependencies
             return $reflectionClass->newInstanceArgs($dependencies);
-
         } catch (ReflectionException $e) {
             throw new Exception("Failed to instantiate class '$class': " . $e->getMessage());
         }
@@ -119,13 +118,15 @@ class Factory
             $paramType = $parameter->getType();
 
             if ($paramType instanceof \ReflectionNamedType && !$paramType->isBuiltin()) {
-
                 // Check if the parameter type is the ServiceContainer itself
-                if ($paramType->getName() === ServiceContainer::class || is_subclass_of($paramType->getName(),
-                        ServiceContainer::class)) {
+                if (
+                    $paramType->getName() === ServiceContainer::class || is_subclass_of(
+                        $paramType->getName(),
+                        ServiceContainer::class
+                    )
+                ) {
                     // Directly inject the container for ServiceProviders
                     $dependencies[] = $this->container;
-
                 } else {
                     // Check if there is a binding for interfaces to concrete classes
                     $paramClassName = $paramType->getName();
@@ -139,7 +140,6 @@ class Factory
                         $dependencies[] = $this->container->resolveOrMake($paramClassName);
                     }
                 }
-
             } elseif ($parameter->isOptional()) {
                 // Use the default parameter value if available
                 $dependencies[] = $parameter->getDefaultValue();
@@ -152,5 +152,4 @@ class Factory
 
         return $dependencies;
     }
-
 }

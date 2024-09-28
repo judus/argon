@@ -13,6 +13,8 @@ use Iterator;
  * A container class that implements ArrayAccess and Iterator,
  * allowing array-like access and iteration over stored items.
  *
+ * @template-implements ArrayAccess<int>
+ *
  * @package Maduser\Argon
  */
 class Registry implements ArrayAccess, Iterator

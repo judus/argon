@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 class ServiceDescriptorTest extends TestCase
 {
-    public function testSetAndGetResolvedInstance()
+    public function testSetAndGetResolvedInstance(): void
     {
         $descriptor = new ServiceDescriptor('stdClass', \stdClass::class);
         $object = new \stdClass();
@@ -17,7 +17,7 @@ class ServiceDescriptorTest extends TestCase
         $this->assertSame($object, $descriptor->getResolvedInstance());
     }
 
-    public function testIsSingleton()
+    public function testIsSingleton(): void
     {
         $descriptor = new ServiceDescriptor('stdClass', \stdClass::class, true);
         $this->assertTrue($descriptor->isSingleton());
@@ -26,7 +26,7 @@ class ServiceDescriptorTest extends TestCase
         $this->assertFalse($descriptor->isSingleton());
     }
 
-    public function testGetClassName()
+    public function testGetClassName(): void
     {
         $descriptor = new ServiceDescriptor('stdClass', \stdClass::class);
         $this->assertEquals(\stdClass::class, $descriptor->getClassName());

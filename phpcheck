@@ -1,0 +1,6 @@
+#!/bin/bash
+
+./vendor/bin/psalm --alter --issues=MissingReturnType,MissingParamType,InvalidReturnType,InvalidParamType,MissingPropertyType,MissingClosureReturnType,InvalidPropertyType,NullableReturnType
+./vendor/bin/phpcbf --standard=PSR12 src/
+./vendor/bin/phpcs --standard=PSR12 src/
+./vendor/bin/phpunit

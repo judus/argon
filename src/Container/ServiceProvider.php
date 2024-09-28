@@ -7,7 +7,9 @@ use Maduser\Argon\App;
 
 abstract class ServiceProvider
 {
-    public function __construct(protected ServiceContainer $container) {}
+    public function __construct(protected ServiceContainer $container)
+    {
+    }
 
     /**
      * Resolve the service this container offers.

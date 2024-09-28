@@ -71,7 +71,6 @@ class ServiceContainer
      * @param string     $alias  The name of the service or container
      * @param string     $class  The class name or a callable to resolve the service
      * @param array|null $params Optional parameters to be passed (for providers)
-     *
      */
     public function register(string $alias, string $class, ?array $params = []): ServiceDescriptor
     {
@@ -121,7 +120,7 @@ class ServiceContainer
     /**
      * Registers a singleton. If already registered, it returns the instance.
      *
-     * @param string      $alias The name of the singleton
+     * @param string      $alias  The name of the singleton
      * @param string|null $class
      * @param array|null  $params
      *
@@ -148,7 +147,7 @@ class ServiceContainer
     /**
      * Resolves a service from the container using the resolver (handles hooks).
      *
-     * @param string $alias
+     * @param string     $alias
      * @param array|null $params Optional parameters for instantiation
      *
      * @return mixed The resolved service instance
