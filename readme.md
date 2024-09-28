@@ -507,7 +507,7 @@ This project is licensed under the MIT License.
 
 ## Author
 
-- **Julien Duseyau** - [julien.duseyau@gmail.com](mailto:julien.duseyau@gmail.com)
+- **Julien Duseyau**
 
 ---
 
