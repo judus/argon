@@ -1,8 +1,3 @@
-Thank you for providing the usage example. I've updated the README to include an example that demonstrates how to use
-the Argon Framework.
-
----
-
 # Argon Framework
 
 A lightweight PHP framework that provides a robust and flexible way to manage services, singletons, bindings, and
