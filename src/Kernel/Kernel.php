@@ -28,7 +28,9 @@ abstract class Kernel
      */
     public function bootKernel(): void
     {
-        if ($this->booted) return;
+        if ($this->booted) {
+            return;
+        }
 
         $this->boot();
 

@@ -36,7 +36,6 @@ class WebApp extends Kernel
 
             // Send the HTTP response back to the client
             $response->send();
-
         } catch (\Exception $e) {
             $this->getErrorHandler()->handleException($e);
         }

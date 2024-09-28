@@ -24,7 +24,6 @@ class DebugApp extends Kernel
 
             $debugger->stop(); // Stop debugging session
             $debugger->report(); // Output debugging information
-
         } catch (\Exception $e) {
             $this->getErrorHandler()->handleException($e);
         }

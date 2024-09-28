@@ -1,6 +1,6 @@
 <?php
 
-namespace Maduser\Argon\Tests\unit\Container;
+namespace Tests\Integration;
 
 use Exception;
 use Maduser\Argon\Container\ServiceContainer;
@@ -8,11 +8,11 @@ use Maduser\Argon\Container\ServiceProvider;
 use Maduser\Argon\Hooks\HookRequestValidationPostResolution;
 use Maduser\Argon\Hooks\HookServiceProviderPostResolution;
 use Maduser\Argon\Hooks\HookServiceProviderSetter;
-use Maduser\Argon\mocks\RequestValidation;
-use Maduser\Argon\Mocks\SingletonObject;
-use Maduser\Argon\Mocks\SomeObject;
-use Maduser\Argon\Mocks\UserControllerServiceProvider;
 use PHPUnit\Framework\TestCase;
+use Tests\App\Request\RequestValidation;
+use Tests\Mocks\SomeObject;
+use Tests\Mocks\SomeObjectDependsOnSingleton;
+use Tests\Mocks\UserControllerServiceProvider;
 
 class ContainerIntegrationTest extends TestCase
 {
@@ -22,14 +22,20 @@ class ContainerIntegrationTest extends TestCase
     {
         $this->container = new ServiceContainer();
 
-        $this->container->addSetterHook(ServiceProvider::class,
-            new HookServiceProviderSetter($this->container));
+        $this->container->addSetterHook(
+            ServiceProvider::class,
+            new HookServiceProviderSetter($this->container)
+        );
 
-        $this->container->addPostResolutionHook(ServiceProvider::class,
-            new HookServiceProviderPostResolution($this->container));
+        $this->container->addPostResolutionHook(
+            ServiceProvider::class,
+            new HookServiceProviderPostResolution($this->container)
+        );
 
-        $this->container->addPostResolutionHook(RequestValidation::class,
-            new HookRequestValidationPostResolution($this->container));
+        $this->container->addPostResolutionHook(
+            RequestValidation::class,
+            new HookRequestValidationPostResolution($this->container)
+        );
     }
 
     /**
@@ -57,21 +63,22 @@ class ContainerIntegrationTest extends TestCase
      */
     public function testSingletonObjectInSomeObject()
     {
-        // Register SingletonObject as a singleton
-        $this->container->singleton(SingletonObject::class);
+        // Register SomeObject as a singleton
+        $this->container->singleton(SomeObject::class);
 
-        // Register SomeObject
-        $this->container->register('some-object', SomeObject::class);
+        // Register SomeObjectDependsOnSingleton
+        $this->container->register('object', SomeObjectDependsOnSingleton::class);
 
-        /** @var SomeObject $obj1 */
-        $obj1 = $this->container->resolve('some-object');
+        /** @var SomeObjectDependsOnSingleton $obj1 */
+        $obj1 = $this->container->resolve('object');
         $obj1->singletonObject->value = 10;
+        $value1 = $obj1->singletonObject->value;
 
-        $obj2 = $this->container->resolve('some-object');
+        /** @var SomeObjectDependsOnSingleton $obj2 */
+        $obj2 = $this->container->resolve('object');
+        $value2 = $obj2->singletonObject->value;
 
         // Assert that the singleton object retains the same value
-        $this->assertEquals(10, $obj2->singletonObject->value);
+        $this->assertEquals($value1, $value2);
     }
-
-
 }

@@ -96,8 +96,8 @@ class CliApp extends Kernel
     {
         global $argv;
 
-        // Skip dispatching if PHPUnit's --coverage-html is passed
-        if (in_array('--coverage-html', $argv, true)) {
+        // Skip dispatching if running PHPUnit
+        if (is_null($commandName) && (defined('PHPUNIT_COMPOSER_INSTALL') || defined('__PHPUNIT_PHAR__'))) {
             return;
         }
 

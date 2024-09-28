@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Maduser\Argon\Tests\Unit\Container;
+namespace Tests\Unit\Container;
 
 use Exception;
 use Maduser\Argon\Container\Factory;

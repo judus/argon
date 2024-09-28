@@ -8,7 +8,9 @@ use Maduser\Argon\Container\ServiceDescriptor;
 
 class HookRequestValidationPostResolution
 {
-    public function __construct(private ServiceContainer $container) {}
+    public function __construct(private ServiceContainer $container)
+    {
+    }
 
     /**
      * Invoked when a ServiceProvider is registered.
