@@ -8,8 +8,8 @@ use Maduser\Argon\Hooks\HookServiceProviderPostResolution;
 use Maduser\Argon\Hooks\HookServiceProviderSetter;
 use Maduser\Argon\Hooks\HookRequestValidationPostResolution;
 
-require_once 'vendor/autoload.php';
-require_once '../datastore-app/maduser/Support/debug.php';
+require_once '../../vendor/autoload.php';
+require_once '../../../datastore-app/maduser/Support/debug.php';
 
 $container = new ServiceContainer();
 $container->addSetterHook(ServiceProvider::class, new HookServiceProviderSetter($container));
