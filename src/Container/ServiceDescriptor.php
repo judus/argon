@@ -19,14 +19,12 @@ class ServiceDescriptor
         string $name,
         string $className,
         bool $isSingleton = false,
-        ?array $defaultParams = [],
-        ?ServiceContainer $container = null
+        ?array $defaultParams = []
     ) {
         $this->name = $name;
         $this->className = $className;
         $this->isSingleton = $isSingleton;
         $this->defaultParams = $defaultParams;
-        $this->container = $container;
     }
 
     public function getResolvedInstance(): ?object
@@ -47,5 +45,10 @@ class ServiceDescriptor
     public function getClassName(): string
     {
         return $this->className;
+    }
+
+    public function getDefaultParams(): ?array
+    {
+        return $this->defaultParams;
     }
 }

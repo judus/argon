@@ -1,20 +1,21 @@
 <?php
-
 declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
-use Exception;
+use Maduser\Argon\Container\Exceptions\ContainerErrorException;
 use ReflectionClass;
 use ReflectionException;
+use ReflectionMethod;
 use ReflectionNamedType;
+use ReflectionParameter;
 
 /**
  * Class Factory
  *
  * Responsible for creating instances of classes, handling dependency injection via reflection.
  *
- * @package Maduser\Minimal\ServiceContainer
+ * @package Maduser\Argon\Container
  */
 class Factory
 {
@@ -26,7 +27,7 @@ class Factory
     /**
      * Cache for reflection classes to improve performance.
      *
-     * @var array
+     * @var array<string, ReflectionClass>
      */
     private array $reflectionCache = [];
 
@@ -47,16 +48,20 @@ class Factory
      * @param array|null $params Optional parameters for instantiation
      *
      * @return object The instantiated class with its dependencies injected
-     * @throws ReflectionException If the class cannot be reflected
-     * @throws Exception If dependencies cannot be resolved
+     * @throws ContainerErrorException If instantiation fails
      */
     public function make(string $class, ?array $params = []): object
     {
         try {
-            // Get the reflection class from the cache or create a new one
+            // Return the container itself if the class is the ServiceContainer
+            if ($class === ServiceContainer::class) {
+                return $this->container;
+            }
+
+            // Get or cache the reflection class
             $reflectionClass = $this->getReflectionClass($class);
 
-            // If no constructor exists, instantiate the class without arguments
+            // Instantiate without arguments if no constructor is found
             if (!$constructor = $this->getConstructor($reflectionClass)) {
                 return $reflectionClass->newInstance();
             }
@@ -67,10 +72,9 @@ class Factory
             // Instantiate the class with the resolved dependencies
             return $reflectionClass->newInstanceArgs($dependencies);
         } catch (ReflectionException $e) {
-            throw new Exception("Failed to instantiate class '$class': " . $e->getMessage());
+            throw new ContainerErrorException("Failed to instantiate class '$class': " . $e->getMessage(), $e);
         }
     }
-
 
     /**
      * Retrieve a ReflectionClass from the cache or create one.
@@ -94,11 +98,9 @@ class Factory
      *
      * @param ReflectionClass $reflectionClass The reflection of the class
      *
-     * @return \ReflectionMethod|null The constructor method or null if none exists
-     *
-     * @psalm-pure
+     * @return ReflectionMethod|null The constructor method or null if none exists
      */
-    private function getConstructor(ReflectionClass $reflectionClass): ?\ReflectionMethod
+    private function getConstructor(ReflectionClass $reflectionClass): ?ReflectionMethod
     {
         return $reflectionClass->getConstructor();
     }
@@ -109,52 +111,56 @@ class Factory
      * @param array      $parameters The constructor parameters
      * @param array|null $params     The provided parameters
      *
-     * @return (ServiceContainer|mixed|null)[] Resolved dependencies
-     *
-     * @throws Exception If dependencies cannot be resolved
-     *
-     * @psalm-return list{0?: ServiceContainer|mixed|null,...}
+     * @return array Resolved dependencies
+     * @throws ContainerErrorException If dependencies cannot be resolved
      */
-    private function resolveDependencies(array $parameters, ?array $params): array
+    public function resolveDependencies(array $parameters, ?array $params): array
     {
         $dependencies = [];
 
         foreach ($parameters as $parameter) {
-            $paramType = $parameter->getType();
-
-            if ($paramType instanceof \ReflectionNamedType && !$paramType->isBuiltin()) {
-                // Check if the parameter type is the ServiceContainer itself
-                if (
-                    $paramType->getName() === ServiceContainer::class || is_subclass_of(
-                        $paramType->getName(),
-                        ServiceContainer::class
-                    )
-                ) {
-                    // Directly inject the container for ServiceProviders
-                    $dependencies[] = $this->container;
-                } else {
-                    // Check if there is a binding for interfaces to concrete classes
-                    $paramClassName = $paramType->getName();
-
-                    if ($this->container->hasBinding($paramClassName)) {
-                        // Resolve interface binding to concrete class
-                        $concreteClass = $this->container->getBinding($paramClassName);
-                        $dependencies[] = $this->container->resolveOrMake($concreteClass); // Use make for instantiation
-                    } else {
-                        // Use make for class instantiation, not resolve
-                        $dependencies[] = $this->container->resolveOrMake($paramClassName);
-                    }
-                }
-            } elseif ($parameter->isOptional()) {
-                // Use the default parameter value if available
-                $dependencies[] = $parameter->getDefaultValue();
-            } else {
-                // Handle named non-class parameters or use array order fallback
-                $paramName = $parameter->getName();
-                $dependencies[] = $params[$paramName] ?? array_shift($params);
-            }
+            // Resolve dependencies based on the parameter type
+            $dependencies[] = $this->resolveParameter($parameter, $params);
         }
 
         return $dependencies;
+    }
+
+    private function resolveParameter(ReflectionParameter $parameter, ?array $params): mixed
+    {
+        $paramType = $parameter->getType();
+
+        if ($paramType instanceof ReflectionNamedType && !$paramType->isBuiltin()) {
+            return $this->resolveClassParameter($paramType->getName());
+        }
+
+        if ($parameter->isOptional()) {
+            return $parameter->getDefaultValue();
+        }
+
+        return $this->resolvePositionalParameter($parameter->getName(), $params);
+    }
+
+    private function resolveClassParameter(string $className): mixed
+    {
+        // Check if the parameter type is the ServiceContainer itself
+        if ($className === ServiceContainer::class) {
+            return $this->container;
+        }
+
+        // Check if there is a binding for interfaces to concrete classes
+        if ($this->container->bindings()->has($className)) {
+            $concreteClass = $this->container->bindings()->get($className);
+
+            return $this->container->resolveOrMake($concreteClass);
+        }
+
+        // Resolve or make an instance of the class
+        return $this->container->resolveOrMake($className);
+    }
+
+    private function resolvePositionalParameter(string $paramName, ?array $params): mixed
+    {
+        return $params[$paramName] ?? array_shift($params);
     }
 }

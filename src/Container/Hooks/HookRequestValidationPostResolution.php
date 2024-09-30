@@ -1,8 +1,7 @@
 <?php
 
-namespace Maduser\Argon\Hooks;
+namespace Maduser\Argon\Container\Hooks;
 
-use App\RequestValidation;
 use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Container\ServiceDescriptor;
 

@@ -1,10 +1,9 @@
 <?php
 
-namespace Maduser\Argon\Hooks;
+namespace Maduser\Argon\Container\Hooks;
 
 use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Container\ServiceDescriptor;
-use Maduser\Argon\Container\ServiceProvider;
 
 /**
  * @psalm-immutable

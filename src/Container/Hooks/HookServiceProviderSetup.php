@@ -2,16 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Maduser\Argon\Hooks;
+namespace Maduser\Argon\Container\Hooks;
 
-use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Container\ServiceDescriptor;
-use ReflectionException;
 
 /**
  * @psalm-immutable
  */
-class HookServiceProviderSetter
+class HookServiceProviderSetup
 {
     private $container;
 

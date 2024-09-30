@@ -2,17 +2,17 @@
 
 namespace App;
 
+use Maduser\Argon\Container\Hooks\HookRequestValidationPostResolution;
+use Maduser\Argon\Container\Hooks\HookServiceProviderPostResolution;
+use Maduser\Argon\Container\Hooks\HookServiceProviderSetup;
 use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Container\ServiceProvider;
-use Maduser\Argon\Hooks\HookServiceProviderPostResolution;
-use Maduser\Argon\Hooks\HookServiceProviderSetter;
-use Maduser\Argon\Hooks\HookRequestValidationPostResolution;
 
 require_once '../../vendor/autoload.php';
 require_once '../../../datastore-app/maduser/Support/debug.php';
 
 $container = new ServiceContainer();
-$container->addSetterHook(ServiceProvider::class, new HookServiceProviderSetter($container));
+$container->addSetterHook(ServiceProvider::class, new HookServiceProviderSetup($container));
 $container->addPostResolutionHook(RequestValidation::class, new HookRequestValidationPostResolution($container));
 $container->addPostResolutionHook(ServiceProvider::class, new HookServiceProviderPostResolution($container));
 
@@ -65,14 +65,14 @@ class UserController
         return $this->request;
     }
 
-    public function setSomeValue(string $value): void
-    {
-        $this->someValue = $value;
-    }
-
     public function getSomeValue(): string
     {
         return $this->someValue;
+    }
+
+    public function setSomeValue(string $value): void
+    {
+        $this->someValue = $value;
     }
 }
 
@@ -92,22 +92,22 @@ class UserControllerServiceProvider extends ServiceProvider
 
 $container->singleton('UserController', UserControllerServiceProvider::class);
 
-$userController = $container->resolve('UserController');
+$userController = $container->get('UserController');
 $userController->setSomeValue('Hello World');
 
 $userController->action();
 
-$userController2 = $container->resolve('UserController');
+$userController2 = $container->get('UserController');
 echo $userController2->getSomeValue(). PHP_EOL; // Hello World
 
 dump('------------------------------------------');
 
 $container->singleton(SingletonObject::class);
-$container->register('some-object', SomeObject::class);
+$container->set('some-object', SomeObject::class);
 
-$obj1 = $container->resolve('some-object');
+$obj1 = $container->get('some-object');
 $obj1->singletonObject->value = 10;
 
-$obj2 = $container->resolve('some-object');
+$obj2 = $container->get('some-object');
 echo $obj2->singletonObject->value . PHP_EOL; // 10
 

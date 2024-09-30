@@ -29,6 +29,7 @@ abstract class Kernel
     public function bootKernel(): void
     {
         if ($this->booted) {
+            dump('already booted');
             return;
         }
 
@@ -90,6 +91,17 @@ abstract class Kernel
     }
 
     /**
+     * Default method to handle shutdown (for fatal errors).
+     */
+    public function handleShutdown(): void
+    {
+        $error = error_get_last();
+        if ($error !== null) {
+            $this->handleError($error['type'], $error['message'], $error['file'], $error['line']);
+        }
+    }
+
+    /**
      * Default method to handle errors.
      *
      * @param int    $errno
@@ -112,16 +124,5 @@ abstract class Kernel
         error_log("Error [$errno]: $errstr in $errfile on line $errline");
 
         return null;
-    }
-
-    /**
-     * Default method to handle shutdown (for fatal errors).
-     */
-    public function handleShutdown(): void
-    {
-        $error = error_get_last();
-        if ($error !== null) {
-            $this->handleError($error['type'], $error['message'], $error['file'], $error['line']);
-        }
     }
 }

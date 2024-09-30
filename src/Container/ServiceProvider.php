@@ -3,7 +3,6 @@
 namespace Maduser\Argon\Container;
 
 use Exception;
-use Maduser\Argon\App;
 
 abstract class ServiceProvider
 {
@@ -47,61 +46,6 @@ abstract class ServiceProvider
     }
 
     /**
-     * Register other service providers.
-     *
-     * @throws Exception
-     */
-    protected function registerProviders(): void
-    {
-        $providers = $this->providers();
-        if (!empty($providers)) {
-            $this->container->register($providers);
-        }
-    }
-
-    /**
-     * Register configuration.
-     */
-    protected function registerConfig(): void
-    {
-        $config = $this->config();
-        if (!empty($config)) {
-            //Config::push($config);
-        }
-    }
-
-    /**
-     * Register CLI commands.
-     */
-    protected function registerCommands(): void
-    {
-        $commands = $this->commands();
-        if (!empty($commands)) {
-            //Commands::register($commands);
-        }
-    }
-
-    /**
-     * Register routes.
-     */
-    protected function registerRoutes(): void
-    {
-        $this->routes();
-    }
-
-    /**
-     * Provide configuration.
-     *
-     * @return array
-     *
-     * @psalm-return array<string, mixed>
-     */
-    public function config(): array
-    {
-        return [];
-    }
-
-    /**
      * Provide bindings (interface to class mappings).
      *
      * @return array
@@ -111,6 +55,19 @@ abstract class ServiceProvider
     public function bindings(): array
     {
         return [];
+    }
+
+    /**
+     * Register other service providers.
+     *
+     * @throws Exception
+     */
+    protected function registerProviders(): void
+    {
+        $providers = $this->providers();
+        if (!empty($providers)) {
+            $this->container->set($providers);
+        }
     }
 
     /**
@@ -126,6 +83,40 @@ abstract class ServiceProvider
     }
 
     /**
+     * Register configuration.
+     */
+    protected function registerConfig(): void
+    {
+        $config = $this->config();
+        if (!empty($config)) {
+            //Config::push($config);
+        }
+    }
+
+    /**
+     * Provide configuration.
+     *
+     * @return array
+     *
+     * @psalm-return array<string, mixed>
+     */
+    public function config(): array
+    {
+        return [];
+    }
+
+    /**
+     * Register CLI commands.
+     */
+    protected function registerCommands(): void
+    {
+        $commands = $this->commands();
+        if (!empty($commands)) {
+            //Commands::register($commands);
+        }
+    }
+
+    /**
      * Provide commands to register.
      *
      * @return array<string, class-string>
@@ -133,6 +124,14 @@ abstract class ServiceProvider
     public function commands(): array
     {
         return [];
+    }
+
+    /**
+     * Register routes.
+     */
+    protected function registerRoutes(): void
+    {
+        $this->routes();
     }
 
     /**

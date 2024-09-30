@@ -45,13 +45,13 @@ $container = new ServiceContainer();
 #### Registering a Service
 
 ```php
-$container->register('serviceAlias', SomeClass::class);
+$container->set('serviceAlias', SomeClass::class);
 ```
 
 #### Registering Multiple Services
 
 ```php
-$container->register([
+$container->set([
     'serviceAlias1' => SomeClass::class,
     'serviceAlias2' => AnotherClass::class,
 ]);
@@ -83,7 +83,7 @@ $container->bind([
 ### Resolving Services
 
 ```php
-$service = $container->resolve('serviceAlias');
+$service = $container->get('serviceAlias');
 ```
 
 ### Dependency Injection
@@ -97,7 +97,7 @@ class SomeClass {
     }
 }
 
-$instance = $container->resolve(SomeClass::class);
+$instance = $container->get(SomeClass::class);
 ```
 
 ### Using Service Providers
@@ -121,7 +121,7 @@ class MyServiceProvider extends ServiceProvider {
 Register the service provider:
 
 ```php
-$container->register('myServiceProvider', MyServiceProvider::class);
+$container->set('myServiceProvider', MyServiceProvider::class);
 ```
 
 ### Using Hooks
@@ -146,7 +146,7 @@ $container->addPostResolutionHook(SomeInterface::class, function($instance, $des
 By default, the container can auto-resolve classes that are not explicitly registered:
 
 ```php
-$container->setAutoResolveUnregistered(true);
+$container->enableAutoResolve(true);
 
 $instance = $container->resolveOrMake(UnregisteredClass::class);
 ```
@@ -161,11 +161,7 @@ hooks.
 
 namespace App;
 
-use Maduser\Argon\Container\ServiceContainer;
-use Maduser\Argon\Container\ServiceProvider;
-use Maduser\Argon\Hooks\HookServiceProviderPostResolution;
-use Maduser\Argon\Hooks\HookServiceProviderSetter;
-use Maduser\Argon\Hooks\HookRequestValidationPostResolution;
+use Maduser\Argon\Container\Hooks\HookRequestValidationPostResolution;use Maduser\Argon\Container\Hooks\HookServiceProviderPostResolution;use Maduser\Argon\Container\Hooks\HookServiceProviderSetup;use Maduser\Argon\Container\ServiceContainer;use Maduser\Argon\Container\ServiceProvider;
 
 require_once 'vendor/autoload.php';
 
@@ -173,7 +169,7 @@ require_once 'vendor/autoload.php';
 $container = new ServiceContainer();
 
 // Add hooks to the container
-$container->addSetterHook(ServiceProvider::class, new HookServiceProviderSetter($container));
+$container->addSetterHook(ServiceProvider::class, new HookServiceProviderSetup($container));
 $container->addPostResolutionHook(RequestValidation::class, new HookRequestValidationPostResolution($container));
 $container->addPostResolutionHook(ServiceProvider::class, new HookServiceProviderPostResolution($container));
 
@@ -254,22 +250,22 @@ class UserControllerServiceProvider extends ServiceProvider
 $container->singleton('UserController', UserControllerServiceProvider::class);
 
 // Resolve the UserController from the container
-$userController = $container->resolve('UserController');
+$userController = $container->get('UserController');
 $userController->setSomeValue('Hello World');
 $userController->action();
 
 // Resolve the UserController again to demonstrate singleton behavior
-$userController2 = $container->resolve('UserController');
+$userController2 = $container->get('UserController');
 echo $userController2->getSomeValue(); // Outputs: Hello World
 
 // Demonstrate singleton object sharing
 $container->singleton(SingletonObject::class);
-$container->register('some-object', SomeObject::class);
+$container->set('some-object', SomeObject::class);
 
-$obj1 = $container->resolve('some-object');
+$obj1 = $container->get('some-object');
 $obj1->singletonObject->value = 10;
 
-$obj2 = $container->resolve('some-object');
+$obj2 = $container->get('some-object');
 echo $obj2->singletonObject->value; // Outputs: 10
 ```
 
@@ -333,7 +329,7 @@ Commands can be managed using the `CommandManager` and `Console` classes from th
 4. **Register Commands**:
 
    ```php
-   $commandManager = $container->resolve('CommandManager');
+   $commandManager = $container->get('CommandManager');
    $commandManager->register('mycommand', MyCommand::class);
    ```
 
@@ -358,16 +354,16 @@ The Argon Framework provides facades for simplifying access to container service
 The `Container` facade provides static methods to interact with the service container.
 
 ```php
-use Maduser\Argon\Container;
+use Maduser\Argon\Container\ContainerFacade;
 
 // Register a service
-Container::register('serviceAlias', SomeClass::class);
+ContainerFacade::set('serviceAlias', SomeClass::class);
 
 // Resolve a service
-$service = Container::resolve('serviceAlias');
+$service = ContainerFacade::get('serviceAlias');
 
 // Create an instance without registering
-$instance = Container::make(SomeClass::class);
+$instance = ContainerFacade::make(SomeClass::class);
 ```
 
 #### Using the `App` Facade
