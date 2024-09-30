@@ -146,7 +146,7 @@ $container->addPostResolutionHook(SomeInterface::class, function($instance, $des
 By default, the container can auto-resolve classes that are not explicitly registered:
 
 ```php
-$container->setAutoResolveUnregistered(true);
+$container->enableAutoResolve(true);
 
 $instance = $container->resolveOrMake(UnregisteredClass::class);
 ```

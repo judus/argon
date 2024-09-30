@@ -2,8 +2,9 @@
 
 namespace Maduser\Argon\Kernel\EnvApp;
 
+use Exception;
 use Maduser\Argon\Kernel\Kernel;
-use Maduser\Console\CommandManager;
+use ReflectionException;
 
 class CliApp extends Kernel
 {
@@ -14,7 +15,7 @@ class CliApp extends Kernel
     /**
      * Boot method to register default CLI services dynamically.
      *
-     * @throws \Exception
+     * @throws Exception
      */
     public function boot(): void
     {
@@ -25,16 +26,11 @@ class CliApp extends Kernel
         }
 
         // Register the CommandManager service if the class exists
-        if (class_exists('\Maduser\Console\CommandManager')) {
-            $this->provider->singleton('CommandManager', '\Maduser\Console\CommandManager');
+        if (class_exists('Maduser\Console\CommandManager')) {
+            $this->provider->singleton('Maduser\Console\CommandManager');
+            $this->provider->alias('CommandManager', 'Maduser\Console\CommandManager');
             $this->commandManager = $this->provider->resolve('CommandManager');
         }
-
-        // Register the MiddlewarePipeline service if the class exists
-//        if (class_exists('Maduser\Minimal\Middlewares\MiddlewarePipeline')) {
-//            $this->provider->singleton('Pipeline', MiddlewarePipeline::class);
-//            $this->pipeline = $this->provider->resolve('Pipeline');
-//        }
     }
 
     /**
@@ -59,11 +55,10 @@ class CliApp extends Kernel
 
         $commandName = $argv[1] ?? null;
         $arguments = array_slice($argv, 2);
-
         // Execute the callback, passing the console if available
         $this->executeCallback($callback, $arguments);
-
         // If CommandManager is available, process the command
+
         if ($this->commandManager) {
             $this->dispatchCommand($commandName, $arguments);
         }
@@ -74,15 +69,13 @@ class CliApp extends Kernel
      *
      * @param callable|null $callback
      * @param array         $arguments
+     *
+     * @throws ReflectionException
      */
     private function executeCallback(?callable $callback, array $arguments): void
     {
         if (!is_null($callback)) {
-            if ($this->console) {
-                $callback($this->console, ...$arguments);
-            } else {
-                $callback(...$arguments);
-            }
+            $this->provider->execute($callback, $arguments);
         }
     }
 
@@ -94,18 +87,19 @@ class CliApp extends Kernel
      */
     private function dispatchCommand(?string $commandName, array $arguments): void
     {
+
         global $argv;
 
         // Skip dispatching if running PHPUnit
         if (is_null($commandName) && (defined('PHPUNIT_COMPOSER_INSTALL') || defined('__PHPUNIT_PHAR__'))) {
             return;
         }
-
-        if (!is_null($commandName) && is_null($this->console)) {
+        if (is_null($commandName) && !is_null($this->console)) {
             $this->listAvailableCommands();
 
             return;
         }
+
 
         if (is_string($commandName)) {
             $this->commandManager->dispatch($commandName, $arguments);

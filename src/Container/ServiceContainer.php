@@ -2,9 +2,14 @@
 
 namespace Maduser\Argon\Container;
 
+use Closure;
 use Exception;
 use ReflectionClass;
 use ReflectionException;
+use ReflectionFunction;
+use ReflectionFunctionAbstract;
+use ReflectionMethod;
+use ReflectionNamedType;
 
 /**
  * Class ServiceContainer
@@ -15,20 +20,13 @@ use ReflectionException;
  */
 class ServiceContainer
 {
+    public bool $autoResolveUnregistered = true;
     private Registry $providers;
     private Registry $bindings;
     private Registry $singletons;
     private Resolver $resolver;
-    private Factory $injector;
-
+    private Factory $factory;
     private array $setterHooks = [];
-
-    public bool $autoResolveUnregistered = true;
-
-    public function setAutoResolveUnregistered(bool $value): void
-    {
-        $this->autoResolveUnregistered = $value;
-    }
 
     /**
      * ServiceContainer constructor.
@@ -38,11 +36,16 @@ class ServiceContainer
      */
     public function __construct(array $providers = [], array $bindings = [])
     {
-        $this->injector = new Factory($this);
+        $this->factory = new Factory($this);
         $this->resolver = new Resolver($this);  // Initializes the resolver with the current container
-        $this->providers = new Registry($bindings);
-        $this->bindings = new Registry($providers);
+        $this->providers = new Registry($providers);
+        $this->bindings = new Registry($bindings);
         $this->singletons = new Registry();
+    }
+
+    public function setAutoResolveUnregistered(bool $value): void
+    {
+        $this->autoResolveUnregistered = $value;
     }
 
     /**
@@ -99,22 +102,6 @@ class ServiceContainer
         }
     }
 
-    public function getServiceDescriptor(string $alias): ?ServiceDescriptor
-    {
-        return $this->providers->get($alias);
-    }
-
-    /**
-     * Adds a setter hook for a specific type.
-     *
-     * @param string   $type    The type or interface to hook into.
-     * @param callable $handler The handler to invoke.
-     */
-    public function addSetterHook(string $type, callable $handler): void
-    {
-        $this->setterHooks[$type] = $handler;
-    }
-
     /**
      * Handles setter hooks when a service is registered.
      *
@@ -131,6 +118,17 @@ class ServiceContainer
                 return;
             }
         }
+    }
+
+    /**
+     * Adds a setter hook for a specific type.
+     *
+     * @param string   $type    The type or interface to hook into.
+     * @param callable $handler The handler to invoke.
+     */
+    public function addSetterHook(string $type, callable $handler): void
+    {
+        $this->setterHooks[$type] = $handler;
     }
 
     /**
@@ -174,7 +172,6 @@ class ServiceContainer
         return $this->resolver->resolve($alias, $params);
     }
 
-
     /**
      * Creates a new instance of a class using the injector.
      *
@@ -187,13 +184,7 @@ class ServiceContainer
      */
     public function make(string $class, ?array $params = []): object
     {
-        return $this->injector->make($class, $params);
-    }
-
-
-    public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
-    {
-        return $this->resolver->resolveOrMake($aliasOrClass, $params);
+        return $this->factory->make($class, $params);
     }
 
     /**
@@ -237,6 +228,22 @@ class ServiceContainer
     }
 
     /**
+     * Attempts to get a container or singleton, or returns null if not found.
+     *
+     * @param string $alias
+     *
+     * @return mixed|null The container instance or null if not found
+     */
+    public function findProvider(string $alias): mixed
+    {
+        try {
+            return $this->geProvider($alias);
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+
+    /**
      * Gets a container or singleton, or throws an exception if not found.
      *
      * @param string $alias The name of the container or singleton
@@ -276,22 +283,6 @@ class ServiceContainer
         throw new Exception("ServiceContainer or singleton '{$alias}' not found.");
     }
 
-    /**
-     * Attempts to get a container or singleton, or returns null if not found.
-     *
-     * @param string $alias
-     *
-     * @return mixed|null The container instance or null if not found
-     */
-    public function findProvider(string $alias): mixed
-    {
-        try {
-            return $this->geProvider($alias);
-        } catch (Exception $e) {
-            return null;
-        }
-    }
-
     public function providers(): Registry
     {
         return $this->providers;
@@ -311,9 +302,15 @@ class ServiceContainer
                 $this->bindings->add($int, $class);
             }
         } else {
+
             // Handle single binding
             $this->bindings->add($interface, $concrete);
         }
+    }
+
+    public function bindings(): Registry
+    {
+        return $this->bindings;
     }
 
     public function hasBinding(string $interface): bool
@@ -336,5 +333,56 @@ class ServiceContainer
     {
         // Register an alias in the container
         $this->providers->add($alias, $this->getServiceDescriptor($target));
+    }
+
+    public function getServiceDescriptor(string $alias): ?ServiceDescriptor
+    {
+        return $this->providers->get($alias);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws Exception
+     */
+    public function execute(callable $callable, array $optionalParams = []): mixed
+    {
+        $reflection = $this->getCallableReflection($callable);
+
+        $dependencies = [];
+
+        foreach ($reflection->getParameters() as $param) {
+            $paramType = $param->getType();
+
+            if ($paramType instanceof ReflectionNamedType && !$paramType->isBuiltin()) {
+                // Resolve dependencies from the container instead of instantiating new ones
+                $dependencies[] = $this->resolveOrMake($paramType->getName());
+            } else {
+                // Optional or non-class parameters
+                $dependencies[] = $optionalParams[$param->getName()] ?? array_shift($optionalParams);
+            }
+        }
+
+        return call_user_func_array($callable, $dependencies);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    private function getCallableReflection(callable $callable): ReflectionFunctionAbstract
+    {
+        if (is_array($callable)) {
+            return new ReflectionMethod($callable[0], $callable[1]);
+        }
+
+        if (is_object($callable) && !$callable instanceof Closure) {
+            return new ReflectionMethod($callable, '__invoke');
+        }
+
+        return new ReflectionFunction($callable);
+    }
+
+    public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
+    {
+        return $this->resolver->resolveOrMake($aliasOrClass, $params);
     }
 }

@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Hooks;
 
-use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Container\ServiceDescriptor;
-use ReflectionException;
 
 /**
  * @psalm-immutable

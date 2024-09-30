@@ -7,6 +7,7 @@ namespace Maduser\Argon\Container;
 use Exception;
 use ReflectionClass;
 use ReflectionException;
+use ReflectionMethod;
 use ReflectionNamedType;
 
 /**
@@ -53,6 +54,10 @@ class Factory
     public function make(string $class, ?array $params = []): object
     {
         try {
+            if ($class == ServiceContainer::class) {
+                return $this->container;
+            }
+
             // Get the reflection class from the cache or create a new one
             $reflectionClass = $this->getReflectionClass($class);
 
@@ -63,6 +68,7 @@ class Factory
 
             // Resolve the dependencies for the constructor
             $dependencies = $this->resolveDependencies($constructor->getParameters(), $params);
+            //dump([$class => ['params' => $params, 'dependencies' => $dependencies]]);
 
             // Instantiate the class with the resolved dependencies
             return $reflectionClass->newInstanceArgs($dependencies);
@@ -94,11 +100,11 @@ class Factory
      *
      * @param ReflectionClass $reflectionClass The reflection of the class
      *
-     * @return \ReflectionMethod|null The constructor method or null if none exists
+     * @return ReflectionMethod|null The constructor method or null if none exists
      *
      * @psalm-pure
      */
-    private function getConstructor(ReflectionClass $reflectionClass): ?\ReflectionMethod
+    private function getConstructor(ReflectionClass $reflectionClass): ?ReflectionMethod
     {
         return $reflectionClass->getConstructor();
     }
@@ -115,23 +121,17 @@ class Factory
      *
      * @psalm-return list{0?: ServiceContainer|mixed|null,...}
      */
-    private function resolveDependencies(array $parameters, ?array $params): array
+    public function resolveDependencies(array $parameters, ?array $params): array
     {
         $dependencies = [];
 
         foreach ($parameters as $parameter) {
             $paramType = $parameter->getType();
 
-            if ($paramType instanceof \ReflectionNamedType && !$paramType->isBuiltin()) {
+            if ($paramType instanceof ReflectionNamedType && !$paramType->isBuiltin()) {
                 // Check if the parameter type is the ServiceContainer itself
-                if (
-                    $paramType->getName() === ServiceContainer::class || is_subclass_of(
-                        $paramType->getName(),
-                        ServiceContainer::class
-                    )
-                ) {
-                    // Directly inject the container for ServiceProviders
-                    $dependencies[] = $this->container;
+                if ($paramType->getName() === ServiceContainer::class) {
+                    $dependencies[] = $this->container; // Use the same instance
                 } else {
                     // Check if there is a binding for interfaces to concrete classes
                     $paramClassName = $paramType->getName();
