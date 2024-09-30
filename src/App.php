@@ -6,6 +6,7 @@ namespace Maduser\Argon;
 
 use Closure;
 use Exception;
+use Maduser\Argon\Container\ContainerFacade;
 use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Kernel\EnvApp\CliApp;
 use Maduser\Argon\Kernel\EnvApp\DebugApp;
@@ -17,7 +18,7 @@ use Maduser\Argon\Kernel\Kernel;
 /**
  * @psalm-api App
  */
-class App extends Container
+class App extends ContainerFacade
 {
     protected static ?ErrorHandler $errorHandler = null;
     protected static bool $booted = false;
@@ -74,7 +75,7 @@ class App extends Container
         /**
  * @psalm-suppress LessSpecificReturnStatement
 */
-        return new $kernelClass(self::getProvider());
+        return new $kernelClass(self::container());
     }
 
     /**
@@ -114,7 +115,7 @@ class App extends Container
     public static function setErrorHandler(string|ErrorHandler $errorHandler): void
     {
         if (is_string($errorHandler)) {
-            $errorHandler = self::$provider->make($errorHandler);
+            $errorHandler = self::$container->make($errorHandler);
         }
 
         if ($errorHandler instanceof ErrorHandler) {
@@ -149,10 +150,10 @@ class App extends Container
     protected static function startContext(): void
     {
         // Push the current container onto the stack
-        self::$contextStack[] = self::getProvider();
+        self::$contextStack[] = self::container();
 
         // Create a new container for the new context
-        self::$provider = new ServiceContainer();
+        self::$container = new ServiceContainer();
     }
 
     /**
@@ -162,7 +163,7 @@ class App extends Container
     {
         // Pop the context stack to restore the previous container
         if (!empty(self::$contextStack)) {
-            self::$provider = array_pop(self::$contextStack);
+            self::$container = array_pop(self::$contextStack);
         }
     }
 

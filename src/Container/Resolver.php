@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
+use Closure;
 use Exception;
+use Maduser\Argon\Container\Exceptions\ContainerException;
+use Maduser\Argon\Container\Exceptions\ServiceNotFoundException;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
+use ReflectionException;
 
 /**
  * Class Resolver
@@ -21,122 +27,115 @@ class Resolver
     private ServiceContainer $container;
 
     /**
-     * @var array Pre-resolution hooks
-     */
-    private array $preResolutionHooks = [];
-
-    /**
-     * @var array Post-resolution hooks
-     * @psalm-var array<string, callable|string>
-     */
-    private array $postResolutionHooks = [];
-
-    /**
      * Resolver constructor.
      *
-     * @param ServiceContainer $provider The service container instance
+     * @param ServiceContainer $container The service container instance
      */
-    public function __construct(ServiceContainer $provider)
+    public function __construct(ServiceContainer $container)
     {
-        $this->container = $provider;
+        $this->container = $container;
     }
 
     /**
-     * Adds a pre-resolution hook for a specific type.
+     * Resolves a service or class by its alias or creates a new instance if not found.
      *
-     * @param string   $type    The type to hook into
-     * @param callable $handler The handler to invoke
-     */
-    public function addPreResolutionHook(string $type, callable $handler): void
-    {
-        $this->preResolutionHooks[$type] = $handler;
-    }
-
-    /**
-     * Adds a post-resolution hook for a specific type.
+     * @param string     $aliasOrClass The service alias or class to resolve
+     * @param array|null $params       Optional parameters for instantiation
      *
-     * @param string   $type    The type to hook into
-     * @param callable $handler The handler to invoke
+     * @return mixed The resolved or instantiated service
+     *
+     * @throws ContainerExceptionInterface
      */
-    public function addPostResolutionHook(string $type, callable $handler): void
+    public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
     {
-        $this->postResolutionHooks[$type] = $handler;
+        try {
+            $descriptor = $this->container->getServiceDescriptor($aliasOrClass);
+
+            if (!$descriptor) {
+                $instance = $this->container->make($aliasOrClass, $params);
+
+                return $this->container->handlePostResolutionHooks($instance);
+            }
+
+            return $this->resolveFromDescriptor($descriptor, $params);
+
+        } catch (ReflectionException $e) {
+            throw new ContainerException(
+                "Error resolving or making service '$aliasOrClass': " . $e->getMessage(), $e
+            );
+        } catch (Exception $e) {
+            throw new ContainerException(
+                "General error resolving or making service '$aliasOrClass': " . $e->getMessage(), $e
+            );
+        }
     }
 
     /**
-     * Resolves a service or class by checking singletons, providers, bindings, and hooks.
+     * Resolves a service or class from a service descriptor.
+     *
+     * @param ServiceDescriptor $descriptor The service descriptor
+     * @param array|null        $params     Optional parameters for instantiation
+     *
+     * @return mixed The resolved service or class instance
+     * @throws ContainerExceptionInterface If the service cannot be resolved
+     */
+    private function resolveFromDescriptor(ServiceDescriptor $descriptor, ?array $params = []): mixed
+    {
+        try {
+            // If the service is already resolved (singleton), return the instance
+            if ($instance = $descriptor->getInstance()) {
+                return $instance;
+            }
+
+            // Handle pre-resolution hooks, if any
+            if (!$instance = $this->container->handlePreResolutionHooks($descriptor, $params)) {
+                // Check if the definition is a closure and invoke it, otherwise instantiate the class
+                $definition = $descriptor->getDefinition();
+                if ($definition instanceof Closure) {
+                    $instance = $this->container->execute($definition);
+                } else {
+                    $instance = $this->container->make($definition, $params);
+                }
+            }
+
+            // Apply post-resolution hooks
+            $instance = $this->container->handlePostResolutionHooks($instance, $descriptor);
+
+            // Cache the instance if it's a singleton
+            if ($descriptor->isSingleton()) {
+                $descriptor->setInstance($instance);
+            }
+
+            return $instance;
+        } catch (ReflectionException $e) {
+            throw new ContainerException("Error resolving service from descriptor: " . $e->getMessage(), $e);
+        }
+    }
+
+    /**
+     * Resolves a service by its alias.
      *
      * @param string     $alias  The name of the service or class
      * @param array|null $params Optional parameters for instantiation
      *
      * @return mixed The resolved service or class instance
-     * @throws Exception If the service or class cannot be resolved
+     * @throws NotFoundExceptionInterface If the service is not found
+     * @throws ContainerExceptionInterface If there is an error during resolution
      */
     public function resolve(string $alias, ?array $params = []): mixed
     {
-        $descriptor = $this->container->getServiceDescriptor($alias);
+        try {
+            $descriptor = $this->container->getServiceDescriptor($alias);
 
-        if (!$descriptor) {
-            throw new \Exception("Service '$alias' not found.");
-        }
-
-        if ($instance = $descriptor->getResolvedInstance()) {
-            return $instance;
-        }
-
-        if (!$instance = $this->handlePreResolutionHooks($descriptor, $params)) {
-            $instance = $this->container->make($descriptor->getClassName(), $params);
-        }
-
-        $instance = $this->handlePostResolutionHooks($instance, $descriptor);
-
-        if ($descriptor->isSingleton()) {
-            $descriptor->setResolvedInstance($instance);
-        }
-
-        return $instance;
-    }
-
-    public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
-    {
-        if (!$descriptor = $this->container->getServiceDescriptor($aliasOrClass)) {
-            $instance = $this->container->make($aliasOrClass, $params);
-
-            return $this->handlePostResolutionHooks($instance);
-        }
-
-        return $this->resolve($aliasOrClass, $params);
-    }
-
-
-    private function handlePreResolutionHooks(ServiceDescriptor $descriptor, ?array $params = []): mixed
-    {
-        $className = $descriptor->getClassName();
-
-        foreach ($this->preResolutionHooks as $type => $handler) {
-            if (is_subclass_of($className, $type) || $className === $type) {
-                return $handler($descriptor, $params);
+            if (!$descriptor) {
+                throw new ServiceNotFoundException($alias);
             }
+
+            return $this->resolveFromDescriptor($descriptor, $params);
+        } catch (ServiceNotFoundException $e) {
+            throw $e; // Let the not found exception bubble up as-is
+        } catch (ReflectionException $e) {
+            throw new ContainerException("Error resolving service '$alias': " . $e->getMessage(), $e);
         }
-
-        return null;
-    }
-
-    private function handlePostResolutionHooks(object $instance, ?ServiceDescriptor $descriptor = null): mixed
-    {
-        foreach ($this->postResolutionHooks as $type => $handler) {
-            // Ensure $type is a valid class name before comparing
-            if (is_subclass_of($instance, $type) || get_class($instance) === $type) {
-                // Call the handler if it's callable, else handle the string case
-                if (is_callable($handler)) {
-                    return $handler($instance, $descriptor);
-                } else {
-                    // Handle non-callable $handler logic (if necessary)
-                    // If $handler is a string, perhaps resolve or log it, depending on your use case
-                }
-            }
-        }
-
-        return $instance;
     }
 }

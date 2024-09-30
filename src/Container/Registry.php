@@ -139,24 +139,13 @@ class Registry implements ArrayAccess, Iterator
      ======================*/
 
     /**
-     * Adds an item to the container.
-     *
-     * @param mixed $key   The key to assign the value
-     * @param mixed $value The value to store
-     */
-    public function add(mixed $key, mixed $value): void
-    {
-        $this->items[$key] = $value;
-    }
-
-    /**
      * Retrieves an item from the container by key.
      *
-     * @param mixed $key The key to retrieve the value for
+     * @param int|string $key The key to retrieve the value for
      *
      * @return mixed The value at the key
      */
-    public function get(mixed $key): mixed
+    public function get(int|string $key): mixed
     {
         return $this->items[$key] ?? null;
     }
@@ -164,11 +153,11 @@ class Registry implements ArrayAccess, Iterator
     /**
      * Checks if a key exists in the container.
      *
-     * @param mixed $key The key to check
+     * @param int|string $key The key to check
      *
      * @return bool True if the key exists, false otherwise
      */
-    public function has(mixed $key): bool
+    public function has(int|string $key): bool
     {
         return array_key_exists($key, $this->items);
     }
@@ -209,5 +198,16 @@ class Registry implements ArrayAccess, Iterator
         }
 
         return $container;
+    }
+
+    /**
+     * Adds an item to the container.
+     *
+     * @param mixed $key   The key to assign the value
+     * @param mixed $value The value to store
+     */
+    public function add(mixed $key, mixed $value): void
+    {
+        $this->items[$key] = $value;
     }
 }

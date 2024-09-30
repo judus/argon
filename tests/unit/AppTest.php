@@ -10,6 +10,7 @@ use Maduser\Argon\Kernel\EnvApp\CliApp;
 use Maduser\Argon\Kernel\ErrorHandler;
 use Maduser\Argon\Kernel\Kernel;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 class AppTest extends TestCase
 {
@@ -21,7 +22,7 @@ class AppTest extends TestCase
 
     protected function resetAppState(): void
     {
-        $refApp = new \ReflectionClass(App::class);
+        $refApp = new ReflectionClass(App::class);
         $kernel = $refApp->getProperty('kernel');
         $kernel->setAccessible(true);
         $kernel->setValue(null);
@@ -46,6 +47,15 @@ class AppTest extends TestCase
         $this->assertInstanceOf(CliApp::class, $kernel);
     }
 
+    protected function getKernelInstance(): ?Kernel
+    {
+        $refApp = new ReflectionClass(App::class);
+        $kernel = $refApp->getProperty('kernel');
+        $kernel->setAccessible(true);
+
+        return $kernel->getValue(null);
+    }
+
     public function testDefaultKernelIsSet(): void
     {
         // Ensure the default kernel is correctly set during initialization
@@ -65,25 +75,34 @@ class AppTest extends TestCase
         $this->assertTrue($this->isKernelBooted());
     }
 
+    protected function isKernelBooted(): bool
+    {
+        $refApp = new ReflectionClass(App::class);
+        $booted = $refApp->getProperty('booted');
+        $booted->setAccessible(true);
+
+        return $booted->getValue(null);
+    }
+
     public function testContextStack(): void
     {
         // Initialize the app with CliApp
         App::init(CliApp::class);
 
         // Save the original container instance
-        $originalProvider = App::getProvider();
+        $originalProvider = App::container();
 
         // Start a new context using the dispatch method
         App::dispatch(function () use ($originalProvider) {
             // After starting a new context, the container should be different
-            $newProvider = App::getProvider();
+            $newProvider = App::container();
 
             // Assert that the new container is not the same as the original
             $this->assertNotSame($originalProvider, $newProvider);
         });
 
         // Ensure the original container is restored after dispatch
-        $restoredProvider = App::getProvider();
+        $restoredProvider = App::container();
         $this->assertSame($originalProvider, $restoredProvider);
     }
 
@@ -98,27 +117,9 @@ class AppTest extends TestCase
         $this->assertSame($customHandler, App::getErrorHandler());
     }
 
-    protected function getKernelInstance(): ?Kernel
-    {
-        $refApp = new \ReflectionClass(App::class);
-        $kernel = $refApp->getProperty('kernel');
-        $kernel->setAccessible(true);
-
-        return $kernel->getValue(null);
-    }
-
-    protected function isKernelBooted(): bool
-    {
-        $refApp = new \ReflectionClass(App::class);
-        $booted = $refApp->getProperty('booted');
-        $booted->setAccessible(true);
-
-        return $booted->getValue(null);
-    }
-
     protected function getOriginalProvider(): ServiceContainer
     {
-        $refApp = new \ReflectionClass(App::class);
+        $refApp = new ReflectionClass(App::class);
         $provider = $refApp->getProperty('container');
         $provider->setAccessible(true);
 

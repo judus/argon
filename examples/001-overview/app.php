@@ -1,113 +1,159 @@
 <?php
 
-namespace App;
+declare(strict_types=1);
 
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+use Maduser\Argon\Container\Exceptions\AuthorizationException;
+use Maduser\Argon\Container\Exceptions\ValidationException;
 use Maduser\Argon\Container\ServiceContainer;
-use Maduser\Argon\Container\ServiceProvider;
-use Maduser\Argon\Hooks\HookServiceProviderPostResolution;
-use Maduser\Argon\Hooks\HookServiceProviderSetter;
-use Maduser\Argon\Hooks\HookRequestValidationPostResolution;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Log\LoggerInterface;
+use Tests\Mocks\AnotherService;
+use Tests\Mocks\DatabaseLogger;
+use Tests\Mocks\FileLogger;
+use Tests\Mocks\SomeProvider;
+use Tests\Mocks\SomeService;
+use Tests\Mocks\ValidatableService;
 
-require_once '../../vendor/autoload.php';
-require_once '../../../datastore-app/maduser/Support/debug.php';
 
 $container = new ServiceContainer();
-$container->addSetterHook(ServiceProvider::class, new HookServiceProviderSetter($container));
-$container->addPostResolutionHook(RequestValidation::class, new HookRequestValidationPostResolution($container));
-$container->addPostResolutionHook(ServiceProvider::class, new HookServiceProviderPostResolution($container));
+$container->bind(LoggerInterface::class, DatabaseLogger::class); // Bind LoggerInterface to DatabaseLogger
 
-class SingletonObject
-{
-    public int $value = 0;
+// Registering services
+$container->set('logger', FileLogger::class); // Register FileLogger with alias 'logger'
 
-    public function __construct() {}
+// Registering a singleton service
+$container->singleton('databaseLogger', function () {
+    return new DatabaseLogger();
+}); // Register DatabaseLogger as a singleton
+
+$container->bind(LoggerInterface::class, DatabaseLogger::class); // Bind LoggerInterface to DatabaseLogger again
+
+// Registering a service provider
+$container->set('SomeProvidedService', SomeProvider::class);
+
+// Resolving a service
+$logger = $container->get('logger');
+$logger->info("Test log to file"); // Log a message using the resolved FileLogger
+
+// Singleton resolution
+$databaseLogger = $container->get('databaseLogger');
+$databaseLogger->info("Test log to database"); // Log a message using the singleton DatabaseLogger
+
+// Testing singleton behavior
+$singleton1 = $container->get('databaseLogger');
+$singleton2 = $container->get('databaseLogger');
+
+if ($singleton1 === $singleton2) {
+    echo "Singleton works, same instance returned." . PHP_EOL; // Verifies that the singleton returns the same instance
+} else {
+    echo "Singleton failed, different instances returned." . PHP_EOL;
 }
 
-class SomeObject
-{
-    public SingletonObject $singletonObject;
+// Dependency Injection
+$someService = new SomeService($container->get(LoggerInterface::class));
+$someService->doSomething('Some service with injected logger'); // Verifies DI with logger
 
-    public function __construct(SingletonObject $singletonObject)
-    {
-        $this->singletonObject = $singletonObject;
-    }
+// Auto resolution
+$someService2 = $container->make(SomeService::class);
+$someService2->doSomething("Some service with auto resolution"); // Demonstrates automatic resolution without explicit binding
+
+// Service provider resolution
+$someProvidedServices = $container->get('SomeProvidedService');
+echo sprintf("SomeProvidedService returned %s service(s): ", count($someProvidedServices)) . PHP_EOL;
+var_dump($someProvidedServices); // Resolves services provided by SomeProvider and checks how many were provided
+
+// Direct service resolution
+$container->set('someService', SomeService::class);
+$container->get('someService')->doSomething('Some message'); // Resolves and uses the 'someService'
+
+// Service resolution using closure
+$container->set('someOtherService', function () use ($container) {
+    return new SomeService($container->get(LoggerInterface::class));
+});
+$container->get('someOtherService')->doSomething('Another message'); // Demonstrates service resolution using closure
+
+// DI with closure-based service
+$container->set('finalService', function (LoggerInterface $logger) {
+    return new SomeService($logger);
+});
+$container->get('finalService')->doSomething('Final message'); // Uses DI for logger in closure-based service
+
+// Validatable and Authorizable service example
+try {
+    $container->set('exampleService1', function () {
+        return new ValidatableService([
+            'name' => 'John Doe',
+            'role' => 'admin',
+        ]);
+    });
+    $exampleService1 = $container->get('exampleService1');
+    $data = $exampleService1->getValidatedData();
+    echo "Validated data: " . print_r($data, true) . PHP_EOL; // Retrieves and prints validated data
+    echo "Service authorized successfully." . PHP_EOL; // Successful authorization message
+} catch (ValidationException $e) {
+    echo "Validation errors: " . print_r($e->getErrors(), true) . PHP_EOL;
+} catch (AuthorizationException $e) {
+    echo $e->getMessage() . PHP_EOL;
+} catch (ContainerExceptionInterface $e) {
+    echo $e->getMessage() . PHP_EOL;
 }
 
-class RequestValidation {
-    public function validate()
-    {
-        dump('RequestValidation::validate()');
-    }
+// Testing service with failed authorization
+try {
+    $container->set('exampleService2', function () {
+        return new ValidatableService([
+            'name' => 'John Doe',
+            'role' => 'guest',
+        ]);
+    });
+    $exampleService2 = $container->get('exampleService2');
+    $data = $exampleService2->getValidatedData();
+    echo "Validated data: " . print_r($data, true) . PHP_EOL;
+    echo "Service authorized successfully." . PHP_EOL;
+} catch (ValidationException $e) {
+    echo "Validation errors: " . print_r($e->getErrors(), true) . PHP_EOL;
+} catch (AuthorizationException $e) {
+    echo $e->getMessage() . PHP_EOL; // Demonstrates failed authorization handling
+    return null; // Continue since we want to demonstrate the next example
+} catch (ContainerExceptionInterface $e) {
+    echo $e->getMessage() . PHP_EOL;
 }
 
-class SaveUserRequest extends RequestValidation
-{
-    public function __construct()
-    {
-        dump('SaveUserRequest created');
-    }
+// Testing service with failed validation
+try {
+    $container->set('exampleService3', function () {
+        return new ValidatableService([
+            'name' => '',
+            'role' => 'admin',
+        ]);
+    });
+    $exampleService3 = $container->get('exampleService3');
+    $data = $exampleService3->getValidatedData();
+    echo "Validated data: " . print_r($data, true) . PHP_EOL;
+    echo "Service authorized successfully." . PHP_EOL;
+} catch (ValidationException $e) {
+    echo "Validation errors: " . print_r($e->getErrors(), true) . PHP_EOL; // Demonstrates failed validation
+    return null; // Continue since we want to demonstrate the next example
+} catch (AuthorizationException $e) {
+    echo $e->getMessage() . PHP_EOL;
+} catch (ContainerExceptionInterface $e) {
+    echo $e->getMessage() . PHP_EOL;
 }
 
-class UserController
-{
-    private SaveUserRequest $request;
+// Tagging services
+$container->set('someService', SomeService::class);
+$container->tag('someService', ['utility', 'logger']); // Tags someService with 'utility' and 'logger'
 
-    private string $someValue = 'Hello';
+$container->set('anotherService', AnotherService::class);
+$container->tag('anotherService', ['utility']); // Tags anotherService with 'utility'
 
-    public function __construct(SaveUserRequest $request)
-    {
-        $this->request = $request;
-    }
+$utilityServices = $container->tagged('utility');
+$loggerServices = $container->tagged('logger');
+echo sprintf('There are %s utility and %s logger services', count($utilityServices), count($loggerServices)) . PHP_EOL; // Shows the number of tagged services
 
-    public function action()
-    {
-        dump('UserController::action()');
-        return $this->request;
-    }
-
-    public function setSomeValue(string $value): void
-    {
-        $this->someValue = $value;
-    }
-
-    public function getSomeValue(): string
-    {
-        return $this->someValue;
-    }
-}
-
-
-class UserControllerServiceProvider extends ServiceProvider
-{
-    public function register(): void
-    {
-        dump('UserControllerServiceProvider::register()');
-    }
-
-    public function resolve(): mixed
-    {
-        return $this->container->make(UserController::class);
-    }
-}
-
-$container->singleton('UserController', UserControllerServiceProvider::class);
-
-$userController = $container->resolve('UserController');
-$userController->setSomeValue('Hello World');
-
-$userController->action();
-
-$userController2 = $container->resolve('UserController');
-echo $userController2->getSomeValue(). PHP_EOL; // Hello World
-
-dump('------------------------------------------');
-
-$container->singleton(SingletonObject::class);
-$container->register('some-object', SomeObject::class);
-
-$obj1 = $container->resolve('some-object');
-$obj1->singletonObject->value = 10;
-
-$obj2 = $container->resolve('some-object');
-echo $obj2->singletonObject->value . PHP_EOL; // 10
+// Conditional service execution with if()
+$container->if('someService')->doSomething('Some message'); // Executes method if service exists
+$container->if('foo')->doSomething('Some message'); // Does nothing (service 'foo' does not exist)
 

@@ -21,15 +21,15 @@ class CliApp extends Kernel
     {
         // Register the Console service if the class exists
         if (class_exists('\Maduser\Console\Console')) {
-            $this->provider->register('Console', '\Maduser\Console\Console');
-            $this->console = $this->provider->resolve('Console');
+            $this->provider->set('Console', '\Maduser\Console\Console');
+            $this->console = $this->provider->get('Console');
         }
 
         // Register the CommandManager service if the class exists
         if (class_exists('Maduser\Console\CommandManager')) {
             $this->provider->singleton('Maduser\Console\CommandManager');
             $this->provider->alias('CommandManager', 'Maduser\Console\CommandManager');
-            $this->commandManager = $this->provider->resolve('CommandManager');
+            $this->commandManager = $this->provider->get('CommandManager');
         }
     }
 
