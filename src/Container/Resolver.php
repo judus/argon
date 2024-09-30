@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
+use Closure;
 use Exception;
-use Maduser\Argon\Container\Exceptions\ContainerErrorException;
+use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\ServiceNotFoundException;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use ReflectionException;
 
 /**
@@ -40,27 +43,30 @@ class Resolver
      * @param array|null $params       Optional parameters for instantiation
      *
      * @return mixed The resolved or instantiated service
-     * @throws ContainerErrorException If the service or class cannot be resolved
+     *
+     * @throws ContainerExceptionInterface
      */
     public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
     {
         try {
-            // Check if the service descriptor exists; if not, create a new instance
             $descriptor = $this->container->getServiceDescriptor($aliasOrClass);
+
             if (!$descriptor) {
                 $instance = $this->container->make($aliasOrClass, $params);
 
                 return $this->container->handlePostResolutionHooks($instance);
             }
 
-            // Resolve the service if descriptor exists
             return $this->resolveFromDescriptor($descriptor, $params);
+
         } catch (ReflectionException $e) {
-            throw new ContainerErrorException("Error resolving or making service '$aliasOrClass': " . $e->getMessage(),
-                $e);
+            throw new ContainerException(
+                "Error resolving or making service '$aliasOrClass': " . $e->getMessage(), $e
+            );
         } catch (Exception $e) {
-            throw new ContainerErrorException("General error resolving or making service '$aliasOrClass': " . $e->getMessage(),
-                $e);
+            throw new ContainerException(
+                "General error resolving or making service '$aliasOrClass': " . $e->getMessage(), $e
+            );
         }
     }
 
@@ -71,20 +77,25 @@ class Resolver
      * @param array|null        $params     Optional parameters for instantiation
      *
      * @return mixed The resolved service or class instance
-     * @throws ContainerErrorException If the service cannot be resolved
+     * @throws ContainerExceptionInterface If the service cannot be resolved
      */
     private function resolveFromDescriptor(ServiceDescriptor $descriptor, ?array $params = []): mixed
     {
         try {
             // If the service is already resolved (singleton), return the instance
-            if ($instance = $descriptor->getResolvedInstance()) {
+            if ($instance = $descriptor->getInstance()) {
                 return $instance;
             }
 
             // Handle pre-resolution hooks, if any
             if (!$instance = $this->container->handlePreResolutionHooks($descriptor, $params)) {
-                // Instantiate the service
-                $instance = $this->container->make($descriptor->getClassName(), $params);
+                // Check if the definition is a closure and invoke it, otherwise instantiate the class
+                $definition = $descriptor->getDefinition();
+                if ($definition instanceof Closure) {
+                    $instance = $this->container->execute($definition);
+                } else {
+                    $instance = $this->container->make($definition, $params);
+                }
             }
 
             // Apply post-resolution hooks
@@ -92,12 +103,12 @@ class Resolver
 
             // Cache the instance if it's a singleton
             if ($descriptor->isSingleton()) {
-                $descriptor->setResolvedInstance($instance);
+                $descriptor->setInstance($instance);
             }
 
             return $instance;
         } catch (ReflectionException $e) {
-            throw new ContainerErrorException("Error resolving service from descriptor: " . $e->getMessage(), $e);
+            throw new ContainerException("Error resolving service from descriptor: " . $e->getMessage(), $e);
         }
     }
 
@@ -108,8 +119,8 @@ class Resolver
      * @param array|null $params Optional parameters for instantiation
      *
      * @return mixed The resolved service or class instance
-     * @throws ServiceNotFoundException If the service is not found
-     * @throws ContainerErrorException If there is an error during resolution
+     * @throws NotFoundExceptionInterface If the service is not found
+     * @throws ContainerExceptionInterface If there is an error during resolution
      */
     public function resolve(string $alias, ?array $params = []): mixed
     {
@@ -124,7 +135,7 @@ class Resolver
         } catch (ServiceNotFoundException $e) {
             throw $e; // Let the not found exception bubble up as-is
         } catch (ReflectionException $e) {
-            throw new ContainerErrorException("Error resolving service '$alias': " . $e->getMessage(), $e);
+            throw new ContainerException("Error resolving service '$alias': " . $e->getMessage(), $e);
         }
     }
 }

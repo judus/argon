@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
-use Maduser\Argon\Container\Exceptions\ContainerErrorException;
+use Maduser\Argon\Container\Exceptions\ContainerException;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
@@ -58,6 +58,14 @@ class Factory
                 return $this->container;
             }
 
+            // Check if the class is an interface and if there's a binding for it
+            if (interface_exists($class) && $this->container->bindings()->has($class)) {
+                $concreteClass = $this->container->bindings()->get($class);
+
+                // Resolve the bound concrete class
+                return $this->container->resolveOrMake($concreteClass, $params);
+            }
+
             // Get or cache the reflection class
             $reflectionClass = $this->getReflectionClass($class);
 
@@ -72,7 +80,7 @@ class Factory
             // Instantiate the class with the resolved dependencies
             return $reflectionClass->newInstanceArgs($dependencies);
         } catch (ReflectionException $e) {
-            throw new ContainerErrorException("Failed to instantiate class '$class': " . $e->getMessage(), $e);
+            throw new ContainerException("Failed to instantiate class '$class': " . $e->getMessage(), $e);
         }
     }
 
@@ -150,6 +158,7 @@ class Factory
 
         // Check if there is a binding for interfaces to concrete classes
         if ($this->container->bindings()->has($className)) {
+
             $concreteClass = $this->container->bindings()->get($className);
 
             return $this->container->resolveOrMake($concreteClass);

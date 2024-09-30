@@ -5,7 +5,7 @@ use Exception;
 use Psr\Container\ContainerExceptionInterface;
 use Throwable;
 
-class ContainerErrorException extends Exception implements ContainerExceptionInterface
+class ContainerException extends Exception implements ContainerExceptionInterface
 {
     public function __construct(string $message, Throwable $previous = null)
     {

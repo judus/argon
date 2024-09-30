@@ -4,37 +4,36 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
+use Closure;
+
 class ServiceDescriptor
 {
-    private string $className;
+    private string|Closure $definition;
     private bool $isSingleton;
-
-
-    private ?object $resolvedInstance = null;
+    private ?object $instance = null;
     private string $name;
     private ?array $defaultParams;
-    private ?ServiceContainer $container;
 
     public function __construct(
         string $name,
-        string $className,
+        string|Closure $definition,
         bool $isSingleton = false,
         ?array $defaultParams = []
     ) {
         $this->name = $name;
-        $this->className = $className;
+        $this->definition = $definition;
         $this->isSingleton = $isSingleton;
         $this->defaultParams = $defaultParams;
     }
 
-    public function getResolvedInstance(): ?object
+    public function getInstance(): ?object
     {
-        return $this->resolvedInstance;
+        return $this->instance;
     }
 
-    public function setResolvedInstance(?object $instance): void
+    public function setInstance(?object $instance): void
     {
-        $this->resolvedInstance = $instance;
+        $this->instance = $instance;
     }
 
     public function isSingleton(): bool
@@ -42,9 +41,25 @@ class ServiceDescriptor
         return $this->isSingleton;
     }
 
-    public function getClassName(): string
+    public function getDefinition(): string|Closure
     {
-        return $this->className;
+        return $this->definition;
+    }
+
+    /**
+     * Checks if the service is defined as a Closure.
+     */
+    public function isClosure(): bool
+    {
+        return $this->definition instanceof Closure;
+    }
+
+    /**
+     * If the service is not a closure, return the class name.
+     */
+    public function getClassName(): ?string
+    {
+        return is_string($this->definition) ? $this->definition : null;
     }
 
     public function getDefaultParams(): ?array

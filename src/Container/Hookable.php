@@ -2,8 +2,6 @@
 
 namespace Maduser\Argon\Container;
 
-namespace Maduser\Argon\Container;
-
 trait Hookable
 {
     /**
@@ -27,7 +25,7 @@ trait Hookable
      * @param string   $type    The type or interface to hook into.
      * @param callable $handler The handler to invoke.
      */
-    public function addSetterHook(string $type, callable $handler): void
+    public function postRegister(string $type, callable $handler): void
     {
         $this->setterHooks[$type] = $handler;
     }
@@ -38,7 +36,7 @@ trait Hookable
      * @param string   $type    The class or interface to hook into
      * @param callable $handler The handler to invoke for this type
      */
-    public function addPreResolutionHook(string $type, callable $handler): void
+    public function preResolve(string $type, callable $handler): void
     {
         $this->preResolutionHooks[$type] = $handler;
     }
@@ -49,7 +47,7 @@ trait Hookable
      * @param string   $type    The class or interface to hook into
      * @param callable $handler The handler to invoke for this type
      */
-    public function addPostResolutionHook(string $type, callable $handler): void
+    public function postResolve(string $type, callable $handler): void
     {
         $this->postResolutionHooks[$type] = $handler;
     }
@@ -64,7 +62,11 @@ trait Hookable
      */
     public function handlePreResolutionHooks(ServiceDescriptor $descriptor, ?array $params = []): mixed
     {
-        return $this->executeHooks($this->preResolutionHooks, $descriptor->getClassName(), [$descriptor, $params]);
+        // Use getClassName() only if the service is not a Closure
+        $className = $descriptor->getClassName();
+
+        // Proceed only if we have a valid class name (i.e., not a Closure)
+        return $className ? $this->executeHooks($this->preResolutionHooks, $className, [$descriptor, $params]) : null;
     }
 
     /**
@@ -78,13 +80,15 @@ trait Hookable
      */
     private function executeHooks(array $hooks, string $className, array $args): mixed
     {
+        $result = null;
+
         foreach ($hooks as $type => $handler) {
             if (is_subclass_of($className, $type) || $className === $type) {
-                return call_user_func_array($handler, $args);
+                $result = call_user_func_array($handler, $args);
             }
         }
 
-        return null;
+        return $result;
     }
 
     /**
@@ -109,6 +113,12 @@ trait Hookable
      */
     private function handleSetterHooks(ServiceDescriptor $descriptor, string $alias): void
     {
-        $this->executeHooks($this->setterHooks, $descriptor->getClassName(), [$descriptor, $alias]);
+        // Use getClassName() only if the service is not a Closure
+        $className = $descriptor->getClassName();
+
+        // Proceed only if we have a valid class name (i.e., not a Closure)
+        if ($className) {
+            $this->executeHooks($this->setterHooks, $className, [$descriptor, $alias]);
+        }
     }
 }

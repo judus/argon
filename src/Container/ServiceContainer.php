@@ -4,9 +4,14 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 use Exception;
+use Maduser\Argon\Container\Contracts\Authorizable;
+use Maduser\Argon\Container\Contracts\Validatable;
 use Maduser\Argon\Container\Exceptions\ContainerErrorException;
+use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\ServiceNotFoundException;
+use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionFunction;
@@ -24,13 +29,13 @@ use ReflectionNamedType;
 class ServiceContainer implements ContainerInterface
 {
     use Hookable;
+    use Taggable;
 
     public bool $enableAutoResolve = true;
+    private Factory $factory;
+    private Resolver $resolver;
     private Registry $services;
     private Registry $bindings;
-    private Registry $singletons;
-    private Resolver $resolver;
-    private Factory $factory;
 
     /**
      * ServiceContainer constructor.
@@ -44,6 +49,84 @@ class ServiceContainer implements ContainerInterface
         $this->resolver = new Resolver($this);
         $this->services = new Registry($services);
         $this->bindings = new Registry($bindings);
+
+        // Register default hooks for service providers
+        $this->registerDefaultHooks();
+    }
+
+    /**
+     * Registers default hooks for service providers.
+     */
+    private function registerDefaultHooks(): void
+    {
+        // Set up the onRegister hook for ServiceProvider
+        $this->onRegister(ServiceProvider::class, function (ServiceDescriptor $descriptor) {
+            $provider = $this->make($descriptor->getDefinition());
+            $provider->register();
+            //$descriptor->setProvider($provider); // Store and reuse the provider instance (todo)
+
+            return $provider;
+        });
+
+        // Set up the onResolve hook for ServiceProvider
+        $this->onResolve(ServiceProvider::class, function (ServiceProvider $provider) {
+            return $provider->resolve();
+        });
+
+        // Register the default onResolve hook for Authorizable instances
+        $this->onResolve(Authorizable::class, function (Authorizable $authorizable) {
+            dump('Authorizing...');
+            $authorizable->authorize();
+            return $authorizable;
+        });
+
+        // Register the default onResolve hook for Validatable instances
+        $this->onResolve(Validatable::class, function (Validatable $validatable) {
+            dump('Validating...');
+            $validatable->validate();
+            return $validatable;
+        });
+    }
+
+    /**
+     * Registers an "on register" hook for a specific type.
+     *
+     * @param string   $type    The class or interface to hook into
+     * @param callable $handler The handler to invoke for this type
+     */
+    public function onRegister(string $type, callable $handler): void
+    {
+        $this->postRegister($type, $handler);
+    }
+
+    /**
+     * Creates a new instance of a class using the factory.
+     *
+     * @param string     $class  The class name to instantiate
+     * @param array|null $params Optional parameters for instantiation
+     *
+     * @return object The instantiated class
+     *
+     * @throws ContainerExceptionInterface
+     */
+    public function make(string $class, ?array $params = []): object
+    {
+        try {
+            return $this->factory->make($class, $params);
+        } catch (ReflectionException $e) {
+            throw new ContainerException("Error instantiating class '$class': " . $e->getMessage(), $e);
+        }
+    }
+
+    /**
+     * Registers an "on resolve" hook for a specific type.
+     *
+     * @param string   $type    The class or interface to hook into
+     * @param callable $handler The handler to invoke for this type
+     */
+    public function onResolve(string $type, callable $handler): void
+    {
+        $this->postResolve($type, $handler);
     }
 
     public function enableAutoResolve(bool $value): void
@@ -84,13 +167,13 @@ class ServiceContainer implements ContainerInterface
      */
     public function has(string $id): bool
     {
-        if ($this->singletons->has($id) || $this->services->has($id)) {
+        if ($this->services->has($id)) {
             return true;
         }
 
         $alias = basename(str_replace('\\', '/', $id));
 
-        return $this->singletons->has($alias) || $this->services->has($alias);
+        return $this->services->has($alias);
     }
 
     /**
@@ -110,52 +193,58 @@ class ServiceContainer implements ContainerInterface
      * @param array|null $params Optional parameters for instantiation
      *
      * @return mixed The resolved service instance
-     * @throws Exception
+     *
+     * @throws ContainerExceptionInterface
      */
     public function get(string $id, ?array $params = []): mixed
     {
         try {
-            return $this->resolver->resolve($id, $params);
+            if ($this->services->has($id)) {
+                return $this->resolver->resolve($id, $params);
+            }
+
+            if ($this->bindings->has($id)) {
+                $concreteClass = $this->bindings->get($id);
+                return $this->resolver->resolveOrMake($concreteClass, $params);
+            }
+
+            throw new ServiceNotFoundException($id);
+
         } catch (ReflectionException $e) {
-            throw new ContainerErrorException("Error resolving service '$id': " . $e->getMessage(), $e);
+            throw new ContainerException("Error resolving service '$id': " . $e->getMessage(), $e);
         } catch (Exception $e) {
-            throw new ContainerErrorException("General error resolving service '$id': " . $e->getMessage(), $e);
+            throw new ContainerException("General error resolving service '$id': " . $e->getMessage(), $e);
         }
     }
 
     /**
-     * Creates a new instance of a class using the factory.
+     * Resolves a service or attempts to create a new instance
      *
-     * @param string     $class  The class name to instantiate
-     * @param array|null $params Optional parameters for instantiation
+     * @param string     $aliasOrClass
+     * @param array|null $params
      *
-     * @return object The instantiated class
-     * @throws ReflectionException
-     * @throws Exception
+     * @return mixed
+     *
+     * @throws ContainerExceptionInterface
      */
-    public function make(string $class, ?array $params = []): object
+    public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
     {
-        try {
-            return $this->factory->make($class, $params);
-        } catch (ReflectionException $e) {
-            throw new ContainerErrorException("Error instantiating class '$class': " . $e->getMessage(), $e);
-        }
+        return $this->resolver->resolveOrMake($aliasOrClass, $params);
     }
 
     /**
-     * Binds an interface to a class.
+     * Binds an interface to a class or closure.
      *
-     * @param string|array $interface The interface name or an array of mappings
-     * @param string|null  $concrete  The concrete class (if $interface is a string)
+     * @param string|array   $interface The interface name or an array of mappings
+     * @param string|Closure $concrete  The concrete class or closure (if $interface is a string)
+     *
+     * @throws ContainerException
      */
-    public function bind(string|array $interface, ?string $concrete = null): void
+    public function bind(string|array $interface, string|Closure $concrete): void
     {
         if (is_array($interface)) {
             $this->registerMultipleBindings($interface);
         } else {
-            if (is_null($concrete)) {
-                throw new ContainerErrorException("Concrete class must be provided for binding '$interface'.");
-            }
             $this->bindings->add($interface, $concrete);
         }
     }
@@ -175,27 +264,31 @@ class ServiceContainer implements ContainerInterface
     /**
      * Registers multiple or single services in the container.
      *
-     * @param string|array $alias  The alias or an array of services
-     * @param string|null  $class  The class name (if $alias is a string)
-     * @param array|null   $params Parameters for the service (optional)
+     * @param string|array        $alias      The alias or an array of services
+     * @param string|Closure|null $definition The class or closure definition (if $alias is a string)
+     * @param array|null          $params     Parameters for the service (optional)
      *
      * @return ServiceDescriptor|null
-     * @throws ContainerErrorException
+     *
+     * @throws ContainerExceptionInterface
      */
-    public function set(string|array $alias, ?string $class = null, ?array $params = []): ?ServiceDescriptor
-    {
+    public function set(
+        string|array $alias,
+        string|Closure|null $definition = null,
+        ?array $params = []
+    ): ?ServiceDescriptor {
         try {
             if (is_array($alias)) {
                 return $this->registerMultipleServices($alias, $params);
             } else {
-                if (is_null($class)) {
-                    throw new ContainerErrorException('Class name must be provided for single service registration.');
+                if (is_null($definition)) {
+                    throw new ContainerException('Class or closure must be provided for service registration.');
                 }
 
-                return $this->registerService($alias, $class, $params, false);
+                return $this->registerService($alias, $definition, $params, false);
             }
         } catch (Exception $e) {
-            throw new ContainerErrorException("Error setting service '$alias': " . $e->getMessage(), $e);
+            throw new ContainerException("Error setting service '$alias': " . $e->getMessage(), $e);
         }
     }
 
@@ -205,7 +298,7 @@ class ServiceContainer implements ContainerInterface
      * @param array      $services Array of services to register
      * @param array|null $params   Optional parameters for the services
      *
-     * @return null
+     * @return ServiceDescriptor|null
      */
     private function registerMultipleServices(array $services, ?array $params = []): ?ServiceDescriptor
     {
@@ -219,18 +312,29 @@ class ServiceContainer implements ContainerInterface
     /**
      * Registers a service descriptor.
      *
-     * @param string     $alias       The alias for the service
-     * @param string     $class       The class name for the service
-     * @param array|null $params      Optional parameters for the service
-     * @param bool       $isSingleton Whether the service is a singleton
+     * @param string         $id          The alias for the service
+     * @param string|Closure $definition  The class or closure for the service
+     * @param array|null     $params      Optional parameters for the service
+     * @param bool           $isSingleton Whether the service is a singleton
      *
      * @return ServiceDescriptor
+     *
+     * @throws ContainerException
      */
-    private function registerService(string $alias, string $class, ?array $params, bool $isSingleton): ServiceDescriptor
-    {
-        $descriptor = new ServiceDescriptor($alias, $class, $isSingleton, $params);
-        $this->services->add($alias, $descriptor);
-        $this->handleSetterHooks($descriptor, $alias);
+    private function registerService(
+        string $id,
+        string|Closure $definition,
+        ?array $params,
+        bool $isSingleton
+    ): ServiceDescriptor {
+
+        if (is_string($definition) && !class_exists($definition)) {
+            throw new ContainerException("Class '$definition' does not exist.");
+        }
+
+        $descriptor = new ServiceDescriptor($id, $definition, $isSingleton, $params);
+        $this->services->add($id, $descriptor);
+        $this->handleSetterHooks($descriptor, $id);
 
         return $descriptor;
     }
@@ -238,21 +342,25 @@ class ServiceContainer implements ContainerInterface
     /**
      * Registers a singleton service.
      *
-     * @param string      $id     The name of the singleton
-     * @param string|null $class  The class name (optional)
-     * @param array|null  $params Parameters for the service (optional)
+     * @param string              $id         The name of the singleton
+     * @param string|Closure|null $definition The class or closure definition (optional)
+     * @param array|null          $params     Parameters for the service (optional)
      *
      * @return ServiceDescriptor
-     * @throws ContainerErrorException
+     *
+     * @throws ContainerExceptionInterface
      */
-    public function singleton(string $id, ?string $class = null, ?array $params = []): ServiceDescriptor
-    {
+    public function singleton(
+        string $id,
+        string|Closure|null $definition = null,
+        ?array $params = []
+    ): ServiceDescriptor {
         try {
-            $class = $class ?? $id;
+            $definition = $definition ?? $id;
 
-            return $this->registerService($id, $class, $params, true);
+            return $this->registerService($id, $definition, $params, true);
         } catch (Exception $e) {
-            throw new ContainerErrorException("Error registering singleton '$id': " . $e->getMessage(), $e);
+            throw new ContainerException("Error registering singleton '$id': " . $e->getMessage(), $e);
         }
     }
 
@@ -278,7 +386,8 @@ class ServiceContainer implements ContainerInterface
      * @param string $id The name of the container or singleton
      *
      * @return mixed The container instance
-     * @throws Exception If the container or singleton cannot be found
+     *
+     * @throws ContainerExceptionInterface|NotFoundExceptionInterface
      */
     public function findAny(string $id): mixed
     {
@@ -292,19 +401,18 @@ class ServiceContainer implements ContainerInterface
                 if ($reflectionClass->isInstantiable()) {
                     return $id;
                 } else {
-                    throw new ContainerErrorException("Class '$id' is not instantiable.");
+                    throw new ContainerException("Class '$id' is not instantiable.");
                 }
             }
 
             throw new ServiceNotFoundException($id);
         } catch (ReflectionException $e) {
-            throw new ContainerErrorException("Reflection error for service '$id': " . $e->getMessage(), $e);
+            throw new ContainerException("Reflection error for service '$id': " . $e->getMessage(), $e);
         }
     }
 
     /**
-     * @throws ReflectionException
-     * @throws Exception
+     * @throws ContainerExceptionInterface
      */
     public function execute(callable $callable, array $optionalParams = []): mixed
     {
@@ -314,16 +422,20 @@ class ServiceContainer implements ContainerInterface
 
             foreach ($reflection->getParameters() as $param) {
                 $paramType = $param->getType();
+
                 if ($paramType instanceof ReflectionNamedType && !$paramType->isBuiltin()) {
+                    // Resolve the dependency using the container
                     $dependencies[] = $this->resolveOrMake($paramType->getName());
                 } else {
+                    // Use optional parameters or default values
                     $dependencies[] = $optionalParams[$param->getName()] ?? array_shift($optionalParams);
                 }
             }
 
+            // Call the callable with the resolved dependencies
             return call_user_func_array($callable, $dependencies);
         } catch (ReflectionException $e) {
-            throw new ContainerErrorException("Error executing callable: " . $e->getMessage(), $e);
+            throw new ContainerException("Error executing callable: " . $e->getMessage(), $e);
         }
     }
 
@@ -343,17 +455,15 @@ class ServiceContainer implements ContainerInterface
         return new ReflectionFunction($callable);
     }
 
-    /**
-     * Resolves a service or attempts to create a new instance
-     *
-     * @param string     $aliasOrClass
-     * @param array|null $params
-     *
-     * @return mixed
-     */
-    public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
+    public function if(string $service): ?object
     {
-        return $this->resolver->resolveOrMake($aliasOrClass, $params);
-    }
+        // Check if the service exists in the container
+        if ($this->has($service)) {
+            // Return the resolved service
+            return $this->get($service);
+        }
 
+        // Return a null-safe handler that does nothing if the service doesn't exist
+        return new NullServiceHandler();
+    }
 }
