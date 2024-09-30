@@ -63,7 +63,9 @@ class ServiceContainer implements ContainerInterface
         $this->onRegister(ServiceProvider::class, function (ServiceDescriptor $descriptor) {
             $provider = $this->make($descriptor->getDefinition());
             $provider->register();
-            //$descriptor->setProvider($provider); // Store and reuse the provider instance (todo)
+            // TODO: Implement setProvider method
+            // Store and reuse the provider instance
+            // $descriptor->setProvider($provider);
 
             return $provider;
         });
@@ -75,14 +77,12 @@ class ServiceContainer implements ContainerInterface
 
         // Register the default onResolve hook for Authorizable instances
         $this->onResolve(Authorizable::class, function (Authorizable $authorizable) {
-            dump('Authorizing...');
             $authorizable->authorize();
             return $authorizable;
         });
 
         // Register the default onResolve hook for Validatable instances
         $this->onResolve(Validatable::class, function (Validatable $validatable) {
-            dump('Validating...');
             $validatable->validate();
             return $validatable;
         });
