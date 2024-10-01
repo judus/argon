@@ -19,7 +19,7 @@ Examples demonstrating the main features of the container.
 ```php
 $container = new ServiceContainer();
 
-// Binding a service
+// Registering a service
 $container->set('logger', FileLogger::class);
 
 // Registering a singleton
@@ -27,7 +27,7 @@ $container->singleton('databaseLogger', function () {
     return new DatabaseLogger();
 });
 
-// Using bindings
+// Bind interfaces
 $container->bind(LoggerInterface::class, DatabaseLogger::class);
 
 // Resolving services
