@@ -200,7 +200,7 @@ $loggerServices = $container->tagged('logger');
 echo sprintf('There are %s utility and %s logger services', count($utilityServices), count($loggerServices));
 ```
 
-### Nullifier (`if()`)
+### NullHandler (`if()`)
 
 Using the `if()` method, won't throw an exception if the service does not exist.
 
