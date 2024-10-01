@@ -96,37 +96,42 @@ Services can be registered using closures, which allows for more flexible instan
 
 ```php
 // Without closure
-$container->set('someService', SomeService::class);
+$container->set('someService', SomeService::class); // LoggerInterface will be automatically injected
 $container->get('someService')->doSomething('Some message');
 
 // With closure
 $container->set('someOtherService', function () use ($container) {
+    // custom resolution logic
     return new SomeService($container->get(LoggerInterface::class));
 });
 
 $container->get('someOtherService')->doSomething('Another message');
 
+// Dependency injection for closure
+$container->set('AnotherService', function (Console $console) use ($container) {
+    return new AnotherService($console);
+});
+
 // Works with singleton() and bind() as well
 ```
 
-### Validation & Authorization Example
+### Built-in Validation & Authorization Hooks Example
 
-The container supports services implementing `Validatable` and `Authorizable` interfaces, with pre-configured hooks for
-automatic validation and authorization.
+The container will detect services implementing `Validatable` and `Authorizable` interfaces, and call validate() and/or authorize() upon resolution.
 
 ```php
 try {
     $container->set('exampleService1', function () {
-        return new ValidatableService([
+        return new ValidatableService([ // This service implements Validatable and Authorizable
             'name' => 'John Doe',
             'role' => 'admin',
         ]);
     });
-    $exampleService1 = $container->get('exampleService1');
+    $exampleService1 = $container->get('exampleService1'); // validate() and authorize() called
     $data = $exampleService1->getValidatedData();
     echo "Validated data: " . print_r($data, true);
     echo "Service authorized successfully.";
-} catch (ValidationException $e) {
+} catch (ValidationException $e) { // validation failed
     echo "Validation errors: " . print_r($e->getErrors(), true);
 } catch (AuthorizationException $e) {
     echo $e->getMessage();
@@ -155,7 +160,7 @@ Using the `if()` method, won't throw an exception if the service does not exist.
 
 ```php
 $container->if('someService')->doSomething('Some message'); // Executes if 'someService' exists
-$container->if('foo')->doSomething('Some message'); // Does nothing, as 'foo' does not exist
+$container->if('foo')->doSomething('Some message'); // Does not throw errors even if 'foo' does not exist
 ```
 
 #### If you run the examples above, you should see the following output:
