@@ -220,7 +220,7 @@ echo sprintf('There are %s utility and %s logger services', count($utilityServic
 
 ### NullHandler (`ifExists()`)
 
-Using the `if()` method, won't throw an exception if the service does not exist.
+Using the `ifExists()` method, won't throw an exception if the service does not exist.
 
 ```php
 $container->ifExists('someService')->doSomething('Some message'); // Executes if 'someService' exists
