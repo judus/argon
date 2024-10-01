@@ -92,16 +92,21 @@ class SomeProvider extends ServiceProvider
 
 ### Closure-based Service Registration
 
-Services can be registered using closures, which allows for more flexible instantiation logic.
+Services can be registered using closures, which allows for more flexible instantiation logic. Whether or not you use closure, services will always be lazy loaded.
 
 ```php
+// Without closure
 $container->set('someService', SomeService::class);
 $container->get('someService')->doSomething('Some message');
 
+// With closure
 $container->set('someOtherService', function () use ($container) {
     return new SomeService($container->get(LoggerInterface::class));
 });
+
 $container->get('someOtherService')->doSomething('Another message');
+
+// Works with singleton() and bind() as well
 ```
 
 ### Validation & Authorization Example
