@@ -1,7 +1,5 @@
 # Argon Service Container
 
-Argon Service Container is a lightweight, powerful, and flexible dependency injection container designed to manage services, bindings, singletons, providers, and hooks. It supports automatic resolution of dependencies, service providers, validation, authorization, and tagging of services for better organization.
-
 ## Features
 
 - **Service Registration & Resolution**: Register and resolve services, singletons, and service providers.
