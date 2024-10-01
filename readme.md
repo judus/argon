@@ -138,6 +138,53 @@ try {
 }
 ```
 
+### Register your own Hooks
+
+This how the built-in hooks are registered internally
+
+```php
+// Register a onResolve hook
+$container->onResolve(ClassTypeToDetect::class, function (ClassTypeToDetect $detectedClassTypeInstance) {
+    $detectedClassTypeInstance->doSomething();
+    return $detectedClassTypeInstance; // return the instance
+});
+
+$container->onRegister(ClassTypeToDetect::class, function (ServiceDescriptor $descriptor) {
+    // Fetch the defined service
+    $myServiceClassName = $descriptor->getDefinition();
+    // Do something with $myServiceClassName
+});
+```
+
+This how the built-in hooks are registered internally
+
+```php
+// Set up the onRegister hook for ServiceProvider
+$this->onRegister(ServiceProvider::class, function (ServiceDescriptor $descriptor) {
+    $provider = $this->make($descriptor->getDefinition());
+    $provider->register();
+    return $provider;
+});
+
+// Set up the onResolve hook for ServiceProvider
+$this->onResolve(ServiceProvider::class, function (ServiceProvider $provider) {
+    return $provider->resolve();
+});
+
+// Register the default onResolve hook for Authorizable instances
+$this->onResolve(Authorizable::class, function (Authorizable $authorizable) {
+    $authorizable->authorize();
+    return $authorizable;
+});
+
+// Register the default onResolve hook for Validatable instances
+$this->onResolve(Validatable::class, function (Validatable $validatable) {
+    $validatable->validate();
+    return $validatable;
+});
+```
+
+
 ### Tagging Services
 
 You can tag services with specific tags and retrieve them later by their tag.
