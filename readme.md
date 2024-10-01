@@ -140,8 +140,6 @@ try {
 
 ### Register your own Hooks
 
-This how the built-in hooks are registered internally
-
 ```php
 // Register a onResolve hook
 $container->onResolve(ClassTypeToDetect::class, function (ClassTypeToDetect $detectedClassTypeInstance) {
