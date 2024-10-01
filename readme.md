@@ -1,7 +1,5 @@
 # Argon Service Container
 
-Argon Service Container is a lightweight, powerful, and flexible dependency injection container designed to manage services, bindings, singletons, providers, and hooks. It supports automatic resolution of dependencies, service providers, validation, authorization, and tagging of services for better organization.
-
 ## Features
 
 - **Service Registration & Resolution**: Register and resolve services, singletons, and service providers.
@@ -21,7 +19,7 @@ Examples demonstrating the main features of the container.
 ```php
 $container = new ServiceContainer();
 
-// Binding a service
+// Registering a service
 $container->set('logger', FileLogger::class);
 
 // Registering a singleton
@@ -29,7 +27,7 @@ $container->singleton('databaseLogger', function () {
     return new DatabaseLogger();
 });
 
-// Using bindings
+// Bind interfaces
 $container->bind(LoggerInterface::class, DatabaseLogger::class);
 
 // Resolving services
@@ -58,7 +56,7 @@ $someService2->doSomething("Some service with auto resolution");
 
 ### Service Provider Example
 
-You can register multiple services in a provider and resolve them as a group.
+Service Providers allows you do define more complex service registrations and resolutions.
 
 ```php
 $container->set('SomeProvidedService', SomeProvider::class);
@@ -67,45 +65,124 @@ $container->set('SomeProvidedService', SomeProvider::class);
 $someProvidedServices = $container->get('SomeProvidedService');
 echo sprintf("SomeProvidedService returned %s service(s): ", count($someProvidedServices));
 var_dump($someProvidedServices);
+
+// Example of a ServiceProvider
+class SomeProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->container->set('SomeObject', function (LoggerInterface $logger) { // Auto resolution LoggerInterface
+            return new SomeService($logger);
+        });
+
+        $this->container->set('AnotherObject', function (SomeService $someService) { // Auto resolution SomeService
+            return $someService;
+        });
+    }
+
+    public function resolve(): mixed
+    {
+        return [
+            'SomeObject' => $this->container->get('SomeObject'),
+            'AnotherObject' => $this->container->get('AnotherObject')
+        ];
+    }
+}
 ```
 
 ### Closure-based Service Registration
 
-Services can be registered using closures, which allows for more flexible instantiation logic.
+Services can be registered using closures, which allows for more flexible instantiation logic. Whether or not you use closure, services will always be lazy loaded.
 
 ```php
-$container->set('someService', SomeService::class);
+// Without closure
+$container->set('someService', SomeService::class); // LoggerInterface will be automatically injected
 $container->get('someService')->doSomething('Some message');
 
+// With closure
 $container->set('someOtherService', function () use ($container) {
+    // custom resolution logic
     return new SomeService($container->get(LoggerInterface::class));
 });
+
 $container->get('someOtherService')->doSomething('Another message');
+
+// Dependency injection for closure
+$container->set('AnotherService', function (Console $console) use ($container) {
+    return new AnotherService($console);
+});
+
+// Works with singleton() and bind() as well
 ```
 
-### Validation & Authorization Example
+### Built-in Validation & Authorization Hooks Example
 
-The container supports services implementing `Validatable` and `Authorizable` interfaces, with pre-configured hooks for
-automatic validation and authorization.
+The container will detect services implementing `Validatable` and `Authorizable` interfaces, and call validate() and/or authorize() upon resolution.
 
 ```php
 try {
     $container->set('exampleService1', function () {
-        return new ValidatableService([
+        return new ValidatableService([ // This service implements Validatable and Authorizable
             'name' => 'John Doe',
             'role' => 'admin',
         ]);
     });
-    $exampleService1 = $container->get('exampleService1');
+    $exampleService1 = $container->get('exampleService1'); // validate() and authorize() called
     $data = $exampleService1->getValidatedData();
     echo "Validated data: " . print_r($data, true);
     echo "Service authorized successfully.";
-} catch (ValidationException $e) {
+} catch (ValidationException $e) { // validation failed
     echo "Validation errors: " . print_r($e->getErrors(), true);
 } catch (AuthorizationException $e) {
     echo $e->getMessage();
 }
 ```
+
+### Register your own Hooks
+
+```php
+// Define a onResolve hook (when you call $container->get())
+$container->onResolve(ClassTypeToDetect::class, function (ClassTypeToDetect $detectedClassTypeInstance) {
+    $detectedClassTypeInstance->doSomething();
+    return $detectedClassTypeInstance; // return the instance
+});
+
+// Define a onRegister hook (when you call $container->set())
+$container->onRegister(ClassTypeToDetect::class, function (ServiceDescriptor $descriptor) {
+    // Fetch the defined service
+    $myServiceClassName = $descriptor->getDefinition();
+    // Do something with $myServiceClassName
+});
+```
+
+This how the built-in hooks are registered internally
+
+```php
+// Set up the onRegister hook for ServiceProvider
+$this->onRegister(ServiceProvider::class, function (ServiceDescriptor $descriptor) {
+    $provider = $this->make($descriptor->getDefinition());
+    $provider->register();
+    return $provider;
+});
+
+// Set up the onResolve hook for ServiceProvider
+$this->onResolve(ServiceProvider::class, function (ServiceProvider $provider) {
+    return $provider->resolve();
+});
+
+// Register the default onResolve hook for Authorizable instances
+$this->onResolve(Authorizable::class, function (Authorizable $authorizable) {
+    $authorizable->authorize();
+    return $authorizable;
+});
+
+// Register the default onResolve hook for Validatable instances
+$this->onResolve(Validatable::class, function (Validatable $validatable) {
+    $validatable->validate();
+    return $validatable;
+});
+```
+
 
 ### Tagging Services
 
@@ -123,13 +200,13 @@ $loggerServices = $container->tagged('logger');
 echo sprintf('There are %s utility and %s logger services', count($utilityServices), count($loggerServices));
 ```
 
-### Nullifier (`if()`)
+### NullHandler (`if()`)
 
 Using the `if()` method, won't throw an exception if the service does not exist.
 
 ```php
 $container->if('someService')->doSomething('Some message'); // Executes if 'someService' exists
-$container->if('foo')->doSomething('Some message'); // Does nothing, as 'foo' does not exist
+$container->if('foo')->doSomething('Some message'); // Does not throw errors even if 'foo' does not exist
 ```
 
 #### If you run the examples above, you should see the following output:
