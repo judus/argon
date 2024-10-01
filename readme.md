@@ -56,7 +56,7 @@ $someService2->doSomething("Some service with auto resolution");
 
 ### Service Provider Example
 
-You can register multiple services in a provider and resolve them as a group.
+Service Providers allows you do define more complex service registrations and resolutions.
 
 ```php
 $container->set('SomeProvidedService', SomeProvider::class);
