@@ -4,17 +4,18 @@
 
 - **Service Registration & Resolution**: Register and resolve services, singletons, and service providers.
 - **Dependency Injection (DI)**: Automatically inject dependencies.
-- **Service Providers**: Register, configure and resolve multiple services at once in a provider.
+- **Service Providers**: Register amd configure services with custom resolution
 - **Service Tagging**: Tag services and retrieve them based on tags.
 - **Lazy Loading**: Services are only instantiated when needed.
 - **Hooks**: Lifecycle hooks for custom behavior.
-- **Validation & Authorization**: Validates/authorizes upon service instantiation.
+
+Built-in hooks:
+- **Service Providers** register() and resolve() are handled via hooks
+- **Authorization & Validation**: Calls authorize() and/or validate() upon instantiation if the service implements the appropriate interface
 
 ## Usage Examples
 
-Examples demonstrating the main features of the container.
-
-### Basic Service Registration & Singleton
+### Basic Service Registration & Singletons
 
 ```php
 $container = new ServiceContainer();
@@ -42,8 +43,7 @@ echo ($singleton1 === $singleton2) ? "Singleton works, same instance returned." 
 
 ### Dependency Injection (DI)
 
-Dependency injection is supported automatically when resolving services. The container will inject any required
-dependencies.
+The container will inject any required dependencies.
 
 ```php
 $someService = new SomeService($container->get(LoggerInterface::class));
@@ -56,7 +56,7 @@ $someService2->doSomething("Some service with auto resolution");
 
 ### Service Provider Example
 
-Service Providers allows you do define more complex service registrations and resolutions.
+Service Providers allows you do define complex service registrations and resolutions.
 
 ```php
 $container->set('SomeProvidedService', SomeProvider::class);
