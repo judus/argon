@@ -65,6 +65,29 @@ $container->set('SomeProvidedService', SomeProvider::class);
 $someProvidedServices = $container->get('SomeProvidedService');
 echo sprintf("SomeProvidedService returned %s service(s): ", count($someProvidedServices));
 var_dump($someProvidedServices);
+
+// Example of a ServiceProvider
+class SomeProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->container->set('SomeObject', function (LoggerInterface $logger) { // Auto resolution LoggerInterface
+            return new SomeService($logger);
+        });
+
+        $this->container->set('AnotherObject', function (SomeService $someService) { // Auto resolution SomeService
+            return $someService;
+        });
+    }
+
+    public function resolve(): mixed
+    {
+        return [
+            'SomeObject' => $this->container->get('SomeObject'),
+            'AnotherObject' => $this->container->get('AnotherObject')
+        ];
+    }
+}
 ```
 
 ### Closure-based Service Registration
