@@ -50,7 +50,7 @@ $container->bind(LoggerInterface::class, DatabaseLogger::class);
 $container->bind(EnvInterface::class, Environment::class);
 
 // Need more control? 
-// User closures, closure params will be auto resolved (no need to register concrete implementations)
+// Use closures, closure params will be auto resolved (no need to register concrete implementations)
 $container->bind(SomeInterface::class, function(EnvInterface $env, ServiceA $serviceA, ServiceB $serviceB) {
     if ($env->isProd) {
         return new SomeImplementation($serviceA);
