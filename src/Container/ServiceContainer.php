@@ -6,7 +6,6 @@ use Closure;
 use Exception;
 use Maduser\Argon\Container\Contracts\Authorizable;
 use Maduser\Argon\Container\Contracts\Validatable;
-use Maduser\Argon\Container\Exceptions\ContainerErrorException;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\ServiceNotFoundException;
 use Psr\Container\ContainerExceptionInterface;
@@ -36,6 +35,7 @@ class ServiceContainer implements ContainerInterface
     private Resolver $resolver;
     private Registry $services;
     private Registry $bindings;
+    private array $conditionalBindings = [];
 
     /**
      * ServiceContainer constructor.
@@ -227,9 +227,17 @@ class ServiceContainer implements ContainerInterface
      *
      * @throws ContainerExceptionInterface
      */
-    public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
+    public function resolveOrMake(string|Closure $aliasOrClass, ?array $params = []): mixed
     {
         return $this->resolver->resolveOrMake($aliasOrClass, $params);
+    }
+
+    public function when(string $requesterClass): ConditionalBinding
+    {
+        $conditionalBinding = new ConditionalBinding($requesterClass, $this);
+        $this->conditionalBindings[] = $conditionalBinding;
+
+        return $conditionalBinding;
     }
 
     /**
@@ -414,29 +422,43 @@ class ServiceContainer implements ContainerInterface
     /**
      * @throws ContainerExceptionInterface
      */
-    public function execute(callable $callable, array $optionalParams = []): mixed
+    public function execute(Closure $closure, array $optionalParams = [], ?string $requester = null): mixed
     {
         try {
-            $reflection = $this->getCallableReflection($callable);
+            $reflection = new ReflectionFunction($closure);
             $dependencies = [];
 
-            foreach ($reflection->getParameters() as $param) {
-                $paramType = $param->getType();
+            foreach ($reflection->getParameters() as $parameter) {
+                $paramType = $parameter->getType();
 
                 if ($paramType instanceof ReflectionNamedType && !$paramType->isBuiltin()) {
-                    // Resolve the dependency using the container
+                    // Inject user-defined dependencies (e.g., AService $aService)
                     $dependencies[] = $this->resolveOrMake($paramType->getName());
                 } else {
-                    // Use optional parameters or default values
-                    $dependencies[] = $optionalParams[$param->getName()] ?? array_shift($optionalParams);
+                    // Handle optional or positional parameters
+                    $dependencies[] = $optionalParams[$parameter->getName()] ?? array_shift($optionalParams);
                 }
             }
 
-            // Call the callable with the resolved dependencies
-            return call_user_func_array($callable, $dependencies);
+            // Append the `$requester` at the end of the parameter list
+            $dependencies[] = $requester;
+
+            return $reflection->invokeArgs($dependencies);
         } catch (ReflectionException $e) {
-            throw new ContainerException("Error executing callable: " . $e->getMessage(), $e);
+            throw new Exception("Error executing closure: " . $e->getMessage());
         }
+    }
+
+    public function if(string $service): ?object
+    {
+        // Check if the service exists in the container
+        if ($this->has($service)) {
+            // Return the resolved service
+            return $this->get($service);
+        }
+
+        // Return a null-safe handler that does nothing if the service doesn't exist
+        return new NullServiceHandler();
     }
 
     /**
@@ -453,17 +475,5 @@ class ServiceContainer implements ContainerInterface
         }
 
         return new ReflectionFunction($callable);
-    }
-
-    public function if(string $service): ?object
-    {
-        // Check if the service exists in the container
-        if ($this->has($service)) {
-            // Return the resolved service
-            return $this->get($service);
-        }
-
-        // Return a null-safe handler that does nothing if the service doesn't exist
-        return new NullServiceHandler();
     }
 }

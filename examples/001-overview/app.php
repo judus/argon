@@ -157,3 +157,11 @@ echo sprintf('There are %s utility and %s logger services', count($utilityServic
 $container->if('someService')->doSomething('Some message'); // Executes method if service exists
 $container->if('foo')->doSomething('Some message'); // Does nothing (service 'foo' does not exist)
 
+
+$container->set('SomeOtherService', function(LoggerInterface $logger, FileLogger $fileLogger) use ($container) {
+    $fileLogger->info('Some message from fileLogger within callback');
+    return new SomeService($logger);
+});
+
+$container->get('SomeOtherService')->doSomething('Some message from SomeOtherService'); // Resolves and uses the 'SomeOtherService'
+

@@ -39,16 +39,26 @@ class Resolver
     /**
      * Resolves a service or class by its alias or creates a new instance if not found.
      *
-     * @param string     $aliasOrClass The service alias or class to resolve
-     * @param array|null $params       Optional parameters for instantiation
+     * @param string|Closure $aliasOrClass The service alias or class to resolve
+     * @param array|null     $params       Optional parameters for instantiation
      *
      * @return mixed The resolved or instantiated service
      *
      * @throws ContainerExceptionInterface
      */
-    public function resolveOrMake(string $aliasOrClass, ?array $params = []): mixed
+    public function resolveOrMake(string|Closure $aliasOrClass, ?array $params = [], ?string $requester = null): mixed
     {
         try {
+            if ($aliasOrClass instanceof Closure) {
+                $resolvedClass = $this->container->execute($aliasOrClass, $params, $requester);
+
+                if (is_string($resolvedClass)) {
+                    return $this->container->resolveOrMake($resolvedClass, $params, $requester);
+                }
+
+                return $resolvedClass;
+            }
+
             $descriptor = $this->container->getServiceDescriptor($aliasOrClass);
 
             if (!$descriptor) {
