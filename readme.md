@@ -218,13 +218,13 @@ $loggerServices = $container->tagged('logger');
 echo sprintf('There are %s utility and %s logger services', count($utilityServices), count($loggerServices));
 ```
 
-### NullHandler (`if()`)
+### NullHandler (`ifExists()`)
 
 Using the `if()` method, won't throw an exception if the service does not exist.
 
 ```php
-$container->if('someService')->doSomething('Some message'); // Executes if 'someService' exists
-$container->if('foo')->doSomething('Some message'); // Does not throw errors even if 'foo' does not exist
+$container->ifExists('someService')->doSomething('Some message'); // Executes if 'someService' exists
+$container->ifExists('foo')->doSomething('Some message'); // Does not throw errors even if 'foo' does not exist
 ```
 
 #### If you run the examples above, you should see the following output:
