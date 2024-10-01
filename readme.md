@@ -141,12 +141,13 @@ try {
 ### Register your own Hooks
 
 ```php
-// Register a onResolve hook
+// Define a onResolve hook (when you call $container->get())
 $container->onResolve(ClassTypeToDetect::class, function (ClassTypeToDetect $detectedClassTypeInstance) {
     $detectedClassTypeInstance->doSomething();
     return $detectedClassTypeInstance; // return the instance
 });
 
+// Define a onRegister hook (when you call $container->set())
 $container->onRegister(ClassTypeToDetect::class, function (ServiceDescriptor $descriptor) {
     // Fetch the defined service
     $myServiceClassName = $descriptor->getDefinition();
