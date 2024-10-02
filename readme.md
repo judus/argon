@@ -46,12 +46,30 @@ echo ($singleton1 === $singleton2) ? "Singleton works, same instance returned." 
 The container will inject any required dependencies.
 
 ```php
-$someService = new SomeService($container->get(LoggerInterface::class));
-$someService->doSomething('Some service with injected logger');
+$container->bind(LoggerInterface::class, DatabaseLogger::class);
+$container->bind(EnvInterface::class, Environment::class);
+
+// Need more control? 
+// Use closures, closure params will be auto resolved (no need to register concrete implementations)
+$container->bind(SomeInterface::class, function(EnvInterface $env, ServiceA $serviceA, ServiceB $serviceB) {
+    if ($env->isProd) {
+        return new SomeImplementation($serviceA);
+    } 
+    return new SomeOtherImplementation($serviceB);
+});
 
 // Auto-resolution
+$someService1 = $container->get('some-service');
+$someService1->info("Some service with auto resolution");
+
+
+// Auto-resolution of unregistered service (just make() the service)
 $someService2 = $container->make(SomeService::class);
-$someService2->doSomething("Some service with auto resolution");
+$someService2->info("Some unregistered service with auto resolution");
+
+// Semi-auto... just as an example
+$someService = new SomeObject($container->get(LoggerInterface::class));
+$someService->info('Some object with injected logger');
 ```
 
 ### Service Provider Example
@@ -61,7 +79,7 @@ Service Providers allows you do define complex service registrations and resolut
 ```php
 $container->set('SomeProvidedService', SomeProvider::class);
 
-// Resolving services provided by SomeProvider
+// Resolving service(s) provided by the resolve() method of SomeProvider
 $someProvidedServices = $container->get('SomeProvidedService');
 echo sprintf("SomeProvidedService returned %s service(s): ", count($someProvidedServices));
 var_dump($someProvidedServices);
@@ -200,13 +218,13 @@ $loggerServices = $container->tagged('logger');
 echo sprintf('There are %s utility and %s logger services', count($utilityServices), count($loggerServices));
 ```
 
-### NullHandler (`if()`)
+### NullHandler (`ifExists()`)
 
-Using the `if()` method, won't throw an exception if the service does not exist.
+Using the `ifExists()` method, won't throw an exception if the service does not exist.
 
 ```php
-$container->if('someService')->doSomething('Some message'); // Executes if 'someService' exists
-$container->if('foo')->doSomething('Some message'); // Does not throw errors even if 'foo' does not exist
+$container->ifExists('someService')->doSomething('Some message'); // Executes if 'someService' exists
+$container->ifExists('foo')->doSomething('Some message'); // Does not throw errors even if 'foo' does not exist
 ```
 
 #### If you run the examples above, you should see the following output:
@@ -234,3 +252,12 @@ Validated data: array(
 Service authorized successfully.
 There are 2 utility and 1 logger services
 ```
+
+#### Coming soon (or just maybe): better conditional binding...
+
+```php
+// No example. Because. Reasons. 
+// if-requires-provide or when-needs-give...
+// sounds kinda familiar doesn't it?
+```
+
