@@ -2,6 +2,7 @@
 
 namespace Maduser\Argon\Container;
 
+use Closure;
 use Exception;
 use Psr\Container\ContainerExceptionInterface;
 use ReflectionException;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Maduser\Argon\Container\Exceptions\ContainerException;
+use Psr\Container\ContainerExceptionInterface;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
@@ -48,7 +49,7 @@ class Factory
      * @param array|null $params Optional parameters for instantiation
      *
      * @return object The instantiated class with its dependencies injected
-     * @throws ContainerErrorException If instantiation fails
+     * @throws ContainerException|ContainerExceptionInterface If instantiation fails
      */
     public function make(string $class, ?array $params = []): object
     {
@@ -120,7 +121,6 @@ class Factory
      * @param array|null $params     The provided parameters
      *
      * @return array Resolved dependencies
-     * @throws ContainerErrorException If dependencies cannot be resolved
      */
     public function resolveDependencies(array $parameters, ?array $params): array
     {
