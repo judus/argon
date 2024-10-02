@@ -46,14 +46,14 @@ class Resolver
      *
      * @throws ContainerExceptionInterface
      */
-    public function resolveOrMake(string|Closure $aliasOrClass, ?array $params = [], ?string $requester = null): mixed
+    public function resolveOrMake(string|Closure $aliasOrClass, ?array $params = []): mixed
     {
         try {
             if ($aliasOrClass instanceof Closure) {
-                $resolvedClass = $this->container->execute($aliasOrClass, $params, $requester);
+                $resolvedClass = $this->container->call($aliasOrClass, $params);
 
                 if (is_string($resolvedClass)) {
-                    return $this->container->resolveOrMake($resolvedClass, $params, $requester);
+                    return $this->container->resolveOrMake($resolvedClass, $params);
                 }
 
                 return $resolvedClass;
@@ -102,7 +102,7 @@ class Resolver
                 // Check if the definition is a closure and invoke it, otherwise instantiate the class
                 $definition = $descriptor->getDefinition();
                 if ($definition instanceof Closure) {
-                    $instance = $this->container->execute($definition);
+                    $instance = $this->container->call($definition);
                 } else {
                     $instance = $this->container->make($definition, $params);
                 }

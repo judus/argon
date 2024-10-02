@@ -422,7 +422,7 @@ class ServiceContainer implements ContainerInterface
     /**
      * @throws ContainerExceptionInterface
      */
-    public function execute(Closure $closure, array $optionalParams = [], ?string $requester = null): mixed
+    public function call(Closure $closure, array $optionalParams = [], ?string $requester = null): mixed
     {
         try {
             $reflection = new ReflectionFunction($closure);

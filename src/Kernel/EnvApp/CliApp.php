@@ -75,7 +75,7 @@ class CliApp extends Kernel
     private function executeCallback(?callable $callback, array $arguments): void
     {
         if (!is_null($callback)) {
-            $this->provider->execute($callback, $arguments);
+            $this->provider->call($callback, $arguments);
         }
     }
 
