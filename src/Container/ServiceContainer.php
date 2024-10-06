@@ -123,6 +123,10 @@ class ServiceContainer implements ContainerInterface
      */
     public function bind(string $id, Closure|string $concrete, bool $isSingleton = false): void
     {
+        if ($id === $concrete) {
+            throw ContainerException::fromServiceId($id, "A class cannot be bound to itself.");
+        }
+
         if (is_string($concrete) && !class_exists($concrete)) {
             throw ContainerException::fromServiceId($id, "Class '$concrete' does not exist.");
         }
@@ -297,7 +301,23 @@ class ServiceContainer implements ContainerInterface
      */
     private function resolveClass(string $className, array $overrides = []): object
     {
+        // Check if the className is bound to a concrete class (e.g., interface-to-class binding)
+        if (isset($this->services[$className])) {
+            $descriptor = $this->services[$className];
+            $concrete = $descriptor->getConcrete();
+
+            // If the concrete is a closure, invoke it and return
+            return $concrete instanceof Closure
+                ? $concrete()
+                : $this->resolveClass($concrete, $overrides);  // Resolve the bound concrete class
+        }
+
         $reflection = $this->getReflection($className);
+
+        // **Check if the class is an interface** and throw an exception if it's not bound
+        if ($reflection->isInterface()) {
+            throw ContainerException::forUnresolvableDependency($className, "Cannot instantiate interface");
+        }
 
         if (!$reflection->isInstantiable()) {
             throw ContainerException::forNonInstantiableClass($className, $reflection->getName());
@@ -310,14 +330,15 @@ class ServiceContainer implements ContainerInterface
             return new $className();
         }
 
-        // Resolve constructor parameters with overrides
+        // Resolve constructor parameters
         $dependencies = array_map(
-            fn($param) => $this->resolveParameterWithOverrides($param, $overrides),
+            fn(ReflectionParameter $param) => $this->resolveParameterWithOverrides($param, $overrides),
             $constructor->getParameters()
         );
 
         return $reflection->newInstanceArgs($dependencies);
     }
+
 
     /**
      * Retrieves the ReflectionClass instance for a given class name.
@@ -328,8 +349,10 @@ class ServiceContainer implements ContainerInterface
      */
     private function getReflection(string $className): ReflectionClass
     {
+        // Cache reflection for faster future lookups
         return $this->reflectionCache[$className] ??= new ReflectionClass($className);
     }
+
 
     /**
      * Resolves a parameter using global and specific overrides.
@@ -343,18 +366,17 @@ class ServiceContainer implements ContainerInterface
         $className = $param->getDeclaringClass()->getName();
         $paramName = $param->getName();
 
-        // Merge global and specific overrides
+        // First, check if there’s an override (manual binding)
         $mergedOverrides = array_merge(
             $this->overrideRegistry->getOverridesForClass($className),
             $overrides
         );
 
-        // Use the merged override if available
         if (isset($mergedOverrides[$paramName])) {
             return $mergedOverrides[$paramName];
         }
 
-        // Otherwise, resolve the parameter normally (constructor, default value, etc.)
+        // Otherwise, handle autowiring by resolving the parameter type
         return $this->resolveParameter($param);
     }
 

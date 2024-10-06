@@ -1,9 +1,18 @@
-<?php 
+<?php
+
 namespace Tests\Mocks;
 
 class TestServiceWithDependency
 {
-    public function __construct(NonExistentDependency $dependency)
+    private TestDependency $dependency;
+
+    public function __construct(TestDependency $dependency)
     {
+        $this->dependency = $dependency;
+    }
+
+    public function getDependency(): TestDependency
+    {
+        return $this->dependency;
     }
 }

@@ -1,263 +1,204 @@
-# Argon Service Container
 
-## Features
+# **Argon Service Container**
 
-- **Service Registration & Resolution**: Register and resolve services, singletons, and service providers.
-- **Dependency Injection (DI)**: Automatically inject dependencies.
-- **Service Providers**: Register amd configure services with custom resolution
-- **Service Tagging**: Tag services and retrieve them based on tags.
-- **Lazy Loading**: Services are only instantiated when needed.
-- **Hooks**: Lifecycle hooks for custom behavior.
+A lightweight, PSR-11 compliant dependency injection container.
 
-Built-in hooks:
-- **Service Providers** register() and resolve() are handled via hooks
-- **Authorization & Validation**: Calls authorize() and/or validate() upon instantiation if the service implements the appropriate interface
+## **Features**
 
-## Usage Examples
+- **PSR-11 Compliant**: Integrates seamlessly with PSR-11 applications.
+- **Autowiring**: Automatically resolves class dependencies.
+- **Singleton and Transient Services**: Manage shared or independent service instances.
+- **Type Interceptors**: Modify instances at resolution time.
+- **Parameter Overrides**: Customize service construction with primitive or custom values.
+- **Lazy Loading**: Services are only instantiated when first accessed.
+- **Circular Dependency Detection**: Automatically detects and prevents circular dependencies.
 
-### Basic Service Registration & Singletons
+## **Installation**
+
+For your personal use, clone it into your project:
+
+```bash
+composer require maduser/argon-container
+```
+**PHP 8.2+** 
+
+## **Usage**
+
+### **1. Binding and Resolving Services**
+
+To bind a service, you provide a **service ID** and the class (or closure) responsible for creating the service. You can
+define whether the service is **transient** (new instance every time) or **singleton** (same instance for all requests).
 
 ```php
+use Maduser\Argon\Container\ServiceContainer;
+
 $container = new ServiceContainer();
 
-// Registering a service
-$container->set('logger', FileLogger::class);
+// Transient service: creates a new instance every time
+$container->bind('service1', \App\Services\SomeService::class);
 
-// Registering a singleton
-$container->singleton('databaseLogger', function () {
-    return new DatabaseLogger();
-});
+// Singleton service: returns the same instance for every request
+$container->singleton('service2', \App\Services\AnotherService::class);
 
-// Bind interfaces
-$container->bind(LoggerInterface::class, DatabaseLogger::class);
-
-// Resolving services
-$logger = $container->get('logger');
-$logger->info("Test log to file");
-
-// Singleton verification
-$singleton1 = $container->get('databaseLogger');
-$singleton2 = $container->get('databaseLogger');
-echo ($singleton1 === $singleton2) ? "Singleton works, same instance returned." : "Singleton failed.";
+// Fetch the services
+$service1 = $container->get('service1');
+$service2 = $container->get('service2');
 ```
 
-### Dependency Injection (DI)
+### **2. Autowiring Services**
 
-The container will inject any required dependencies.
+The container can resolve dependencies based on constructor signatures without explicit bindings.
 
 ```php
-$container->bind(LoggerInterface::class, DatabaseLogger::class);
-$container->bind(EnvInterface::class, Environment::class);
+class LoggerService {}
 
-// Need more control? 
-// Use closures, closure params will be auto resolved (no need to register concrete implementations)
-$container->bind(SomeInterface::class, function(EnvInterface $env, ServiceA $serviceA, ServiceB $serviceB) {
-    if ($env->isProd) {
-        return new SomeImplementation($serviceA);
-    } 
-    return new SomeOtherImplementation($serviceB);
-});
+class UserService {
+    private LoggerService $logger;
 
-// Auto-resolution
-$someService1 = $container->get('some-service');
-$someService1->info("Some service with auto resolution");
+    public function __construct(LoggerService $logger) {
+        $this->logger = $logger;
+    }
 
+    public function logUserAction(string $action): void {
+        $this->logger->log("User action: {$action}");
+    }
+}
 
-// Auto-resolution of unregistered service (just make() the service)
-$someService2 = $container->make(SomeService::class);
-$someService2->info("Some unregistered service with auto resolution");
+$container = new ServiceContainer();
 
-// Semi-auto... just as an example
-$someService = new SomeObject($container->get(LoggerInterface::class));
-$someService->info('Some object with injected logger');
+// No need to bind anything explicitly; autowiring resolves the dependency
+$userService = $container->get(UserService::class);
 ```
 
-### Service Provider Example
+### **3. Parameter Overrides**
 
-Service Providers allows you do define complex service registrations and resolutions.
+Need to pass primitive values (like config or custom parameters) into a service? Use **parameter overrides** to inject
+specific values into the constructor.
 
 ```php
-$container->set('SomeProvidedService', SomeProvider::class);
+class ApiClient {
+    public function __construct(string $apiKey, string $apiUrl) {}
+}
 
-// Resolving service(s) provided by the resolve() method of SomeProvider
-$someProvidedServices = $container->get('SomeProvidedService');
-echo sprintf("SomeProvidedService returned %s service(s): ", count($someProvidedServices));
-var_dump($someProvidedServices);
+$overrideRegistry = new \Maduser\Argon\Container\ParameterOverrideRegistry();
+$overrideRegistry->addOverride(ApiClient::class, 'apiKey', 'my-secret-key');
+$overrideRegistry->addOverride(ApiClient::class, 'apiUrl', 'https://api.example.com');
 
-// Example of a ServiceProvider
-class SomeProvider extends ServiceProvider
-{
-    public function register(): void
-    {
-        $this->container->set('SomeObject', function (LoggerInterface $logger) { // Auto resolution LoggerInterface
-            return new SomeService($logger);
-        });
+$container = new ServiceContainer($overrideRegistry);
 
-        $this->container->set('AnotherObject', function (SomeService $someService) { // Auto resolution SomeService
-            return $someService;
-        });
+// ApiClient will receive the overridden parameters
+$apiClient = $container->get(ApiClient::class);
+```
+
+### **4. Handling Circular Dependencies**
+
+The container detects and blocks circular dependencies to prevent infinite loops.
+
+```php
+$container->singleton('A', function () use ($container) {
+    return $container->get('B');
+});
+
+$container->singleton('B', function () use ($container) {
+    return $container->get('A');
+});
+
+// This will throw a CircularDependencyException
+$container->get('A');
+```
+
+### **5. Type Interceptors**
+
+Interceptors can be used to modify or decorate instances when they're resolved. 
+
+```php
+class AuthService {
+    private string $user;
+
+    public function setUser(string $user): void {
+        $this->user = $user;
+    }
+}
+
+// Interceptor to dynamically modify AuthService
+class AuthInterceptor implements TypeInterceptorInterface {
+    public function supports(object $instance): bool {
+        return $instance instanceof AuthService;
     }
 
-    public function resolve(): mixed
-    {
-        return [
-            'SomeObject' => $this->container->get('SomeObject'),
-            'AnotherObject' => $this->container->get('AnotherObject')
-        ];
+    public function intercept(object $instance): object {
+        $instance->setUser('interceptedUser');
+        return $instance;
     }
+}
+
+$container = new ServiceContainer();
+$container->registerTypeInterceptor(new AuthInterceptor());
+
+$authService = $container->get(AuthService::class);
+// The AuthService now has 'interceptedUser' set
+```
+
+### **6. Tagging and Retrieving Services**
+
+Tagging allows you to group related services and fetch them as a collection, useful for handling multiple
+implementations or plugins.
+
+```php
+$container->singleton('logger1', \App\Loggers\FileLogger::class);
+$container->singleton('logger2', \App\Loggers\DatabaseLogger::class);
+
+$container->tag('logger1', ['loggers']);
+$container->tag('logger2', ['loggers']);
+
+// Retrieve all services tagged with 'loggers'
+$loggers = $container->getTaggedServices('loggers');
+
+foreach ($loggers as $logger) {
+    $logger->log('A message to all loggers');
 }
 ```
 
-### Closure-based Service Registration
+### **7. Lazy Loading Services**
 
-Services can be registered using closures, which allows for more flexible instantiation logic. Whether or not you use closure, services will always be lazy loaded.
+Services are not instantiated until they are actually used.
 
 ```php
-// Without closure
-$container->set('someService', SomeService::class); // LoggerInterface will be automatically injected
-$container->get('someService')->doSomething('Some message');
-
-// With closure
-$container->set('someOtherService', function () use ($container) {
-    // custom resolution logic
-    return new SomeService($container->get(LoggerInterface::class));
+$container->singleton('expensiveService', function () {
+    return new \App\Services\HeavyLiftingService();
 });
 
-$container->get('someOtherService')->doSomething('Another message');
-
-// Dependency injection for closure
-$container->set('AnotherService', function (Console $console) use ($container) {
-    return new AnotherService($console);
-});
-
-// Works with singleton() and bind() as well
+// HeavyLiftingService is only created when it's requested
+$service = $container->get('expensiveService');
 ```
 
-### Built-in Validation & Authorization Hooks Example
+## **Exception Handling**
 
-The container will detect services implementing `Validatable` and `Authorizable` interfaces, and call validate() and/or authorize() upon resolution.
+The container throws specific exceptions for common issues:
+
+- **`CircularDependencyException`**: Thrown when a circular dependency is detected.
+- **`ContainerException`**: Thrown when a service cannot be resolved or an invalid class is provided.
+- **`NotFoundException`**: Thrown when a requested service is not registered in the container.
 
 ```php
+// Handling exceptions
 try {
-    $container->set('exampleService1', function () {
-        return new ValidatableService([ // This service implements Validatable and Authorizable
-            'name' => 'John Doe',
-            'role' => 'admin',
-        ]);
-    });
-    $exampleService1 = $container->get('exampleService1'); // validate() and authorize() called
-    $data = $exampleService1->getValidatedData();
-    echo "Validated data: " . print_r($data, true);
-    echo "Service authorized successfully.";
-} catch (ValidationException $e) { // validation failed
-    echo "Validation errors: " . print_r($e->getErrors(), true);
-} catch (AuthorizationException $e) {
-    echo $e->getMessage();
+    $container->get('nonExistentService');
+} catch (NotFoundException $e) {
+    echo $e->getMessage(); // Service 'nonExistentService' not found.
 }
 ```
 
-### Register your own Hooks
+## **Tests**
 
-```php
-// Define a onResolve hook (when you call $container->get())
-$container->onResolve(ClassTypeToDetect::class, function (ClassTypeToDetect $detectedClassTypeInstance) {
-    $detectedClassTypeInstance->doSomething();
-    return $detectedClassTypeInstance; // return the instance
-});
+Wanna run the tests? Clone the repository and run:
 
-// Define a onRegister hook (when you call $container->set())
-$container->onRegister(ClassTypeToDetect::class, function (ServiceDescriptor $descriptor) {
-    // Fetch the defined service
-    $myServiceClassName = $descriptor->getDefinition();
-    // Do something with $myServiceClassName
-});
+```bash
+vendor/bin/phpunit
 ```
 
-This how the built-in hooks are registered internally
+---
 
-```php
-// Set up the onRegister hook for ServiceProvider
-$this->onRegister(ServiceProvider::class, function (ServiceDescriptor $descriptor) {
-    $provider = $this->make($descriptor->getDefinition());
-    $provider->register();
-    return $provider;
-});
+## **License**
 
-// Set up the onResolve hook for ServiceProvider
-$this->onResolve(ServiceProvider::class, function (ServiceProvider $provider) {
-    return $provider->resolve();
-});
-
-// Register the default onResolve hook for Authorizable instances
-$this->onResolve(Authorizable::class, function (Authorizable $authorizable) {
-    $authorizable->authorize();
-    return $authorizable;
-});
-
-// Register the default onResolve hook for Validatable instances
-$this->onResolve(Validatable::class, function (Validatable $validatable) {
-    $validatable->validate();
-    return $validatable;
-});
-```
-
-
-### Tagging Services
-
-You can tag services with specific tags and retrieve them later by their tag.
-
-```php
-$container->set('someService', SomeService::class);
-$container->tag('someService', ['utility', 'logger']);
-
-$container->set('anotherService', AnotherService::class);
-$container->tag('anotherService', ['utility']);
-
-$utilityServices = $container->tagged('utility');
-$loggerServices = $container->tagged('logger');
-echo sprintf('There are %s utility and %s logger services', count($utilityServices), count($loggerServices));
-```
-
-### NullHandler (`ifExists()`)
-
-Using the `ifExists()` method, won't throw an exception if the service does not exist.
-
-```php
-$container->ifExists('someService')->doSomething('Some message'); // Executes if 'someService' exists
-$container->ifExists('foo')->doSomething('Some message'); // Does not throw errors even if 'foo' does not exist
-```
-
-#### If you run the examples above, you should see the following output:
-
-```plaintext
-INFO: Test log to file
-INFO: Test log to database
-Singleton works, same instance returned.
-INFO: Some service with injected logger
-INFO: Some service with auto resolution
-SomeProvidedService returned 2 service(s):
-array(2) {
-  ["SomeObject"]=>
-  object(SomeService)#...
-  ["AnotherObject"]=>
-  object(SomeService)#...
-}
-INFO: Some message
-INFO: Another message
-INFO: Final message
-Validated data: array(
-  "name" => "John Doe",
-  "role" => "admin"
-)
-Service authorized successfully.
-There are 2 utility and 1 logger services
-```
-
-#### Coming soon (or just maybe): better conditional binding...
-
-```php
-// No example. Because. Reasons. 
-// if-requires-provide or when-needs-give...
-// sounds kinda familiar doesn't it?
-```
-
+This project is licensed under the MIT License.
