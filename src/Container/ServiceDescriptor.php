@@ -6,64 +6,63 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 
+/**
+ * Class ServiceDescriptor
+ *
+ * Holds metadata about a service, including whether it's a singleton and the concrete implementation.
+ */
 class ServiceDescriptor
 {
-    private string|Closure $definition;
+    private string|Closure $concrete;
     private bool $isSingleton;
     private ?object $instance = null;
-    private string $name;
-    private ?array $defaultParams;
 
-    public function __construct(
-        string $name,
-        string|Closure $definition,
-        bool $isSingleton = false,
-        ?array $defaultParams = []
-    ) {
-        $this->name = $name;
-        $this->definition = $definition;
+    public function __construct(string|Closure $concrete, bool $isSingleton)
+    {
+        $this->concrete = $concrete;
         $this->isSingleton = $isSingleton;
-        $this->defaultParams = $defaultParams;
     }
 
-    public function getInstance(): ?object
-    {
-        return $this->instance;
-    }
-
-    public function setInstance(?object $instance): void
-    {
-        $this->instance = $instance;
-    }
-
+    /**
+     * Checks if the service is a singleton.
+     *
+     * @return bool
+     */
     public function isSingleton(): bool
     {
         return $this->isSingleton;
     }
 
-    public function getDefinition(): string|Closure
+    /**
+     * Returns the concrete class or closure that defines the service.
+     *
+     * @return string|Closure
+     */
+    public function getConcrete(): string|Closure
     {
-        return $this->definition;
+        return $this->concrete;
     }
 
     /**
-     * Checks if the service is defined as a Closure.
+     * Returns the singleton instance if available.
+     *
+     * @return object|null
      */
-    public function isClosure(): bool
+    public function getInstance(): ?object
     {
-        return $this->definition instanceof Closure;
+        return $this->instance;
     }
 
     /**
-     * If the service is not a closure, return the class name.
+     * Stores the resolved instance for singletons.
+     *
+     * @param object $instance
+     * @return void
      */
-    public function getClassName(): ?string
+    public function storeInstance(object $instance): void
     {
-        return is_string($this->definition) ? $this->definition : null;
-    }
-
-    public function getDefaultParams(): ?array
-    {
-        return $this->defaultParams;
+        if ($this->isSingleton && $this->instance === null) {
+            $this->instance = $instance;
+        }
     }
 }

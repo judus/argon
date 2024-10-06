@@ -74,9 +74,9 @@ class CliApp extends Kernel
      */
     private function executeCallback(?callable $callback, array $arguments): void
     {
-        if (!is_null($callback)) {
-            $this->provider->call($callback, $arguments);
-        }
+//        if (!is_null($callback)) {
+//            $this->provider->call($callback, $arguments);
+//        }
     }
 
     /**
@@ -88,22 +88,22 @@ class CliApp extends Kernel
     private function dispatchCommand(?string $commandName, array $arguments): void
     {
 
-        global $argv;
-
-        // Skip dispatching if running PHPUnit
-        if (is_null($commandName) && (defined('PHPUNIT_COMPOSER_INSTALL') || defined('__PHPUNIT_PHAR__'))) {
-            return;
-        }
-        if (is_null($commandName) && !is_null($this->console)) {
-            $this->listAvailableCommands();
-
-            return;
-        }
-
-
-        if (is_string($commandName)) {
-            $this->commandManager->dispatch($commandName, $arguments);
-        }
+//        global $argv;
+//
+//        // Skip dispatching if running PHPUnit
+//        if (is_null($commandName) && (defined('PHPUNIT_COMPOSER_INSTALL') || defined('__PHPUNIT_PHAR__'))) {
+//            return;
+//        }
+//        if (is_null($commandName) && !is_null($this->console)) {
+//            $this->listAvailableCommands();
+//
+//            return;
+//        }
+//
+//
+//        if (is_string($commandName)) {
+//            $this->commandManager->dispatch($commandName, $arguments);
+//        }
     }
 
     /**
