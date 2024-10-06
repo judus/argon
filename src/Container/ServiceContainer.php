@@ -411,13 +411,12 @@ class ServiceContainer implements ContainerInterface
     {
         foreach ($this->typeInterceptors as $interceptor) {
             if ($interceptor->supports($instance)) {
-                return $interceptor->intercept($instance);
+                $interceptor->intercept($instance);
             }
         }
 
         return $instance;
     }
-
 
     /**
      * Resolves and calls a method on a given class, handling all parameter injections.
