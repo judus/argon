@@ -5,3 +5,4 @@ argon.zip
 /vendor/
 /.idea/
 compiled.php
+/app.php

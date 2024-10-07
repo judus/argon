@@ -11,12 +11,12 @@ abstract class Kernel
 {
     protected string $errorHandler = ErrorHandler::class;
 
-    protected ServiceContainer $provider;
+    protected ServiceContainer $container;
     private bool $booted = false;
 
-    public function __construct(ServiceContainer $provider)
+    public function __construct(ServiceContainer $container)
     {
-        $this->provider = $provider;
+        $this->container = $container;
     }
 
     /**

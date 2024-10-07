@@ -28,19 +28,16 @@ class App extends ContainerFacade
         'cli-server' => CliApp::class,
         'apache2handler' => WebApp::class,
         'fpm-fcgi' => WebApp::class,
-        'apache' => WebApp::class,
-        'cgi-fcgi' => WebApp::class,
-        'embed' => EmbeddedApp::class,
         'phpdbg' => DebugApp::class,
+        'embed' => EmbeddedApp::class,
     ];
     private static ?Kernel $kernel = null;
 
     /**
-     * Initialize the application (Kernel) and set up the error handler.
+     * Initialize the application kernel and set up the error handler.
      *
-     * @param string|null $kernelClass The application class (default to environment-based)
-     *
-     * @return App Returns an instance of the App class to allow chaining.
+     * @param string|null $kernelClass
+     * @return App
      * @throws Exception
      */
     public static function init(?string $kernelClass = null): self
@@ -48,8 +45,8 @@ class App extends ContainerFacade
         if (!isset(self::$kernel)) {
             self::$kernel = self::createKernel($kernelClass);
 
-            $appErrorHandler = self::$kernel->getErrorHandler();
-            self::setErrorHandler($appErrorHandler);
+            // Set up the error handler
+            self::setErrorHandler(self::$kernel->getErrorHandler());
 
             if (!self::$booted) {
                 self::$kernel->bootKernel();
@@ -61,28 +58,23 @@ class App extends ContainerFacade
     }
 
     /**
-     * Create the Kernel.
+     * Creates and returns a kernel based on the environment or provided class.
      *
-     * @param string|null $kernelClass Optional kernel class.
-     *
-     * @return Kernel The created kernel instance
+     * @param string|null $kernelClass
+     * @return Kernel
      * @throws Exception
      */
     protected static function createKernel(?string $kernelClass = null): Kernel
     {
         $kernelClass = $kernelClass ?? self::getDefaultKernelClass();
-
-        /**
- * @psalm-suppress LessSpecificReturnStatement
-*/
         return new $kernelClass(self::container());
     }
 
     /**
-     * Get the default kernel class based on the server environment.
+     * Determines the kernel class to use based on the server environment.
      *
-     * @return string The kernel class name
-     * @throws Exception If an unsupported environment is detected
+     * @return string
+     * @throws Exception
      */
     public static function getDefaultKernelClass(): string
     {
@@ -96,47 +88,36 @@ class App extends ContainerFacade
     }
 
     /**
-     * Gets the registered ErrorHandler, if any.
+     * Set the error handler either by class name or instance.
      *
-     * @return ErrorHandler|null
-     */
-    public static function getErrorHandler(): ?ErrorHandler
-    {
-        return self::$errorHandler;
-    }
-
-    /**
-     * Sets the ErrorHandler by resolving it via the container or using a given instance.
-     *
-     * @param string|ErrorHandler $errorHandler The error handler class name or instance
-     *
+     * @param string|ErrorHandler $errorHandler
      * @throws Exception
      */
     public static function setErrorHandler(string|ErrorHandler $errorHandler): void
     {
         if (is_string($errorHandler)) {
-            $errorHandler = self::$container->make($errorHandler);
+            $errorHandler = self::$container->get($errorHandler);
         }
 
         if ($errorHandler instanceof ErrorHandler) {
             self::$errorHandler = $errorHandler;
         } else {
-            throw new Exception("ErrorHandler must be an instance of ErrorHandler or a class name.");
+            throw new Exception("ErrorHandler must be an instance of ErrorHandler or its class name.");
         }
     }
 
     /**
      * Dispatches a callback in an isolated service container context.
      *
-     * @param Closure     $callback    The callback to execute
+     * @param Closure     $callback
      * @param string|null $kernelClass
-     *
      * @throws Exception
      */
     public static function dispatch(Closure $callback, ?string $kernelClass = null): void
     {
         self::startContext();
 
+        // Create and boot a new kernel
         $kernel = self::createKernel($kernelClass);
         $kernel->bootKernel();
         $kernel->handle($callback);
@@ -149,26 +130,26 @@ class App extends ContainerFacade
      */
     protected static function startContext(): void
     {
-        // Push the current container onto the stack
+        // Save the current container state
         self::$contextStack[] = self::container();
 
-        // Create a new container for the new context
-        self::$container = new ServiceContainer();
+        // Create a fresh container for this context
+        self::setContainer(new ServiceContainer());
     }
 
     /**
-     * Ends the current container context.
+     * Ends the current container context and restores the previous one.
      */
     protected static function endContext(): void
     {
-        // Pop the context stack to restore the previous container
+        // Restore the previous container from the stack
         if (!empty(self::$contextStack)) {
-            self::$container = array_pop(self::$contextStack);
+            self::setContainer(array_pop(self::$contextStack));
         }
     }
 
     /**
-     * Run the application. Non-static method to allow chaining after init().
+     * Run the application.
      */
     public function run(): void
     {
@@ -191,16 +172,17 @@ class App extends ContainerFacade
     }
 
     /**
-     * Gets the current kernel instance, initializing it if necessary.
+     * Gets the current kernel instance, initializing if necessary.
      *
-     * @return Kernel The current kernel instance
-     * @throws Exception If initialization fails
+     * @return Kernel
+     * @throws Exception
      */
     public static function getKernel(): Kernel
     {
         if (!isset(self::$kernel)) {
             self::$kernel = self::createKernel();
         }
+
         return self::$kernel;
     }
 }

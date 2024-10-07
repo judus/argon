@@ -4,6 +4,8 @@ namespace Maduser\Argon\Kernel\EnvApp;
 
 use Exception;
 use Maduser\Argon\Kernel\Kernel;
+use Maduser\Console\CommandManager;
+use Maduser\Console\Console;
 use ReflectionException;
 
 class CliApp extends Kernel
@@ -19,17 +21,18 @@ class CliApp extends Kernel
      */
     public function boot(): void
     {
-        // Register the Console service if the class exists
         if (class_exists('\Maduser\Console\Console')) {
-            $this->provider->set('Console', '\Maduser\Console\Console');
-            $this->console = $this->provider->get('Console');
+            $this->container->bind('console', function () {
+                return new Console();  // Inject container manually if needed
+            });
+            $this->console = $this->container->get('console');
         }
 
-        // Register the CommandManager service if the class exists
         if (class_exists('Maduser\Console\CommandManager')) {
-            $this->provider->singleton('Maduser\Console\CommandManager');
-            $this->provider->alias('CommandManager', 'Maduser\Console\CommandManager');
-            $this->commandManager = $this->provider->get('CommandManager');
+            $this->container->singleton('Maduser\Console\CommandManager', function () {
+                return new CommandManager($this->container);  // Inject container manually
+            });
+            $this->commandManager = $this->container->get('Maduser\Console\CommandManager');
         }
     }
 
@@ -74,9 +77,13 @@ class CliApp extends Kernel
      */
     private function executeCallback(?callable $callback, array $arguments): void
     {
-//        if (!is_null($callback)) {
-//            $this->provider->call($callback, $arguments);
-//        }
+        if (!is_null($callback)) {
+            // Inject the current service container into the arguments
+            array_unshift($arguments, $this->container);
+
+            // Call the callback with the arguments, including the provider
+            $this->container->call($callback, null, ['container' => $this->container]);
+        }
     }
 
     /**
@@ -88,22 +95,22 @@ class CliApp extends Kernel
     private function dispatchCommand(?string $commandName, array $arguments): void
     {
 
-//        global $argv;
-//
-//        // Skip dispatching if running PHPUnit
-//        if (is_null($commandName) && (defined('PHPUNIT_COMPOSER_INSTALL') || defined('__PHPUNIT_PHAR__'))) {
-//            return;
-//        }
-//        if (is_null($commandName) && !is_null($this->console)) {
-//            $this->listAvailableCommands();
-//
-//            return;
-//        }
-//
-//
-//        if (is_string($commandName)) {
-//            $this->commandManager->dispatch($commandName, $arguments);
-//        }
+        global $argv;
+
+        // Skip dispatching if running PHPUnit
+        if (is_null($commandName) && (defined('PHPUNIT_COMPOSER_INSTALL') || defined('__PHPUNIT_PHAR__'))) {
+            return;
+        }
+        if (is_null($commandName) && !is_null($this->console)) {
+            $this->listAvailableCommands();
+
+            return;
+        }
+
+
+        if (is_string($commandName)) {
+            $this->commandManager->dispatch($commandName, $arguments);
+        }
     }
 
     /**

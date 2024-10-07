@@ -12,6 +12,7 @@ use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Psr\Container\ContainerInterface;
 use ReflectionClass;
+use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionParameter;
 
@@ -292,6 +293,19 @@ class ServiceContainer implements ContainerInterface
     }
 
     /**
+     * Retrieves the ReflectionClass instance for a given class name.
+     * Caches the ReflectionClass for future resolutions.
+     *
+     * @param string $className The class name.
+     * @return ReflectionClass The cached or newly created ReflectionClass.
+     */
+    private function getReflection(string $className): ReflectionClass
+    {
+        // Cache reflection for faster future lookups
+        return $this->reflectionCache[$className] ??= new ReflectionClass($className);
+    }
+
+    /**
      * Resolves a class and its dependencies, using optional overrides.
      *
      * @param string $className The class name to resolve.
@@ -339,21 +353,6 @@ class ServiceContainer implements ContainerInterface
         return $reflection->newInstanceArgs($dependencies);
     }
 
-
-    /**
-     * Retrieves the ReflectionClass instance for a given class name.
-     * Caches the ReflectionClass for future resolutions.
-     *
-     * @param string $className The class name.
-     * @return ReflectionClass The cached or newly created ReflectionClass.
-     */
-    private function getReflection(string $className): ReflectionClass
-    {
-        // Cache reflection for faster future lookups
-        return $this->reflectionCache[$className] ??= new ReflectionClass($className);
-    }
-
-
     /**
      * Resolves a parameter using global and specific overrides.
      *
@@ -363,10 +362,10 @@ class ServiceContainer implements ContainerInterface
      */
     private function resolveParameterWithOverrides(ReflectionParameter $param, array $overrides = []): mixed
     {
-        $className = $param->getDeclaringClass()->getName();
+        $className = $param->getDeclaringClass() ? $param->getDeclaringClass()->getName() : 'unknown class';
         $paramName = $param->getName();
 
-        // First, check if there’s an override (manual binding)
+        // Check for an override (manual binding)
         $mergedOverrides = array_merge(
             $this->overrideRegistry->getOverridesForClass($className),
             $overrides
@@ -376,41 +375,22 @@ class ServiceContainer implements ContainerInterface
             return $mergedOverrides[$paramName];
         }
 
-        // Otherwise, handle autowiring by resolving the parameter type
-        return $this->resolveParameter($param);
-    }
+        // Get the parameter type
+        $paramType = $param->getType();
 
-
-    /**
-     * Resolves a parameter by looking it up in the container.
-     *
-     * @param ReflectionParameter $param The reflection parameter to resolve.
-     *
-     * @return mixed The resolved parameter value.
-     * @throws ContainerException If the parameter is a primitive type and cannot be resolved.
-     */
-    private function resolveParameter(ReflectionParameter $param): mixed
-    {
-        // Handle built-in types (e.g., int, string)
-        if ($param->getType() !== null && $param->getType()->isBuiltin()) {
+        // If the parameter has no type hint (non-class primitive), check for a default value or throw an exception
+        if ($paramType === null || $paramType->isBuiltin()) {
+            // Handle default values for optional parameters
             if ($param->isOptional()) {
                 return $param->getDefaultValue();
             }
 
-            // Check if there's an override for this primitive in the registry
-            $className = $param->getDeclaringClass()->getName();
-            $paramName = $param->getName();
-            $override = $this->overrideRegistry->getOverride($className, $paramName);
-
-            if ($override !== null) {
-                return $override;
-            }
-
+            // If it's a primitive type and no override or default value, throw specific exception
             throw ContainerException::forUnresolvedPrimitive($className, $paramName);
         }
 
-        // Resolve by class type from the container
-        return $this->get($param->getType()->getName());
+        // If the parameter has a class type hint, resolve from the container
+        return $this->get($paramType->getName());
     }
 
     /**
@@ -448,23 +428,72 @@ class ServiceContainer implements ContainerInterface
      *
      * @return mixed The result of the method invocation.
      */
-    public function call(object|string $class, string $method, array $overrides = []): mixed
+    public function call(object|string $classOrCallable, ?string $method = null, array $overrides = []): mixed
     {
-        // Step 1: Resolve the class if passed as a string (class name)
-        if (is_string($class)) {
-            $class = $this->get($class);
+        // Step 1: Resolve callable and reflection
+        [$objectOrClosure, $reflection] = $this->resolveCallable($classOrCallable, $method);
+
+        // Step 2: Resolve parameters
+        $params = $reflection->getParameters();
+        $resolvedParams = array_map(fn(ReflectionParameter $param) => $this->resolveParameterWithOverrides(
+            $param,
+            $overrides
+        ), $params);
+
+        // Step 3: Invoke the callable
+        return $reflection instanceof ReflectionMethod
+            ? $reflection->invokeArgs($objectOrClosure, $resolvedParams)  // For class methods
+            : $reflection->invokeArgs($resolvedParams);  // For closures
+    }
+
+    private function resolveCallable(object|string $classOrCallable, ?string $method): array
+    {
+        // If a method is provided, it's a class method
+        if (!is_null($method)) {
+            $object = is_string($classOrCallable) ? $this->get($classOrCallable) : $classOrCallable;
+            $reflection = new ReflectionMethod($object, $method);
+
+            return [$object, $reflection];
         }
 
-        // Step 2: Use reflection to get the method's parameters
-        $reflectionMethod = new ReflectionMethod($class, $method);
-        $params = $reflectionMethod->getParameters();
+        // If it's a closure, reflect on the closure
+        if ($classOrCallable instanceof Closure) {
+            return [null, new ReflectionFunction($classOrCallable)];
+        }
 
-        // Step 3: Resolve each parameter via the existing resolveParameterWithOverrides() method
-        $resolvedParams = array_map(function (ReflectionParameter $param) use ($overrides) {
-            return $this->resolveParameterWithOverrides($param, $overrides);
-        }, $params);
+        // If it's neither a class method nor a closure, throw a ContainerException
+        throw new ContainerException("Unsupported callable type: must be class method or closure.");
+    }
 
-        // Step 4: Call the method with the resolved parameters
-        return $reflectionMethod->invokeArgs($class, $resolvedParams);
+    /**
+     * Resolves a parameter by looking it up in the container.
+     *
+     * @param ReflectionParameter $param The reflection parameter to resolve.
+     *
+     * @return mixed The resolved parameter value.
+     * @throws ContainerException If the parameter is a primitive type and cannot be resolved.
+     */
+    private function resolveParameter(ReflectionParameter $param): mixed
+    {
+        // Handle built-in types (e.g., int, string)
+        if ($param->getType() !== null && $param->getType()->isBuiltin()) {
+            if ($param->isOptional()) {
+                return $param->getDefaultValue();
+            }
+
+            // Check if there's an override for this primitive in the registry
+            $className = $param->getDeclaringClass()->getName();
+            $paramName = $param->getName();
+            $override = $this->overrideRegistry->getOverride($className, $paramName);
+
+            if ($override !== null) {
+                return $override;
+            }
+
+            throw ContainerException::forUnresolvedPrimitive($className, $paramName);
+        }
+
+        // Resolve by class type from the container
+        return $this->get($param->getType()->getName());
     }
 }

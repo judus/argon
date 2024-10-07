@@ -14,6 +14,11 @@ class ContainerFacade
      */
     protected static ?ServiceContainer $container = null;
 
+    public static function setContainer(ServiceContainer $container): void
+    {
+        self::$container = $container;
+    }
+
     /**
      * Registers one or more services in the current container context.
      *
@@ -24,7 +29,7 @@ class ContainerFacade
      */
     public static function set(string|array $id, string|Closure|null $class = null): void
     {
-        self::container()->set($id, $class);
+        self::container()->bind($id, $class);
     }
 
     /**
