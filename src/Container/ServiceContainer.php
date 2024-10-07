@@ -12,6 +12,7 @@ use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Psr\Container\ContainerInterface;
 use ReflectionClass;
+use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionParameter;
@@ -157,7 +158,6 @@ class ServiceContainer implements ContainerInterface
      */
     public function has(string $id): bool
     {
-        // Check if the service is registered or if the class exists for auto-resolution.
         return isset($this->services[$id]) || class_exists($id);
     }
 
@@ -187,7 +187,7 @@ class ServiceContainer implements ContainerInterface
 
         if (isset($this->tags[$tag])) {
             foreach ($this->tags[$tag] as $serviceId) {
-                $taggedServices[] = $this->get($serviceId); // Resolve the service
+                $taggedServices[] = $this->get($serviceId);
             }
         }
 
@@ -213,7 +213,6 @@ class ServiceContainer implements ContainerInterface
      * @param array  $overrides Optional parameter overrides.
      *
      * @return object The resolved service instance.
-     * @throws CircularDependencyException If a circular dependency is detected.
      * @throws ContainerException If the service is not found.
      */
     private function resolveService(string $id, array $overrides = []): object
@@ -223,20 +222,15 @@ class ServiceContainer implements ContainerInterface
         // Check if the service is registered or attempt to resolve it by class
         if (!isset($this->services[$id])) {
             if (class_exists($id)) {
-                // Get reflection to check if the class is instantiable
                 $reflection = $this->getReflection($id);
 
-                // Check if the class exists but is not instantiable (e.g., abstract)
                 if (!$reflection->isInstantiable()) {
-                    // Throw ContainerException for non-instantiable classes
                     throw ContainerException::forNonInstantiableClass($id, $reflection->getName());
                 }
 
-                // Proceed with resolving the class if it's instantiable
                 return $this->resolveClass($id, $overrides);
             }
 
-            // If the class doesn't exist, throw NotFoundException
             throw NotFoundException::forService($id);
         }
 
@@ -282,11 +276,10 @@ class ServiceContainer implements ContainerInterface
     private function checkCircularDependency(string $id): void
     {
         if (isset($this->resolving[$id])) {
-            // Ensure we append the starting service at the end to complete the loop
+            // Add the starting service to the end of the chain
             $chain = array_keys($this->resolving);
-            $chain[] = $id;  // Add the starting service to the end of the chain
+            $chain[] = $id;
 
-            // Use the consolidated exception and pass the correct service ID chain
             throw ContainerException::forCircularDependency($id, $chain);
         }
         $this->resolving[$id] = true;
@@ -301,7 +294,6 @@ class ServiceContainer implements ContainerInterface
      */
     private function getReflection(string $className): ReflectionClass
     {
-        // Cache reflection for faster future lookups
         return $this->reflectionCache[$className] ??= new ReflectionClass($className);
     }
 
@@ -315,7 +307,7 @@ class ServiceContainer implements ContainerInterface
      */
     private function resolveClass(string $className, array $overrides = []): object
     {
-        // Check if the className is bound to a concrete class (e.g., interface-to-class binding)
+        // Check if the className is bound to a concrete class
         if (isset($this->services[$className])) {
             $descriptor = $this->services[$className];
             $concrete = $descriptor->getConcrete();
@@ -323,12 +315,12 @@ class ServiceContainer implements ContainerInterface
             // If the concrete is a closure, invoke it and return
             return $concrete instanceof Closure
                 ? $concrete()
-                : $this->resolveClass($concrete, $overrides);  // Resolve the bound concrete class
+                : $this->resolveClass($concrete, $overrides);
         }
 
         $reflection = $this->getReflection($className);
 
-        // **Check if the class is an interface** and throw an exception if it's not bound
+        // Check if the class is an interface and throw an exception if it's not bound
         if ($reflection->isInterface()) {
             throw ContainerException::forUnresolvableDependency($className, "Cannot instantiate interface");
         }
@@ -375,17 +367,16 @@ class ServiceContainer implements ContainerInterface
             return $mergedOverrides[$paramName];
         }
 
-        // Get the parameter type
         $paramType = $param->getType();
 
-        // If the parameter has no type hint (non-class primitive), check for a default value or throw an exception
+        // If the parameter has no type hint (non-class primitive), check for a default value
         if ($paramType === null || $paramType->isBuiltin()) {
             // Handle default values for optional parameters
             if ($param->isOptional()) {
                 return $param->getDefaultValue();
             }
 
-            // If it's a primitive type and no override or default value, throw specific exception
+            // If it's a primitive type with no override or default value
             throw ContainerException::forUnresolvedPrimitive($className, $paramName);
         }
 
@@ -423,24 +414,27 @@ class ServiceContainer implements ContainerInterface
     /**
      * Resolves and calls a method on a given class, handling all parameter injections.
      *
-     * @param string|object $class  The class name or instance.
-     * @param string        $method The method to be called.
+     * @param object|string $classOrCallable
+     * @param string|null   $method The method to be called.
+     * @param array         $overrides
      *
      * @return mixed The result of the method invocation.
+     * @throws ContainerException
+     * @throws ReflectionException
      */
     public function call(object|string $classOrCallable, ?string $method = null, array $overrides = []): mixed
     {
-        // Step 1: Resolve callable and reflection
+        // Resolve callable and reflection
         [$objectOrClosure, $reflection] = $this->resolveCallable($classOrCallable, $method);
 
-        // Step 2: Resolve parameters
+        // Resolve parameters
         $params = $reflection->getParameters();
         $resolvedParams = array_map(fn(ReflectionParameter $param) => $this->resolveParameterWithOverrides(
             $param,
             $overrides
         ), $params);
 
-        // Step 3: Invoke the callable
+        // Invoke the callable
         return $reflection instanceof ReflectionMethod
             ? $reflection->invokeArgs($objectOrClosure, $resolvedParams)  // For class methods
             : $reflection->invokeArgs($resolvedParams);  // For closures
@@ -461,7 +455,7 @@ class ServiceContainer implements ContainerInterface
             return [null, new ReflectionFunction($classOrCallable)];
         }
 
-        // If it's neither a class method nor a closure, throw a ContainerException
+        // It's neither a class method nor a closure...
         throw new ContainerException("Unsupported callable type: must be class method or closure.");
     }
 

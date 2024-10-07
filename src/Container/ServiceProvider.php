@@ -10,7 +10,6 @@ abstract class ServiceProvider implements ServiceProviderInterface
 {
     /**
      * Registers services in the container.
-     * This method must be implemented by all concrete service providers.
      *
      * @param ServiceContainer $container
      */
@@ -18,7 +17,6 @@ abstract class ServiceProvider implements ServiceProviderInterface
 
     /**
      * Bootstraps additional setup after registration.
-     * Can be overridden by subclasses if needed.
      *
      * @param ServiceContainer $container
      */

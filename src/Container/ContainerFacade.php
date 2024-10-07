@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Maduser\Argon\Container;
 
 use Closure;
@@ -33,6 +35,19 @@ class ContainerFacade
     }
 
     /**
+     * Binds an interface to a concrete class in the container.
+     *
+     * @param string|array   $interface The interface or array of bindings
+     * @param string|Closure $concrete  The concrete class or closure
+     *
+     * @throws Exception If binding fails
+     */
+    public static function bind(string|array $interface, string|Closure $concrete): void
+    {
+        self::container()->bind($interface, $concrete);
+    }
+
+    /**
      * Gets the current container instance, initializing the application if necessary.
      *
      * @return ServiceContainer The service container instance
@@ -58,19 +73,6 @@ class ContainerFacade
     public static function singleton(string|array $id, string|Closure|null $class = null): void
     {
         self::container()->singleton($id, $class);
-    }
-
-    /**
-     * Binds an interface to a concrete class in the container.
-     *
-     * @param string|array   $interface The interface or array of bindings
-     * @param string|Closure $concrete  The concrete class or closure
-     *
-     * @throws Exception If binding fails
-     */
-    public static function bind(string|array $interface, string|Closure $concrete): void
-    {
-        self::container()->bind($interface, $concrete);
     }
 
     /**
