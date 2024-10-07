@@ -101,7 +101,7 @@ $container->singleton('B', function () use ($container) {
     return $container->get('A');
 });
 
-// This will throw a CircularDependencyException
+// This will throw a ContainerException and show the chain of the disaster
 $container->get('A');
 ```
 
