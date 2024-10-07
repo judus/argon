@@ -2,6 +2,8 @@
 
 A lightweight, PSR-11 compliant dependency injection container.
 
+While it is fully functional, auto-wiring is **not optimized for large scale production environments due to the current reliance on runtime reflection**. Other core features such as manual service binding, lazy loading, singleton handling, and parameter overrides will do just fine for the mid-sized side projects.
+
 ## **Features**
 
 - **PSR-11 Compliant**: Integrates with PSR-11 applications.
