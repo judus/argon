@@ -5,7 +5,7 @@ A lightweight, PSR-11 compliant dependency injection container.
 
 ## **Features**
 
-- **PSR-11 Compliant**: Integrates seamlessly with PSR-11 applications.
+- **PSR-11 Compliant**: Integrates with PSR-11 applications.
 - **Autowiring**: Automatically resolves class dependencies.
 - **Singleton and Transient Services**: Manage shared or independent service instances.
 - **Type Interceptors**: Modify instances at resolution time.
