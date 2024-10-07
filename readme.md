@@ -1,4 +1,3 @@
-
 # **Argon Service Container**
 
 A lightweight, PSR-11 compliant dependency injection container.
@@ -18,14 +17,13 @@ A lightweight, PSR-11 compliant dependency injection container.
 ```bash
 composer require maduser/argon
 ```
-**Reuquires PHP 8.2+** 
+**Requires PHP 8.2+**
 
 ## **Usage**
 
 ### **1. Binding and Resolving Services**
 
-To bind a service, you provide a **service ID** and the class (or closure) responsible for creating the service. You can
-define whether the service is **transient** (new instance every time) or **singleton** (same instance for all requests).
+To bind a service, you provide a **service ID** and the class (or closure) responsible for creating the service. You can define whether the service is **transient** (new instance every time) or **singleton** (same instance for all requests).
 
 ```php
 use Maduser\Argon\Container\ServiceContainer;
@@ -70,8 +68,7 @@ $userService = $container->get(UserService::class);
 
 ### **3. Parameter Overrides**
 
-Need to pass primitive values (like config or custom parameters) into a service? Use **parameter overrides** to inject
-specific values into the constructor.
+Need to pass primitive values (like config or custom parameters) into a service? Use **parameter overrides** to inject specific values into the constructor.
 
 ```php
 class ApiClient {
@@ -101,13 +98,21 @@ $container->singleton('B', function () use ($container) {
     return $container->get('A');
 });
 
-// This will throw a ContainerException and show the chain of the disaster
+// This will throw a ContainerException showing highway to hell
 $container->get('A');
+```
+
+**Note**: Injecting the container itself will cause a circular disaster. I'm aware of the possible "fixes", but I haven't decided which I prefer yet. Here’s the correct way to inject the container:
+
+```php
+$container->bind('YourService', function () use ($container) {
+    return new YourService($container);
+});
 ```
 
 ### **5. Type Interceptors**
 
-Interceptors can be used to modify or decorate instances when they're resolved. 
+Interceptors can be used to modify or decorate instances when they're resolved.
 
 ```php
 class AuthService {
@@ -139,8 +144,7 @@ $authService = $container->get(AuthService::class);
 
 ### **6. Tagging and Retrieving Services**
 
-Tagging allows you to group related services and fetch them as a collection, useful for handling multiple
-implementations or plugins.
+Tagging allows you to group related services and fetch them as a collection, useful for handling multiple implementations or plugins.
 
 ```php
 $container->singleton('logger1', \App\Loggers\FileLogger::class);
@@ -172,11 +176,10 @@ $service = $container->get('expensiveService');
 
 ## **Exception Handling**
 
-The container throws specific exceptions for common issues:
+The container throws specific exceptions with helpful messages for common issues:
 
-- **`CircularDependencyException`**: Thrown when a circular dependency is detected.
-- **`ContainerException`**: Thrown when a service cannot be resolved or an invalid class is provided.
-- **`NotFoundException`**: Thrown when a requested service is not registered in the container.
+- **`ContainerException`**: Thrown when a service cannot be resolved, a class is uninstantiable, a circular dependency is detected, or when an invalid class or configuration is provided.
+- **`NotFoundException`**: Thrown when a requested service is not registered in the container and the class does not exist.
 
 ```php
 // Handling exceptions
@@ -184,6 +187,12 @@ try {
     $container->get('nonExistentService');
 } catch (NotFoundException $e) {
     echo $e->getMessage(); // Service 'nonExistentService' not found.
+}
+
+try {
+    $container->get('UninstantiableClass'); // e.g., an abstract class or circular reference
+} catch (ContainerException $e) {
+    echo $e->getMessage(); // Class 'UninstantiableClass' is not instantiable, or circular dependency detected.
 }
 ```
 
