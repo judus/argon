@@ -11,6 +11,7 @@ A lightweight, PSR-11 compliant dependency injection container.
 - **Parameter Overrides**: Customize service construction with primitive or custom values.
 - **Lazy Loading**: Services are only instantiated when first accessed.
 - **Circular Dependency Detection**: Automatically detects and prevents circular dependencies.
+- **Known Limitations**: Current limitations on performance and missing features (see below).
 
 ## **Installation**
 
@@ -195,6 +196,27 @@ try {
     echo $e->getMessage(); // Class 'UninstantiableClass' is not instantiable, or circular dependency detected.
 }
 ```
+
+## **Known Limitations**
+
+1. **Reflection Overhead**:
+   The container currently relies heavily on PHP's reflection APIs for autowiring, which can cause performance degradation, especially in large applications.
+
+2. **No Compile Step**:
+   Service definitions are resolved at runtime, which slows down service instantiation compared to containers that compile services into PHP code.
+
+3. **Basic Circular Dependency Handling**:
+   Circular dependencies are detected but not resolved, resulting in exceptions. Planned improvements include lazy-loaded proxies to handle circular references smoothly.
+
+---
+
+### **Todos**
+
+- **Compiled Service Definitions**: Implement pre-compiled service definitions to eliminate runtime reflection and improve performance.
+- **Dependency Graph Optimization**: Handle complex service dependency graphs more efficiently during the compilation process.
+- **Improved Circular Dependency Handling**: Use proxies or lazy services to resolve circular dependencies without throwing exceptions.
+- **Expanded Testing Suite**: Write unit tests for more complex edge cases, ensuring stability and reliability in various conditions.
+- **Optimize Closure Handling**: Refactor the handling of closures to reduce overhead when resolving services defined as closures.
 
 ## **Tests**
 
