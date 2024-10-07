@@ -15,12 +15,10 @@ A lightweight, PSR-11 compliant dependency injection container.
 
 ## **Installation**
 
-For your personal use, clone it into your project:
-
 ```bash
 composer require maduser/argon-container
 ```
-**PHP 8.2+** 
+**Reuquires PHP 8.2+** 
 
 ## **Usage**
 
