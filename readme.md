@@ -220,6 +220,12 @@ try {
 - **Expanded Testing Suite**: Write unit tests for more complex edge cases, ensuring stability and reliability in various conditions.
 - **Optimize Closure Handling**: Refactor the handling of closures to reduce overhead when resolving services defined as closures.
 
+### **Ultimate goal**
+
+- Optimized for ease of use, while still offering good performance, e.g. no reflections during runtime
+- Automatic compilation and invalidation - hassle free performance out-of-the-box, "Don't bother with sh**" approach for the end user
+- Learn something and have fun :)
+
 ## **Tests**
 
 Wanna run the tests? Clone the repository and run:
