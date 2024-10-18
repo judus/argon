@@ -223,7 +223,6 @@ try {
 ### **Ultimate goal**
 
 - Optimized for ease of use, while still offering good performance, e.g. no reflections during runtime
-- Automatic compilation and invalidation - hassle free performance out-of-the-box, "Don't bother with sh**" approach for the end user
 - Learn something and have fun :)
 
 ## **Tests**
