@@ -117,6 +117,7 @@ $container->bind('YourService', function () use ($container) {
 
 Interceptors can be used to modify or decorate instances when they're resolved.
 
+**Example 1:**
 ```php
 class AuthService {
     private string $user;
@@ -144,6 +145,40 @@ $container->registerTypeInterceptor(new AuthInterceptor());
 $authService = $container->get(AuthService::class);
 // The AuthService now has 'interceptedUser' set
 ```
+**Example 2:**
+You could easily replicate Laravel's request validation with this pattern (instead of validating in the middleware pipeline you'd validate right after object resolution)
+
+```php
+interface FormRequest
+{
+    public function validate(): void;
+}
+
+class BlogPostRequest implements FormRequest 
+{
+    public function validate(): void
+    {
+        // Do your validation, throw exceptions....
+    }
+}
+
+class RequestValidatorInterceptor implements TypeInterceptorInterface
+{
+    public function supports(object $instance): bool
+    {
+        return $instance instanceof FormRequest;
+    }
+
+    public function intercept(object $instance): object
+    {
+        // You could try/catch and wrap exceptions here
+        $instance->validate();
+
+        return $instance;
+    }
+}
+````
+
 
 ### **6. Tagging and Retrieving Services**
 
