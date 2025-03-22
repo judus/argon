@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
-use Maduser\Argon\Container\Exceptions\CircularDependencyException;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ParameterOverrideRegistry;
@@ -21,10 +20,16 @@ use Tests\Mocks\TestInterface;
 use Tests\Mocks\TestService;
 use Tests\Mocks\TestServiceWithDependency;
 use Tests\Mocks\TestServiceWithMultipleParams;
+use Tests\Mocks\TestServiceWithNonExistentDependency;
 use Tests\Mocks\UninstantiableClass;
 
 class ServiceContainerTest extends TestCase
 {
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testSingletonServiceBinding()
     {
         $container = new ServiceContainer();
@@ -36,10 +41,15 @@ class ServiceContainerTest extends TestCase
         $this->assertSame($instance1, $instance2, 'Singleton services should return the same instance.');
     }
 
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testTransientServiceBinding()
     {
         $container = new ServiceContainer();
-        $container->bind('service', fn() => new stdClass(), false);
+        $container->bind('service', fn() => new stdClass());
 
         $instance1 = $container->get('service');
         $instance2 = $container->get('service');
@@ -47,10 +57,15 @@ class ServiceContainerTest extends TestCase
         $this->assertNotSame($instance1, $instance2, 'Transient services should return different instances.');
     }
 
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testRegisterFactorySingleton()
     {
         $container = new ServiceContainer();
-        $container->registerFactory('factory', fn() => new stdClass(), true);
+        $container->registerFactory('factory', fn() => new stdClass());
 
         $instance1 = $container->get('factory');
         $instance2 = $container->get('factory');
@@ -62,6 +77,11 @@ class ServiceContainerTest extends TestCase
         );
     }
 
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testRegisterFactoryTransient()
     {
         $container = new ServiceContainer();
@@ -77,6 +97,11 @@ class ServiceContainerTest extends TestCase
         );
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testCircularDependencyDetection()
     {
         $container = new ServiceContainer();
@@ -95,6 +120,11 @@ class ServiceContainerTest extends TestCase
         $container->get('A');
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testParameterResolutionWithOverride()
     {
         $overrideRegistry = $this->createMock(ParameterOverrideRegistry::class);
@@ -116,7 +146,11 @@ class ServiceContainerTest extends TestCase
         $this->assertEquals('overriddenValue', $resolvedService->getDependency());
     }
 
-
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testTaggingAndRetrievingServices()
     {
         $container = new ServiceContainer();
@@ -133,6 +167,10 @@ class ServiceContainerTest extends TestCase
         $this->assertCount(1, $groupB, 'GroupB should contain one service.');
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testThrowsNotFoundException()
     {
         $this->expectException(NotFoundException::class);
@@ -141,6 +179,10 @@ class ServiceContainerTest extends TestCase
         $container->get('nonExistentService');
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
     public function testThrowsContainerExceptionForUninstantiableClass()
     {
         $this->expectException(ContainerException::class);
@@ -156,6 +198,10 @@ class ServiceContainerTest extends TestCase
         $container->bind('invalidService', 'NonExistentClass');
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
     public function testMissingParameterOverrideThrowsException()
     {
         $overrideRegistry = $this->createMock(ParameterOverrideRegistry::class);
@@ -167,6 +213,11 @@ class ServiceContainerTest extends TestCase
         $container->get(TestService::class);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testTypeInterceptorModifiesResolvedInstance()
     {
         // Create a mock for the correct interface
@@ -209,6 +260,11 @@ class ServiceContainerTest extends TestCase
         $this->assertCount(1, $reflectionProperty->getValue($container));
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testMultipleParameterOverrides()
     {
         $overrideRegistry = $this->createMock(ParameterOverrideRegistry::class);
@@ -223,7 +279,11 @@ class ServiceContainerTest extends TestCase
         $this->assertEquals('override2', $resolvedService->getParam2());
     }
 
-
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testCallResolvesMethodDependencies()
     {
         $container = new ServiceContainer();
@@ -239,7 +299,11 @@ class ServiceContainerTest extends TestCase
         $this->assertEquals('defaultValue', $result);
     }
 
-
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testCallResolvesMethodWithOverride()
     {
         $container = new ServiceContainer();
@@ -257,6 +321,10 @@ class ServiceContainerTest extends TestCase
         $this->assertEquals('overrideValue', $result);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
     public function testThrowsContainerExceptionForNonInstantiableClass()
     {
         $container = new ServiceContainer();
@@ -269,10 +337,14 @@ class ServiceContainerTest extends TestCase
         );
 
         // Trigger the exception by trying to resolve the abstract UninstantiableClass
-        $container->get(\Tests\Mocks\UninstantiableClass::class);
+        $container->get(UninstantiableClass::class);
     }
 
-
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testThrowsContainerExceptionForCircularDependency()
     {
         $container = new ServiceContainer();
@@ -296,6 +368,10 @@ class ServiceContainerTest extends TestCase
         }
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
     public function testThrowsContainerExceptionForUnresolvedPrimitive()
     {
         $container = new ServiceContainer();
@@ -307,9 +383,13 @@ class ServiceContainerTest extends TestCase
         );
 
         // Trigger the exception by calling the method that has a primitive parameter
-        $container->get(\Tests\Mocks\TestService::class);
+        $container->get(TestService::class);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testThrowsNotFoundExceptionForNonExistentDependency()
     {
         $container = new ServiceContainer();
@@ -319,9 +399,14 @@ class ServiceContainerTest extends TestCase
         $this->expectExceptionMessage("Service 'Tests\\Mocks\\NonExistentDependency' not found.");
 
         // Trigger the exception by attempting to resolve the service
-        $container->get(\Tests\Mocks\TestServiceWithNonExistentDependency::class);
+        $container->get(TestServiceWithNonExistentDependency::class);
     }
 
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testSingletonReturnsSameInstance()
     {
         $container = new ServiceContainer();
@@ -337,12 +422,17 @@ class ServiceContainerTest extends TestCase
         $this->assertSame($instance1, $instance2, 'Singleton service should return the same instance.');
     }
 
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testTransientReturnsDifferentInstances()
     {
         $container = new ServiceContainer();
 
         // Bind a non-singleton service
-        $container->bind('service', fn() => new stdClass(), false);
+        $container->bind('service', fn() => new stdClass());
 
         // Fetch the service twice
         $instance1 = $container->get('service');
@@ -352,6 +442,11 @@ class ServiceContainerTest extends TestCase
         $this->assertNotSame($instance1, $instance2, 'Transient service should return different instances.');
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testServiceReceivesDependencyThroughAutowiring()
     {
         $container = new ServiceContainer();
@@ -363,6 +458,11 @@ class ServiceContainerTest extends TestCase
         $this->assertInstanceOf(TestDependency::class, $service->getDependency());
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testServiceReceivesDependencyWithoutAutowiring()
     {
         $container = new ServiceContainer();
@@ -380,6 +480,11 @@ class ServiceContainerTest extends TestCase
         $this->assertInstanceOf(TestDependency::class, $service->getDependency());
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testInterfaceToClassResolution()
     {
         $container = new ServiceContainer();
@@ -394,6 +499,10 @@ class ServiceContainerTest extends TestCase
         $this->assertInstanceOf(TestConcreteClass::class, $instance);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testInterfaceResolutionThrowsExceptionIfNotBound()
     {
         $container = new ServiceContainer();
@@ -403,6 +512,11 @@ class ServiceContainerTest extends TestCase
         $container->get(TestInterface::class);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testConcreteClassIsResolved()
     {
         $container = new ServiceContainer();
@@ -428,6 +542,11 @@ class ServiceContainerTest extends TestCase
         $container->bind(TestServiceWithDependency::class, TestServiceWithDependency::class);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testAutowiringWithMultipleDependencies()
     {
         $overrideRegistry = $this->createMock(ParameterOverrideRegistry::class);
@@ -446,6 +565,11 @@ class ServiceContainerTest extends TestCase
         $this->assertEquals(123, $service->getParam2());
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testRecursiveDependencyResolution()
     {
         $container = new ServiceContainer();
@@ -462,6 +586,11 @@ class ServiceContainerTest extends TestCase
         $this->assertInstanceOf(TestDependency::class, $service->getDependency());
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testPrimitiveParameterResolutionWithOverrides()
     {
         $overrideRegistry = $this->createMock(ParameterOverrideRegistry::class);
@@ -476,6 +605,11 @@ class ServiceContainerTest extends TestCase
         $this->assertEquals(123, $service->getParam2());
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testLazyLoadingOfServices()
     {
         $container = new ServiceContainer();
@@ -500,6 +634,11 @@ class ServiceContainerTest extends TestCase
         $this->assertInstanceOf(TestService::class, $service);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testAutowiringWithEmptyConstructor()
     {
         $container = new ServiceContainer();
@@ -508,6 +647,11 @@ class ServiceContainerTest extends TestCase
         $this->assertInstanceOf(ClassWithEmptyConstructor::class, $instance);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws NotFoundException
+     * @throws ContainerException
+     */
     public function testMultipleServicesResolution()
     {
         $container = new ServiceContainer();
