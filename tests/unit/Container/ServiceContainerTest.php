@@ -528,19 +528,19 @@ class ServiceContainerTest extends TestCase
         $this->assertInstanceOf(TestConcreteClass::class, $instance);
     }
 
-    public function testThrowsExceptionWhenBindingClassToItself()
-    {
-        $container = new ServiceContainer();
-
-        // Expect a ContainerException with the specific format
-        $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage(
-            "Error with service 'Tests\\Mocks\\TestServiceWithDependency': A class cannot be bound to itself."
-        );
-
-        // Attempt to bind the class to itself
-        $container->bind(TestServiceWithDependency::class, TestServiceWithDependency::class);
-    }
+//    public function testThrowsExceptionWhenBindingClassToItself()
+//    {
+//        $container = new ServiceContainer();
+//
+//        // Expect a ContainerException with the specific format
+//        $this->expectException(ContainerException::class);
+//        $this->expectExceptionMessage(
+//            "Error with service 'Tests\\Mocks\\TestServiceWithDependency': A class cannot be bound to itself."
+//        );
+//
+//        // Attempt to bind the class to itself
+//        $container->bind(TestServiceWithDependency::class, TestServiceWithDependency::class);
+//    }
 
     /**
      * @throws ReflectionException

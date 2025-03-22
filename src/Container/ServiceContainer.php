@@ -71,6 +71,11 @@ class ServiceContainer implements ContainerInterface
         $this->overrideRegistry = $overrideRegistry;
     }
 
+    public function getServices(): array
+    {
+        return $this->services;
+    }
+
     /**
      * Registers a service provider and triggers the registration method.
      *
@@ -130,9 +135,9 @@ class ServiceContainer implements ContainerInterface
      */
     public function bind(string $id, Closure|string $concrete, bool $isSingleton = false): void
     {
-        if ($id === $concrete) {
-            throw ContainerException::fromServiceId($id, "A class cannot be bound to itself.");
-        }
+//        if ($id === $concrete) {
+//            throw ContainerException::fromServiceId($id, "A class cannot be bound to itself.");
+//        }
 
         if (is_string($concrete) && !class_exists($concrete)) {
             throw ContainerException::fromServiceId($id, "Class '$concrete' does not exist.");
