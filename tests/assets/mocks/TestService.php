@@ -23,4 +23,3 @@ class TestService
         return $this->dependency;
     }
 }
-

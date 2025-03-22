@@ -55,7 +55,11 @@ class ServiceContainerTest extends TestCase
         $instance1 = $container->get('factory');
         $instance2 = $container->get('factory');
 
-        $this->assertSame($instance1, $instance2, 'Factory with singleton flag should return the same instance.');
+        $this->assertSame(
+            $instance1,
+            $instance2,
+            'Factory with singleton flag should return the same instance.'
+        );
     }
 
     public function testRegisterFactoryTransient()
@@ -66,7 +70,11 @@ class ServiceContainerTest extends TestCase
         $instance1 = $container->get('factory');
         $instance2 = $container->get('factory');
 
-        $this->assertNotSame($instance1, $instance2, 'Factory without singleton flag should return different instances.');
+        $this->assertNotSame(
+            $instance1,
+            $instance2,
+            'Factory without singleton flag should return different instances.'
+        );
     }
 
     public function testCircularDependencyDetection()
@@ -255,7 +263,10 @@ class ServiceContainerTest extends TestCase
 
         // Expect a ContainerException for non-instantiable classes like UninstantiableClass
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage("Class 'Tests\Mocks\UninstantiableClass' (requested as 'Tests\Mocks\UninstantiableClass') is not instantiable.");
+        $this->expectExceptionMessage(
+            "Class 'Tests\Mocks\UninstantiableClass' " .
+            "(requested as 'Tests\Mocks\UninstantiableClass') is not instantiable."
+        );
 
         // Trigger the exception by trying to resolve the abstract UninstantiableClass
         $container->get(\Tests\Mocks\UninstantiableClass::class);
@@ -291,7 +302,9 @@ class ServiceContainerTest extends TestCase
 
         // Expect a ContainerException with the fully qualified class name
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage("Cannot resolve primitive type parameter 'dependency' in service 'Tests\Mocks\TestService'.");
+        $this->expectExceptionMessage(
+            "Cannot resolve primitive type parameter 'dependency' in service 'Tests\Mocks\TestService'."
+        );
 
         // Trigger the exception by calling the method that has a primitive parameter
         $container->get(\Tests\Mocks\TestService::class);
@@ -355,7 +368,10 @@ class ServiceContainerTest extends TestCase
         $container = new ServiceContainer();
 
         // Manually bind the service with its dependency
-        $container->bind(TestServiceWithDependency::class, fn() => new TestServiceWithDependency(new TestDependency()));
+        $container->bind(
+            TestServiceWithDependency::class,
+            fn() => new TestServiceWithDependency(new TestDependency())
+        );
 
         // Fetch the service
         $service = $container->get(TestServiceWithDependency::class);
@@ -404,7 +420,9 @@ class ServiceContainerTest extends TestCase
 
         // Expect a ContainerException with the specific format
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage("Error with service 'Tests\\Mocks\\TestServiceWithDependency': A class cannot be bound to itself.");
+        $this->expectExceptionMessage(
+            "Error with service 'Tests\\Mocks\\TestServiceWithDependency': A class cannot be bound to itself."
+        );
 
         // Attempt to bind the class to itself
         $container->bind(TestServiceWithDependency::class, TestServiceWithDependency::class);
@@ -433,7 +451,10 @@ class ServiceContainerTest extends TestCase
         $container = new ServiceContainer();
 
         // Assuming TestServiceWithDependency depends on TestDependency
-        $container->bind(TestServiceWithDependency::class, fn() => new TestServiceWithDependency(new TestDependency()));
+        $container->bind(
+            TestServiceWithDependency::class,
+            fn() => new TestServiceWithDependency(new TestDependency())
+        );
 
         // Fetching the outermost service should recursively resolve all dependencies
         $service = $container->get(TestServiceWithDependency::class);
@@ -500,5 +521,4 @@ class ServiceContainerTest extends TestCase
             $this->assertInstanceOf(stdClass::class, $service);
         }
     }
-
 }
