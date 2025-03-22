@@ -127,6 +127,7 @@ class App extends ContainerFacade
 
     /**
      * Starts a new container context.
+     * @throws Exception
      */
     protected static function startContext(): void
     {
@@ -150,6 +151,7 @@ class App extends ContainerFacade
 
     /**
      * Run the application.
+     * @throws Exception
      */
     public function run(): void
     {
@@ -168,7 +170,7 @@ class App extends ContainerFacade
             self::$booted = true;
         }
 
-        self::getKernel()->handle(null);
+        self::getKernel()->handle();
     }
 
     /**
