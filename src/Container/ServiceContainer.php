@@ -7,7 +7,6 @@ namespace Maduser\Argon\Container;
 use Closure;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
-use Maduser\Argon\Container\Exceptions\CircularDependencyException;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Psr\Container\ContainerInterface;
@@ -55,6 +54,11 @@ class ServiceContainer implements ContainerInterface
      * @var ParameterOverrideRegistry Registry that manages global parameter overrides.
      */
     private ParameterOverrideRegistry $overrideRegistry;
+
+    /**
+     * @var array
+     */
+    private array $tags = [];
 
     /**
      * Constructor for ServiceContainer.
@@ -108,6 +112,7 @@ class ServiceContainer implements ContainerInterface
      * @param string $id The service identifier.
      * @param Closure|string $concrete The concrete class or closure to instantiate.
      * @return void
+     * @throws ContainerException
      */
     public function singleton(string $id, Closure|string $concrete): void
     {
@@ -180,6 +185,9 @@ class ServiceContainer implements ContainerInterface
      * @param string $tag The tag to search for
      *
      * @return array The services associated with the given tag
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
      */
     public function getTaggedServices(string $tag): array
     {
@@ -199,7 +207,9 @@ class ServiceContainer implements ContainerInterface
      *
      * @param string $id The service identifier.
      * @return object The resolved service.
-     * @throws NotFoundException If the service is not found.
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
      */
     public function get(string $id): object
     {
@@ -209,11 +219,13 @@ class ServiceContainer implements ContainerInterface
     /**
      * Resolves a service by its identifier, optionally applying overrides.
      *
-     * @param string $id        The service identifier.
-     * @param array  $overrides Optional parameter overrides.
+     * @param string $id The service identifier.
+     * @param array $overrides Optional parameter overrides.
      *
      * @return object The resolved service instance.
-     * @throws ContainerException If the service is not found.
+     * @throws ContainerException If the service is not instantiable.
+     * @throws NotFoundException If the service is not found.
+     * @throws ReflectionException
      */
     private function resolveService(string $id, array $overrides = []): object
     {
@@ -291,6 +303,7 @@ class ServiceContainer implements ContainerInterface
      *
      * @param string $className The class name.
      * @return ReflectionClass The cached or newly created ReflectionClass.
+     * @throws ReflectionException
      */
     private function getReflection(string $className): ReflectionClass
     {
@@ -304,6 +317,8 @@ class ServiceContainer implements ContainerInterface
      * @param array $overrides Optional parameter overrides.
      * @return object The instantiated class.
      * @throws ContainerException If the class cannot be instantiated.
+     * @throws ReflectionException
+     * @throws NotFoundException
      */
     private function resolveClass(string $className, array $overrides = []): object
     {
@@ -351,6 +366,9 @@ class ServiceContainer implements ContainerInterface
      * @param ReflectionParameter $param The reflection parameter to resolve.
      * @param array $overrides Optional parameter overrides.
      * @return mixed The resolved parameter value.
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
      */
     private function resolveParameterWithOverrides(ReflectionParameter $param, array $overrides = []): mixed
     {
@@ -415,12 +433,13 @@ class ServiceContainer implements ContainerInterface
      * Resolves and calls a method on a given class, handling all parameter injections.
      *
      * @param object|string $classOrCallable
-     * @param string|null   $method The method to be called.
-     * @param array         $overrides
+     * @param string|null $method The method to be called.
+     * @param array $overrides
      *
      * @return mixed The result of the method invocation.
      * @throws ContainerException
      * @throws ReflectionException
+     * @throws NotFoundException
      */
     public function call(object|string $classOrCallable, ?string $method = null, array $overrides = []): mixed
     {
@@ -440,6 +459,11 @@ class ServiceContainer implements ContainerInterface
             : $reflection->invokeArgs($resolvedParams);  // For closures
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     private function resolveCallable(object|string $classOrCallable, ?string $method): array
     {
         // If a method is provided, it's a class method
@@ -466,6 +490,8 @@ class ServiceContainer implements ContainerInterface
      *
      * @return mixed The resolved parameter value.
      * @throws ContainerException If the parameter is a primitive type and cannot be resolved.
+     * @throws ReflectionException
+     * @throws NotFoundException
      */
     private function resolveParameter(ReflectionParameter $param): mixed
     {
