@@ -107,7 +107,6 @@ abstract class Kernel
      * @param string $errstr
      * @param string $errfile
      * @param int    $errline
-     * @param array $errcontext
      *
      * @return bool|null
      */
@@ -115,8 +114,7 @@ abstract class Kernel
         int $errno,
         string $errstr,
         string $errfile,
-        int $errline,
-        array $errcontext = []
+        int $errline
     ): ?bool {
         // Default error handling logic
         echo "An error occurred: [$errno] $errstr in $errfile on line $errline" . PHP_EOL;
