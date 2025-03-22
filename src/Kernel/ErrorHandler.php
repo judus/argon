@@ -55,7 +55,7 @@ class ErrorHandler
         array $errcontext = []
     ): ?bool {
         // Handle the error and return true to indicate that the PHP internal error handler should not handle it.
-        return $this->application->handleError($errno, $errstr, $errfile, $errline, $errcontext);
+        return $this->application->handleError($errno, $errstr, $errfile, $errline);
     }
 
     /**
