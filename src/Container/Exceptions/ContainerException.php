@@ -14,8 +14,7 @@ use Psr\Container\ContainerExceptionInterface;
  */
 class ContainerException extends Exception implements ContainerExceptionInterface
 {
-    private string $serviceId;
-    private string $details;
+    private ?string $serviceId = null;
 
     public static function fromServiceId(string $id, string $message): self
     {
@@ -53,7 +52,7 @@ class ContainerException extends Exception implements ContainerExceptionInterfac
         return new self("Unresolvable dependency '{$paramName}' in service '{$className}'.");
     }
 
-    public function getServiceId(): string
+    public function getServiceId(): ?string
     {
         return $this->serviceId;
     }
