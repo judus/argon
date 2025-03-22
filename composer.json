@@ -25,7 +25,7 @@
   "autoload-dev": {
     "psr-4": {
       "Tests\\App\\": "tests/app/",
-      "Tests\\Mocks\\": "tests/assets/mocks/",
+      "Tests\\Mocks\\": "tests/resources/mocks/",
       "Tests\\Unit\\": "tests/unit/",
       "Tests\\Integration\\": "tests/integration/",
       "Tests\\Environment\\": "tests/environment/"
