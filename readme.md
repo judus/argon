@@ -13,7 +13,9 @@ Argon focuses on ease of use without compromising features, performance, or flex
 - **🧠 Autowiring**: Automatically resolve dependencies using constructor signatures.
 - **♻️ Singleton & Transient Services**: Use shared or separate instances per request.
 - **🧩 Parameter Overrides**: Inject primitives and custom values into your services.
+- **🔁 Contextual Bindings**: Different dependencies per consumer class.
 - **🛠 Type Interceptors**: Apply behavior-modifying logic when services are resolved.
+- **❓ Conditional Resolution**: Safely access optional services using `if()`.
 - **⏱ Lazy Loading**: Services are only instantiated when first accessed.
 - **🚨 Circular Dependency Detection**: Detects and protects against infinite resolution loops.
 
@@ -85,8 +87,36 @@ $container->getParameters()->set(ApiClient::class, [
 
 $apiClient = $container->get(ApiClient::class); // Uses parameters above
 ```
+### 4. Contextual Bindings
 
-### 4. Type Interceptors
+```php
+interface LoggerInterface {}
+class FileLogger implements LoggerInterface {}
+class DatabaseLogger implements LoggerInterface {}
+
+class ServiceA {
+    public function __construct(LoggerInterface $logger) {}
+}
+
+class ServiceB {
+    public function __construct(LoggerInterface $logger) {}
+}
+
+$container->for(ServiceA::class)
+    ->set(LoggerInterface::class, FileLogger::class);
+
+$container->for(ServiceB::class)
+    ->set(LoggerInterface::class, DatabaseLogger::class);
+```
+
+Closures work too:
+
+```php
+$container->for(ServiceA::class)
+    ->set(LoggerInterface::class, fn() => new FileLogger('/tmp/log.txt'));
+```
+
+### 5. Type Interceptors
 
 ```php
 class MyService {
@@ -106,7 +136,7 @@ $container->registerTypeInterceptor(MyInterceptor::class);
 $container->get(MyService::class)->flagged; // true
 ```
 
-### 5. Tags
+### 6. Tags
 
 ```php
 $container->singleton(FileLogger::class);
@@ -122,7 +152,16 @@ foreach ($loggers as $logger) {
 }
 ```
 
-### 6. Compiling the Container
+### 7. Conditional Service Access (`if()`)
+
+```php
+// Suppose SomeLogger is optional
+$container->if(SomeLogger::class)->log('Only if logger exists');
+
+// This won't throw, even if SomeLogger wasn't registered
+```
+
+### 8. Compiling the Container
 
 ```php
 $file = __DIR__ . '/CompiledContainer.php';
