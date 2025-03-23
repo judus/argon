@@ -120,31 +120,29 @@ class ServiceContainer implements ContainerInterface
      * Registers a singleton service in the container.
      *
      * @param string $id The service identifier.
-     * @param Closure|string $concrete The concrete class or closure to instantiate.
+     * @param Closure|string|null $concrete The concrete class or closure to instantiate.
      * @return void
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string $concrete): void
+    public function singleton(string $id, Closure|string|null $concrete = null): void
     {
-        $this->bind($id, $concrete, true);
+        $this->bind($id, $concrete ?? $id, true);
     }
 
     /**
      * Binds a service (transient or singleton) to the container.
      *
      * @param string $id The service identifier.
-     * @param Closure|string $concrete The concrete class or closure to instantiate.
+     * @param Closure|string|null $concrete The concrete class or closure to instantiate.
      * @param bool $isSingleton If true, the service will be treated as a singleton.
-     * @throws ContainerException If the class does not exist.
      * @return void
+     * @throws ContainerException If the class does not exist.
      */
-    public function bind(string $id, Closure|string $concrete, bool $isSingleton = false): void
+    public function bind(string $id, Closure|string|null $concrete = null, bool $isSingleton = false): void
     {
-//        if ($id === $concrete) {
-//            throw ContainerException::fromServiceId($id, "A class cannot be bound to itself.");
-//        }
+        $concrete ??= $id;
 
-        if (is_string($concrete) && !class_exists($concrete)) {
+        if (!($concrete instanceof Closure) && !class_exists($concrete)) {
             throw ContainerException::fromServiceId($id, "Class '$concrete' does not exist.");
         }
 
@@ -332,15 +330,21 @@ class ServiceContainer implements ContainerInterface
      */
     private function resolveClass(string $className, array $overrides = []): object
     {
-        // Check if the className is bound to a concrete class
+        // Check if the className is bound to a different concrete class
         if (isset($this->services[$className])) {
             $descriptor = $this->services[$className];
             $concrete = $descriptor->getConcrete();
 
-            // If the concrete is a closure, invoke it and return
-            return $concrete instanceof Closure
-                ? $concrete()
-                : $this->resolveClass($concrete, $overrides);
+            if ($concrete instanceof Closure) {
+                return $concrete();
+            }
+
+            // Only recurse if concrete is NOT the same as className
+            if ($concrete !== $className) {
+                return $this->resolveClass($concrete, $overrides);
+            }
+
+            // Else: fall through to regular instantiation logic below
         }
 
         $reflection = $this->getReflection($className);
