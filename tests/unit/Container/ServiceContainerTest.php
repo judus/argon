@@ -7,7 +7,7 @@ namespace Tests\Unit\Container;
 use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ParameterOverrideRegistry;
+use Maduser\Argon\Container\ParameterRegistry;
 use Maduser\Argon\Container\ServiceContainer;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
@@ -127,16 +127,16 @@ class ServiceContainerTest extends TestCase
      */
     public function testParameterResolutionWithOverride()
     {
-        $overrideRegistry = $this->createMock(ParameterOverrideRegistry::class);
+        $parameters = $this->createMock(ParameterRegistry::class);
 
         // Mock the override for the 'dependency' parameter in TestService
-        $overrideRegistry->expects($this->once())
-            ->method('getOverridesForClass')
+        $parameters->expects($this->once())
+            ->method('get')
             ->with(TestService::class)
             ->willReturn(['dependency' => 'overriddenValue']);
 
         // Create the container with the mocked override registry
-        $container = new ServiceContainer($overrideRegistry);
+        $container = new ServiceContainer($parameters);
 
         // No need to bind TestService to itself. Just let autowiring resolve it.
         // Resolve the service and assert the override is applied
@@ -204,10 +204,10 @@ class ServiceContainerTest extends TestCase
      */
     public function testMissingParameterOverrideThrowsException()
     {
-        $overrideRegistry = $this->createMock(ParameterOverrideRegistry::class);
-        $overrideRegistry->method('getOverridesForClass')->willReturn([]);
+        $parameters = $this->createMock(ParameterRegistry::class);
+        $parameters->method('get')->willReturn([]);
 
-        $container = new ServiceContainer($overrideRegistry);
+        $container = new ServiceContainer($parameters);
 
         $this->expectException(ContainerException::class);
         $container->get(TestService::class);
@@ -267,11 +267,11 @@ class ServiceContainerTest extends TestCase
      */
     public function testMultipleParameterOverrides()
     {
-        $overrideRegistry = $this->createMock(ParameterOverrideRegistry::class);
-        $overrideRegistry->method('getOverridesForClass')
+        $parameters = $this->createMock(ParameterRegistry::class);
+        $parameters->method('get')
             ->willReturn(['param1' => 'override1', 'param2' => 'override2']);
 
-        $container = new ServiceContainer($overrideRegistry);
+        $container = new ServiceContainer($parameters);
 
         $resolvedService = $container->get(TestServiceWithMultipleParams::class);
 
@@ -551,14 +551,14 @@ class ServiceContainerTest extends TestCase
      */
     public function testAutowiringWithMultipleDependencies()
     {
-        $overrideRegistry = $this->createMock(ParameterOverrideRegistry::class);
-        $overrideRegistry->method('getOverridesForClass')
+        $parameters = $this->createMock(ParameterRegistry::class);
+        $parameters->method('get')
             ->willReturn([
                 'param1' => 'stringValue', // Override for string param
                 'param2' => 123            // Override for int param
             ]);
 
-        $container = new ServiceContainer($overrideRegistry);
+        $container = new ServiceContainer($parameters);
 
         // Test the service resolution with overrides
         $service = $container->get(TestServiceWithMultipleParams::class);
@@ -595,11 +595,11 @@ class ServiceContainerTest extends TestCase
      */
     public function testPrimitiveParameterResolutionWithOverrides()
     {
-        $overrideRegistry = $this->createMock(ParameterOverrideRegistry::class);
-        $overrideRegistry->method('getOverridesForClass')
+        $parameters = $this->createMock(ParameterRegistry::class);
+        $parameters->method('get')
             ->willReturn(['param1' => 'override1', 'param2' => 123]);
 
-        $container = new ServiceContainer($overrideRegistry);
+        $container = new ServiceContainer($parameters);
 
         $service = $container->get(TestServiceWithMultipleParams::class);
 

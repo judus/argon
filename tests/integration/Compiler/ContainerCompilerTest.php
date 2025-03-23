@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Compiler\Mocks\Mailer;
+use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
 
 class ContainerCompilerTest extends TestCase
 {
@@ -99,9 +100,39 @@ class ContainerCompilerTest extends TestCase
     }
 
     /**
+     * @throws ContainerException
      * @throws NotFoundException
      * @throws ReflectionException
+     */
+    public function testCompiledContainerResolvesWithPrimitiveOverrides(): void
+    {
+        $container = new ServiceContainer();
+
+        // Set primitive parameter overrides before compiling
+        $container->getParameters()->set(TestServiceWithMultipleParams::class, [
+            'param1' => 'compiled-override',
+            'param2' => 99,
+        ]);
+
+        // Bind the service
+        $container->bind(TestServiceWithMultipleParams::class);
+
+        // Compile and load container
+        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerE');
+
+        // Resolve and assert
+        /** @var TestServiceWithMultipleParams $service */
+        $service = $compiled->get(TestServiceWithMultipleParams::class);
+
+        $this->assertEquals('compiled-override', $service->getParam1());
+        $this->assertEquals(99, $service->getParam2());
+    }
+
+
+    /**
      * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
      */
     public function testCompiledContainerPreservesTags(): void
     {

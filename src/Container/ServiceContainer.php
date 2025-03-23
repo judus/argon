@@ -51,9 +51,9 @@ class ServiceContainer implements ContainerInterface
     private array $reflectionCache = [];
 
     /**
-     * @var ParameterOverrideRegistry Registry that manages global parameter overrides.
+     * @var ParameterRegistry Registry that manages global parameter overrides.
      */
-    private ParameterOverrideRegistry $overrideRegistry;
+    private ParameterRegistry $parameters;
 
     /**
      * @var array
@@ -63,12 +63,12 @@ class ServiceContainer implements ContainerInterface
     /**
      * Constructor for ServiceContainer.
      *
-     * @param ParameterOverrideRegistry $overrideRegistry Registry for managing parameter overrides.
+     * @param ParameterRegistry $parameterRegistry Registry for managing parameter overrides.
      */
     public function __construct(
-        ParameterOverrideRegistry $overrideRegistry = new ParameterOverrideRegistry()
+        ParameterRegistry $parameterRegistry = new ParameterRegistry()
     ) {
-        $this->overrideRegistry = $overrideRegistry;
+        $this->parameters = $parameterRegistry;
     }
 
     public function getServices(): array
@@ -79,6 +79,11 @@ class ServiceContainer implements ContainerInterface
     public function getTags(): array
     {
         return $this->tags;
+    }
+
+    public function getParameters(): ParameterRegistry
+    {
+        return $this->parameters;
     }
 
     /**
@@ -228,14 +233,14 @@ class ServiceContainer implements ContainerInterface
      * Resolves a service by its identifier, optionally applying overrides.
      *
      * @param string $id The service identifier.
-     * @param array $overrides Optional parameter overrides.
+     * @param array $parameters Optional parameter overrides.
      *
      * @return object The resolved service instance.
      * @throws ContainerException If the service is not instantiable.
      * @throws NotFoundException If the service is not found.
      * @throws ReflectionException
      */
-    private function resolveService(string $id, array $overrides = []): object
+    private function resolveService(string $id, array $parameters = []): object
     {
         $this->checkCircularDependency($id);
 
@@ -248,7 +253,7 @@ class ServiceContainer implements ContainerInterface
                     throw ContainerException::forNonInstantiableClass($id, $reflection->getName());
                 }
 
-                return $this->resolveClass($id, $overrides);
+                return $this->resolveClass($id, $parameters);
             }
 
             throw NotFoundException::forService($id);
@@ -270,7 +275,7 @@ class ServiceContainer implements ContainerInterface
         if ($concrete instanceof Closure) {
             $instance = $concrete();
         } else {
-            $instance = $this->resolveClass($concrete, $overrides);
+            $instance = $this->resolveClass($concrete, $parameters);
         }
 
         // Apply type-specific interceptors
@@ -322,13 +327,13 @@ class ServiceContainer implements ContainerInterface
      * Resolves a class and its dependencies, using optional overrides.
      *
      * @param string $className The class name to resolve.
-     * @param array $overrides Optional parameter overrides.
+     * @param array $parameters Optional parameter overrides.
      * @return object The instantiated class.
      * @throws ContainerException If the class cannot be instantiated.
      * @throws ReflectionException
      * @throws NotFoundException
      */
-    private function resolveClass(string $className, array $overrides = []): object
+    private function resolveClass(string $className, array $parameters = []): object
     {
         // Check if the className is bound to a different concrete class
         if (isset($this->services[$className])) {
@@ -341,7 +346,7 @@ class ServiceContainer implements ContainerInterface
 
             // Only recurse if concrete is NOT the same as className
             if ($concrete !== $className) {
-                return $this->resolveClass($concrete, $overrides);
+                return $this->resolveClass($concrete, $parameters);
             }
 
             // Else: fall through to regular instantiation logic below
@@ -367,7 +372,7 @@ class ServiceContainer implements ContainerInterface
 
         // Resolve constructor parameters
         $dependencies = array_map(
-            fn(ReflectionParameter $param) => $this->resolveParameterWithOverrides($param, $overrides),
+            fn(ReflectionParameter $param) => $this->resolveParameters($param, $parameters),
             $constructor->getParameters()
         );
 
@@ -378,25 +383,25 @@ class ServiceContainer implements ContainerInterface
      * Resolves a parameter using global and specific overrides.
      *
      * @param ReflectionParameter $param The reflection parameter to resolve.
-     * @param array $overrides Optional parameter overrides.
+     * @param array $parameters Optional parameter overrides.
      * @return mixed The resolved parameter value.
      * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
-    private function resolveParameterWithOverrides(ReflectionParameter $param, array $overrides = []): mixed
+    private function resolveParameters(ReflectionParameter $param, array $parameters = []): mixed
     {
         $className = $param->getDeclaringClass() ? $param->getDeclaringClass()->getName() : 'unknown class';
         $paramName = $param->getName();
 
         // Check for an override (manual binding)
-        $mergedOverrides = array_merge(
-            $this->overrideRegistry->getOverridesForClass($className),
-            $overrides
+        $mergedParameters = array_merge(
+            $this->parameters->get($className),
+            $parameters
         );
 
-        if (isset($mergedOverrides[$paramName])) {
-            return $mergedOverrides[$paramName];
+        if (isset($mergedParameters[$paramName])) {
+            return $mergedParameters[$paramName];
         }
 
         $paramType = $param->getType();
@@ -448,23 +453,23 @@ class ServiceContainer implements ContainerInterface
      *
      * @param object|string $classOrCallable
      * @param string|null $method The method to be called.
-     * @param array $overrides
+     * @param array $parameters
      *
      * @return mixed The result of the method invocation.
      * @throws ContainerException
      * @throws ReflectionException
      * @throws NotFoundException
      */
-    public function call(object|string $classOrCallable, ?string $method = null, array $overrides = []): mixed
+    public function call(object|string $classOrCallable, ?string $method = null, array $parameters = []): mixed
     {
         // Resolve callable and reflection
         [$objectOrClosure, $reflection] = $this->resolveCallable($classOrCallable, $method);
 
         // Resolve parameters
         $params = $reflection->getParameters();
-        $resolvedParams = array_map(fn(ReflectionParameter $param) => $this->resolveParameterWithOverrides(
+        $resolvedParams = array_map(fn(ReflectionParameter $param) => $this->resolveParameters(
             $param,
-            $overrides
+            $parameters
         ), $params);
 
         // Invoke the callable
@@ -518,10 +523,10 @@ class ServiceContainer implements ContainerInterface
             // Check if there's an override for this primitive in the registry
             $className = $param->getDeclaringClass()->getName();
             $paramName = $param->getName();
-            $override = $this->overrideRegistry->getOverride($className, $paramName);
+            $parameter = $this->parameters->getScoped($className, $paramName);
 
-            if ($override !== null) {
-                return $override;
+            if ($parameter !== null) {
+                return $parameter;
             }
 
             throw ContainerException::forUnresolvedPrimitive($className, $paramName);

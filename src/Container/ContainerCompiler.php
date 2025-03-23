@@ -23,6 +23,7 @@ class ContainerCompiler
     ): void {
         $serviceDefinitions = $this->getCompiledServiceDefinitions();
         $tagMappings = $this->getTagMappings();
+        $compiledParameters = $this->getCompiledParameters();
 
         $matchEntries = [];
         $methodBodies = [];
@@ -31,8 +32,7 @@ class ContainerCompiler
             $methodName = $this->methodNameFromClass($id);
             $matchEntries[] = "            '" . addslashes($id) . "' => \$this->$methodName(),";
 
-            $dependencyCalls = array_map(fn($dep) => "\$this->get('$dep')", $dependencies);
-            $args = implode(', ', $dependencyCalls);
+            $args = implode(', ', $dependencies);
 
             if ($isSingleton) {
                 $escapedId = addslashes($id);
@@ -49,13 +49,14 @@ class ContainerCompiler
 PHP;
             } else {
                 $methodBodies[] = "    private function $methodName(): \\{$fqcn}\n    {\n        " .
-                    "return new \\{$fqcn}($args);\n    }";
+                "return new \\{$fqcn}($args);\n    }";
             }
         }
 
         $matchBlock = implode("\n", $matchEntries);
         $methods = implode("\n\n", $methodBodies);
         $tagsExport = var_export($tagMappings, true);
+        $paramsExport = var_export($compiledParameters, true);
         $namespaceDecl = $namespace !== '' ? "namespace $namespace;\n" : '';
 
         $classCode = <<<PHP
@@ -71,10 +72,12 @@ class $className extends ServiceContainer
 {
     protected array \$tags = $tagsExport;
     protected array \$singletons = [];
+    protected array \$compiledParameters = $paramsExport;
 
     public function __construct()
     {
         parent::__construct();
+        \$this->getParameters()->setParameters(\$this->compiledParameters);
     }
 
     public function get(string \$id): object
@@ -105,6 +108,7 @@ PHP;
     private function getCompiledServiceDefinitions(): array
     {
         $definitions = [];
+        $parameters = $this->container->getParameters();
 
         foreach ($this->container->getServices() as $id => $descriptor) {
             $concrete = $descriptor->getConcrete();
@@ -126,10 +130,21 @@ PHP;
                 $dependencies = [];
 
                 if ($constructor = $reflection->getConstructor()) {
+                    $paramOverrides = $parameters->get($fqcn);
+
                     foreach ($constructor->getParameters() as $param) {
                         $type = $param->getType();
+                        $paramName = $param->getName();
+
                         if ($type && !$type->isBuiltin()) {
-                            $dependencies[] = $type->getName();
+                            $dependencies[] = "\$this->get('{$type->getName()}')";
+                        } else {
+                            $default = array_key_exists($paramName, $paramOverrides)
+                                ? var_export($paramOverrides[$paramName], true)
+                                : ($param->isDefaultValueAvailable()
+                                    ? var_export($param->getDefaultValue(), true)
+                                    : 'null');
+                            $dependencies[] = $default;
                         }
                     }
                 }
@@ -163,5 +178,15 @@ PHP;
         } catch (\ReflectionException) {
             return [];
         }
+    }
+
+    /**
+     * Extracts all scoped parameters for compiled injection.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function getCompiledParameters(): array
+    {
+        return $this->container->getParameters()->all();
     }
 }
