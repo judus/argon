@@ -1,3 +1,12 @@
+<!--
+[![PHP Version](https://img.shields.io/badge/php-8.2+-blue.svg)](https://www.php.net/)
+[![License](https://img.shields.io/github/license/maduser/argon)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](./tests)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-success)](#)
+[![Build](https://img.shields.io/github/actions/workflow/status/maduser/argon/ci.yml?branch=main)](https://github.com/maduser/argon/actions)
+
+[![Latest Version](https://img.shields.io/packagist/v/maduser/argon.svg)](https://packagist.org/packages/maduser/argon)
+-->
 # Argon Service Container
 
 A high-performance, PSR-11 compliant dependency injection container for modern PHP applications.
