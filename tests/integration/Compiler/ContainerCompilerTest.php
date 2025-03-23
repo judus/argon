@@ -59,8 +59,8 @@ class ContainerCompilerTest extends TestCase
     {
         $container = new ServiceContainer();
 
-        $container->singleton(Logger::class, Logger::class);
-        $container->singleton(Mailer::class, Mailer::class);
+        $container->singleton(Logger::class);
+        $container->singleton(Mailer::class);
 
         $compiled = $this->compileAndLoadContainer($container, 'CachedContainerB');
 
@@ -87,8 +87,8 @@ class ContainerCompilerTest extends TestCase
     {
         $container = new ServiceContainer();
 
-        $container->bind(Logger::class, Logger::class);
-        $container->bind(Mailer::class, Mailer::class);
+        $container->bind(Logger::class);
+        $container->bind(Mailer::class);
 
         $compiled = $this->compileAndLoadContainer($container, 'CachedContainerC');
 
@@ -107,8 +107,8 @@ class ContainerCompilerTest extends TestCase
     {
         $container = new ServiceContainer();
 
-        $container->singleton(Logger::class, Logger::class);
-        $container->singleton(Mailer::class, Mailer::class);
+        $container->singleton(Logger::class);
+        $container->singleton(Mailer::class);
 
         // Tag the services
         $container->tag(Logger::class, ['loggers']);
