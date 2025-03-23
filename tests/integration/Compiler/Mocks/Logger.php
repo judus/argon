@@ -2,6 +2,9 @@
 
 namespace Tests\Integration\Compiler\Mocks;
 
-class Logger {
-    public function log(string $msg): void {}
+class Logger
+{
+    public function log(string $msg): void
+    {
+    }
 }

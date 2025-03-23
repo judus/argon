@@ -16,45 +16,67 @@ class ContainerCompiler
         $this->container = $container;
     }
 
-    public function compileToFile(string $outputPath, string $className = 'CachedContainer'): void
-    {
+    public function compileToFile(
+        string $outputPath,
+        string $className = 'CachedContainer',
+        string $namespace = ''
+    ): void {
         $serviceDefinitions = $this->getCompiledServiceDefinitions();
         $tagMappings = $this->getTagMappings();
 
         $matchEntries = [];
         $methodBodies = [];
 
-        foreach ($serviceDefinitions as $id => [$fqcn, $dependencies]) {
+        foreach ($serviceDefinitions as $id => [$fqcn, $dependencies, $isSingleton]) {
             $methodName = $this->methodNameFromClass($id);
             $matchEntries[] = "            '" . addslashes($id) . "' => \$this->$methodName(),";
 
             $dependencyCalls = array_map(fn($dep) => "\$this->get('$dep')", $dependencies);
             $args = implode(', ', $dependencyCalls);
-            $methodBodies[] = "    private function $methodName(): \\{$fqcn}\n    " .
-                "{\n        return new \\{$fqcn}($args);\n    }"
-            ;
+
+            if ($isSingleton) {
+                $escapedId = addslashes($id);
+                $methodBodies[] = <<<PHP
+    private function $methodName(): \\{$fqcn}
+    {
+        if (isset(\$this->singletons['$escapedId'])) {
+            return \$this->singletons['$escapedId'];
+        }
+        \$instance = new \\{$fqcn}($args);
+        \$this->singletons['$escapedId'] = \$instance;
+        return \$instance;
+    }
+PHP;
+            } else {
+                $methodBodies[] = "    private function $methodName(): \\{$fqcn}\n    {\n        " .
+                    "return new \\{$fqcn}($args);\n    }";
+            }
         }
 
         $matchBlock = implode("\n", $matchEntries);
         $methods = implode("\n\n", $methodBodies);
         $tagsExport = var_export($tagMappings, true);
+        $namespaceDecl = $namespace !== '' ? "namespace $namespace;\n" : '';
 
         $classCode = <<<PHP
 <?php
 
 declare(strict_types=1);
 
+$namespaceDecl
 use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 
 class $className extends ServiceContainer
-{  
+{
+    protected array \$tags = $tagsExport;
+    protected array \$singletons = [];
+
     public function __construct()
     {
         parent::__construct();
-        \$this->tags = $tagsExport;
     }
-    
+
     public function get(string \$id): object
     {
         return match (\$id) {
@@ -78,7 +100,7 @@ PHP;
     /**
      * Extracts concrete class service definitions from the container.
      *
-     * @return array<string, array{string, string[]}> [serviceId => [fqcn, [dependencies]]]
+     * @return array<string, array{string, string[], bool}> [serviceId => [fqcn, [dependencies], isSingleton]]
      */
     private function getCompiledServiceDefinitions(): array
     {
@@ -92,6 +114,7 @@ PHP;
             }
 
             $fqcn = $concrete;
+            $isSingleton = $descriptor->isSingleton();
 
             try {
                 $reflection = new ReflectionClass($fqcn);
@@ -111,8 +134,7 @@ PHP;
                     }
                 }
 
-                $definitions[$id] = [$fqcn, $dependencies];
-
+                $definitions[$id] = [$fqcn, $dependencies, $isSingleton];
             } catch (ReflectionException) {
                 continue;
             }

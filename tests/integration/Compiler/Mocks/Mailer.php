@@ -2,7 +2,8 @@
 
 namespace Tests\Integration\Compiler\Mocks;
 
-class Mailer {
+class Mailer
+{
     public Logger $logger;
 
     public function __construct(Logger $logger)

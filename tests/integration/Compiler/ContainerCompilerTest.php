@@ -13,13 +13,23 @@ use Tests\Integration\Compiler\Mocks\Mailer;
 
 class ContainerCompilerTest extends TestCase
 {
-    private string $cacheFile = __DIR__ . '/CachedContainer.php';
+    private function compileAndLoadContainer(
+        ServiceContainer $container,
+        string $className,
+    ): object {
+        $namespace = 'Tests\\Integration\\Compiler';
 
-    public function setUp(): void
-    {
-        if (file_exists($this->cacheFile)) {
-            unlink($this->cacheFile);
+        $file = __DIR__ . "/$className.php";
+        if (file_exists($file)) {
+            unlink($file);
         }
+
+        $compiler = new ContainerCompiler($container);
+        $compiler->compileToFile($file, $className, $namespace);
+        require_once $file;
+
+        $fqcn = "$namespace\\$className";
+        return new $fqcn();
     }
 
     /**
@@ -27,25 +37,45 @@ class ContainerCompilerTest extends TestCase
      * @throws NotFoundException
      * @throws ReflectionException
      */
-    public function testCompiledContainerResolvesSingletons(): void
+    public function testCompiledContainerResolvesClosures(): void
     {
         $container = new ServiceContainer();
 
         $container->singleton(Logger::class, fn() => new Logger());
         $container->singleton(Mailer::class, fn() => new Mailer($container->get(Logger::class)));
 
-        $compiler = new ContainerCompiler($container);
-        $this->cacheFile = __DIR__ . '/CachedContainerA.php';
-        $compiler->compileToFile($this->cacheFile, 'CachedContainerA');
-
-        require_once $this->cacheFile;
-
-        $compiled = new \CachedContainerA();
+        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerA');
 
         $mailer = $compiled->get(Mailer::class);
 
         $this->assertInstanceOf(Mailer::class, $mailer);
         $this->assertInstanceOf(Logger::class, $mailer->logger);
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testCompiledContainerResolvesSingletons(): void
+    {
+        $container = new ServiceContainer();
+
+        $container->singleton(Logger::class, Logger::class);
+        $container->singleton(Mailer::class, Mailer::class);
+
+        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerB');
+
+        $mailer = $compiled->get(Mailer::class);
+        $mailer2 = $compiled->get(Mailer::class);
+        $logger = $compiled->get(Logger::class);
+        $logger2 = $compiled->get(Logger::class);
+
+        $this->assertInstanceOf(Mailer::class, $mailer);
+        $this->assertInstanceOf(Logger::class, $mailer->logger);
+
+        // Singleton assertions
+        $this->assertSame($mailer, $mailer2, 'Mailer should be a singleton');
+        $this->assertSame($logger, $logger2, 'Logger should be a singleton');
+        $this->assertSame($logger, $mailer->logger, 'Mailer.logger should be the same Logger singleton');
     }
 
     /**
@@ -60,13 +90,7 @@ class ContainerCompilerTest extends TestCase
         $container->bind(Logger::class, Logger::class);
         $container->bind(Mailer::class, Mailer::class);
 
-        $compiler = new ContainerCompiler($container);
-        $this->cacheFile = __DIR__ . '/CachedContainerB.php';
-        $compiler->compileToFile($this->cacheFile, 'CachedContainerB');
-
-        require_once $this->cacheFile;
-
-        $compiled = new \CachedContainerB();
+        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerC');
 
         $mailer = $compiled->get(Mailer::class);
 
@@ -91,12 +115,7 @@ class ContainerCompilerTest extends TestCase
         $container->tag(Mailer::class, ['mailers', 'loggers']);
 
         // Compile
-        $compiler = new ContainerCompiler($container);
-        $this->cacheFile = __DIR__ . '/CachedContainerC.php';
-        $compiler->compileToFile($this->cacheFile, 'CachedContainerC');
-
-        require_once $this->cacheFile;
-        $compiled = new \CachedContainerC();
+        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerD');
 
         // Check tagged services
         $loggers = $compiled->getTaggedServices('loggers');
