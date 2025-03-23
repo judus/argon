@@ -9,6 +9,7 @@ use Maduser\Argon\Container\ContainerCompiler;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use Tests\Integration\Compiler\Mocks\Logger;
+use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
 
@@ -118,7 +119,7 @@ class ContainerCompilerTest extends TestCase
         $container->bind(TestServiceWithMultipleParams::class);
 
         // Compile and load container
-        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerE');
+        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerD');
 
         // Resolve and assert
         /** @var TestServiceWithMultipleParams $service */
@@ -127,7 +128,6 @@ class ContainerCompilerTest extends TestCase
         $this->assertEquals('compiled-override', $service->getParam1());
         $this->assertEquals(99, $service->getParam2());
     }
-
 
     /**
      * @throws ContainerException
@@ -146,11 +146,11 @@ class ContainerCompilerTest extends TestCase
         $container->tag(Mailer::class, ['mailers', 'loggers']);
 
         // Compile
-        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerD');
+        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerE');
 
         // Check tagged services
-        $loggers = $compiled->getTaggedServices('loggers');
-        $mailers = $compiled->getTaggedServices('mailers');
+        $loggers = $compiled->getTagged('loggers');
+        $mailers = $compiled->getTagged('mailers');
 
         $this->assertCount(2, $loggers);
         $this->assertCount(1, $mailers);
@@ -158,5 +158,23 @@ class ContainerCompilerTest extends TestCase
         $this->assertInstanceOf(Logger::class, $loggers[0]);
         $this->assertInstanceOf(Mailer::class, $loggers[1]);
         $this->assertInstanceOf(Mailer::class, $mailers[0]);
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testCompiledContainerAppliesInterceptor(): void
+    {
+        $container = new ServiceContainer();
+        $container->singleton(Logger::class);
+        $container->registerTypeInterceptor(LoggerInterceptor::class);
+
+        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerF');
+
+        /** @var Logger $logger */
+        $logger = $compiled->get(Logger::class);
+
+        $this->assertInstanceOf(Logger::class, $logger);
+        $this->assertTrue($logger->intercepted, 'Logger instance should be intercepted.');
     }
 }

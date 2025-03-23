@@ -9,18 +9,16 @@ interface TypeInterceptorInterface
     /**
      * Determines if the interceptor applies to the given service.
      *
-     * @param object $service The resolved service instance
-     *
      * @return bool True if the interceptor supports the service, false otherwise
      */
-    public function supports(object $service): bool;
+    public static function supports(object|string $target): bool;
 
     /**
      * Applies the interceptor's logic to the service instance.
      *
-     * @param object $service The resolved service instance
+     * @param object $instance The resolved service instance
      *
      * @return void
      */
-    public function intercept(object $service): void;
+    public function intercept(object $instance): void;
 }

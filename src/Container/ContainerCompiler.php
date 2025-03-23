@@ -6,6 +6,7 @@ namespace Maduser\Argon\Container;
 
 use ReflectionClass;
 use ReflectionException;
+use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
 
 class ContainerCompiler
 {
@@ -27,12 +28,36 @@ class ContainerCompiler
 
         $matchEntries = [];
         $methodBodies = [];
+        $interceptorBodies = [];
+        $usedInterceptorClasses = [];
+
+        // Discover interceptors from container
+        $interceptors = $this->getApplicableInterceptors();
 
         foreach ($serviceDefinitions as $id => [$fqcn, $dependencies, $isSingleton]) {
             $methodName = $this->methodNameFromClass($id);
             $matchEntries[] = "            '" . addslashes($id) . "' => \$this->$methodName(),";
 
             $args = implode(', ', $dependencies);
+            $body = "\$instance = new \\{$fqcn}($args);";
+
+            if (isset($interceptors[$fqcn])) {
+                $interceptMethod = $interceptors[$fqcn]['method'];
+                $body .= "\n        \$instance = \$this->$interceptMethod(\$instance);";
+
+                $interceptorClass = $interceptors[$fqcn]['interceptor'];
+                if (!isset($usedInterceptorClasses[$interceptMethod])) {
+                    $interceptorBodies[] = <<<PHP
+    private function $interceptMethod(\\$fqcn \$instance): \\$fqcn
+    {
+        \$interceptor = new \\{$interceptorClass}();
+        \$interceptor->intercept(\$instance);
+        return \$instance;
+    }
+PHP;
+                    $usedInterceptorClasses[$interceptMethod] = true;
+                }
+            }
 
             if ($isSingleton) {
                 $escapedId = addslashes($id);
@@ -42,19 +67,24 @@ class ContainerCompiler
         if (isset(\$this->singletons['$escapedId'])) {
             return \$this->singletons['$escapedId'];
         }
-        \$instance = new \\{$fqcn}($args);
+        $body
         \$this->singletons['$escapedId'] = \$instance;
         return \$instance;
     }
 PHP;
             } else {
-                $methodBodies[] = "    private function $methodName(): \\{$fqcn}\n    {\n        " .
-                "return new \\{$fqcn}($args);\n    }";
+                $methodBodies[] = <<<PHP
+    private function $methodName(): \\{$fqcn}
+    {
+        $body
+        return \$instance;
+    }
+PHP;
             }
         }
 
         $matchBlock = implode("\n", $matchEntries);
-        $methods = implode("\n\n", $methodBodies);
+        $methods = implode("\n\n", array_merge($methodBodies, $interceptorBodies));
         $tagsExport = var_export($tagMappings, true);
         $paramsExport = var_export($compiledParameters, true);
         $namespaceDecl = $namespace !== '' ? "namespace $namespace;\n" : '';
@@ -136,7 +166,7 @@ PHP;
                         $type = $param->getType();
                         $paramName = $param->getName();
 
-                        if ($type && !$type->isBuiltin()) {
+                        if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
                             $dependencies[] = "\$this->get('{$type->getName()}')";
                         } else {
                             $default = array_key_exists($paramName, $paramOverrides)
@@ -188,5 +218,36 @@ PHP;
     private function getCompiledParameters(): array
     {
         return $this->container->getParameters()->all();
+    }
+
+    /**
+     * Auto-discovers interceptors by calling supports(FQCN) statically.
+     *
+     * @return array<string, array{interceptor: class-string<TypeInterceptorInterface>, method: string}>
+     */
+    private function getApplicableInterceptors(): array
+    {
+        $resolved = [];
+
+        foreach ($this->container->getServices() as $id => $descriptor) {
+            $concrete = $descriptor->getConcrete();
+            if ($concrete instanceof \Closure) {
+                continue;
+            }
+
+            foreach ($this->container->getTypeInterceptors() as $interceptorClass) {
+                if (is_string($interceptorClass) && method_exists($interceptorClass, 'supports')) {
+                    if ($interceptorClass::supports($concrete)) {
+                        $method = 'interceptWith' . str_replace(['\\', '/'], '', $interceptorClass);
+                        $resolved[$concrete] = [
+                            'interceptor' => $interceptorClass,
+                            'method' => $method,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $resolved;
     }
 }

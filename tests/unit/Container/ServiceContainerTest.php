@@ -160,8 +160,8 @@ class ServiceContainerTest extends TestCase
         $container->tag('service1', ['groupA']);
         $container->tag('service2', ['groupA', 'groupB']);
 
-        $groupA = $container->getTaggedServices('groupA');
-        $groupB = $container->getTaggedServices('groupB');
+        $groupA = $container->getTagged('groupA');
+        $groupB = $container->getTagged('groupB');
 
         $this->assertCount(2, $groupA, 'GroupA should contain two services.');
         $this->assertCount(1, $groupB, 'GroupB should contain one service.');
@@ -218,24 +218,33 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testTypeInterceptorModifiesResolvedInstance()
+    public function testTypeInterceptorModifiesResolvedInstance(): void
     {
-        // Create a mock for the correct interface
-        $interceptor = $this->createMock(TypeInterceptorInterface::class);
+        // Define a concrete interceptor class inline for clarity/testing
+        $interceptor = new class implements TypeInterceptorInterface {
+            public static function supports(object|string $target): bool
+            {
+                return $target === stdClass::class || $target instanceof \stdClass;
+            }
 
-        // Set expectations for the mock behavior
-        $interceptor->method('supports')->willReturn(true);
-        $interceptor->expects($this->once())->method('intercept');
+            public function intercept(object $instance): void
+            {
+                $instance->intercepted = true;
+            }
+        };
 
-        // Create the container and register the interceptor
+        // Register interceptor as FQCN (as expected now)
         $container = new ServiceContainer();
-        $container->registerTypeInterceptor($interceptor);
+        $container->registerTypeInterceptor(get_class($interceptor));
 
-        // Bind a service and resolve it, which should trigger the interceptor
-        $container->bind('service', fn() => new stdClass());
+        // Bind a service (autowiring would also work)
+        $container->bind('service', fn() => new \stdClass());
 
-        // This should trigger the interceptor's `intercept` method
-        $container->get('service');
+        // Resolve the service
+        $instance = $container->get('service');
+
+        // Assertion
+        $this->assertTrue($instance->intercepted ?? false, 'Service instance should be intercepted.');
     }
 
     /**

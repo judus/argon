@@ -14,6 +14,7 @@ use ReflectionClass;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
+use ReflectionNamedType;
 use ReflectionParameter;
 
 /**
@@ -76,6 +77,11 @@ class ServiceContainer implements ContainerInterface
         return $this->services;
     }
 
+    public function getTypeInterceptors(): array
+    {
+        return $this->typeInterceptors;
+    }
+
     public function getTags(): array
     {
         return $this->tags;
@@ -113,12 +119,21 @@ class ServiceContainer implements ContainerInterface
     /**
      * Registers a type-based interceptor.
      *
-     * @param TypeInterceptorInterface $interceptor The type-based interceptor instance.
+     * @param string $interceptorClass
      * @return void
+     * @throws ContainerException
      */
-    public function registerTypeInterceptor(TypeInterceptorInterface $interceptor): void
+    public function registerTypeInterceptor(string $interceptorClass): void
     {
-        $this->typeInterceptors[] = $interceptor;
+        if (!class_exists($interceptorClass)) {
+            throw new ContainerException("Interceptor class '$interceptorClass' does not exist.");
+        }
+
+        if (!is_subclass_of($interceptorClass, TypeInterceptorInterface::class)) {
+            throw new ContainerException("Interceptor '$interceptorClass' must implement TypeInterceptorInterface.");
+        }
+
+        $this->typeInterceptors[] = $interceptorClass;
     }
 
     /**
@@ -202,7 +217,7 @@ class ServiceContainer implements ContainerInterface
      * @throws NotFoundException
      * @throws ReflectionException
      */
-    public function getTaggedServices(string $tag): array
+    public function getTagged(string $tag): array
     {
         $taggedServices = [];
 
@@ -404,10 +419,11 @@ class ServiceContainer implements ContainerInterface
             return $mergedParameters[$paramName];
         }
 
-        $paramType = $param->getType();
+        /** @var ReflectionNamedType|null $type */
+        $type = $param->getType();
 
         // If the parameter has no type hint (non-class primitive), check for a default value
-        if ($paramType === null || $paramType->isBuiltin()) {
+        if ($type === null || $type->isBuiltin()) {
             // Handle default values for optional parameters
             if ($param->isOptional()) {
                 return $param->getDefaultValue();
@@ -418,7 +434,7 @@ class ServiceContainer implements ContainerInterface
         }
 
         // If the parameter has a class type hint, resolve from the container
-        return $this->get($paramType->getName());
+        return $this->get($type->getName());
     }
 
     /**
@@ -439,8 +455,9 @@ class ServiceContainer implements ContainerInterface
      */
     private function applyTypeInterceptors(object $instance): object
     {
-        foreach ($this->typeInterceptors as $interceptor) {
-            if ($interceptor->supports($instance)) {
+        foreach ($this->typeInterceptors as $interceptorClass) {
+            if ($interceptorClass::supports($instance)) {
+                $interceptor = new $interceptorClass();
                 $interceptor->intercept($instance);
             }
         }
@@ -515,7 +532,9 @@ class ServiceContainer implements ContainerInterface
     private function resolveParameter(ReflectionParameter $param): mixed
     {
         // Handle built-in types (e.g., int, string)
-        if ($param->getType() !== null && $param->getType()->isBuiltin()) {
+        /** @var ReflectionNamedType|null $type */
+        $type = $param->getType();
+        if ($type !== null && $type->isBuiltin()) {
             if ($param->isOptional()) {
                 return $param->getDefaultValue();
             }
@@ -533,6 +552,6 @@ class ServiceContainer implements ContainerInterface
         }
 
         // Resolve by class type from the container
-        return $this->get($param->getType()->getName());
+        return $this->get($type->getName());
     }
 }
