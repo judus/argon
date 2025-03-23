@@ -9,6 +9,9 @@
     <file>src/</file>
     <file>tests/</file>
 
+    <!-- Ignore specific files or directories -->
+    <exclude-pattern>*/tests/resources/cache/*</exclude-pattern>
+
     <!-- Add any file extensions to include (optional) -->
     <extensions>
         <extension name="php"/>
