@@ -26,6 +26,8 @@ use ReflectionParameter;
  */
 class ServiceContainer implements ContainerInterface
 {
+    use ContextualBindingSupport;
+
     /**
      * @var array Holds the registered services in the container.
      */
@@ -69,6 +71,7 @@ class ServiceContainer implements ContainerInterface
     public function __construct(
         ParameterRegistry $parameterRegistry = new ParameterRegistry()
     ) {
+        $this->contextualBindings = new ContextualBindingRegistry();
         $this->parameters = $parameterRegistry;
     }
 
@@ -399,7 +402,7 @@ class ServiceContainer implements ContainerInterface
      *
      * @param ReflectionParameter $param The reflection parameter to resolve.
      * @param array $parameters Optional parameter overrides.
-     * @return mixed The resolved parameter value.
+     * @return mixed|\static The resolved parameter value.
      * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
@@ -409,7 +412,7 @@ class ServiceContainer implements ContainerInterface
         $className = $param->getDeclaringClass() ? $param->getDeclaringClass()->getName() : 'unknown class';
         $paramName = $param->getName();
 
-        // Check for an override (manual binding)
+        // Merge parameter overrides
         $mergedParameters = array_merge(
             $this->parameters->get($className),
             $parameters
@@ -422,20 +425,22 @@ class ServiceContainer implements ContainerInterface
         /** @var ReflectionNamedType|null $type */
         $type = $param->getType();
 
-        // If the parameter has no type hint (non-class primitive), check for a default value
-        if ($type === null || $type->isBuiltin()) {
-            // Handle default values for optional parameters
-            if ($param->isOptional()) {
-                return $param->getDefaultValue();
+        if ($type === null || !$type->isBuiltin()) {
+            if ($this->contextualBindings->has($className, $type->getName())) {
+                return $this->resolveContextual($className, $type->getName());
             }
 
-            // If it's a primitive type with no override or default value
-            throw ContainerException::forUnresolvedPrimitive($className, $paramName);
+            return $this->get($type->getName());
         }
 
-        // If the parameter has a class type hint, resolve from the container
-        return $this->get($type->getName());
+        // Primitive fallback or default
+        if ($param->isOptional()) {
+            return $param->getDefaultValue();
+        }
+
+        throw ContainerException::forUnresolvedPrimitive($className, $paramName);
     }
+
 
     /**
      * Removes the service identifier from the resolving stack after resolution.
@@ -553,5 +558,29 @@ class ServiceContainer implements ContainerInterface
 
         // Resolve by class type from the container
         return $this->get($type->getName());
+    }
+
+    /**
+     * Conditionally access a service if it exists.
+     * Returns a proxy that silently ignores calls if service is missing.
+     *
+     * @param string $id
+     * @return object
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function if(string $id): object
+    {
+        if (!$this->has($id)) {
+            return new class {
+                public function __call(string $name, array $arguments): void
+                {
+                    // Silent no-op
+                }
+            };
+        }
+
+        return $this->get($id);
     }
 }

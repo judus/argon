@@ -4,6 +4,8 @@ namespace Tests\Mocks;
 
 class TestService
 {
+    public bool $called = false;
+
     private string $dependency;
 
     // Constructor to initialize dependency
@@ -21,5 +23,10 @@ class TestService
     public function getDependency(): string
     {
         return $this->dependency;
+    }
+
+    public function callMe(): void
+    {
+        $this->called = true;
     }
 }

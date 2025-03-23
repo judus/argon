@@ -21,7 +21,7 @@ class ContainerCompilerTest extends TestCase
     ): object {
         $namespace = 'Tests\\Integration\\Compiler';
 
-        $file = __DIR__ . "/$className.php";
+        $file = __DIR__ . "/../../resources/cache/$className.php";
         if (file_exists($file)) {
             unlink($file);
         }
