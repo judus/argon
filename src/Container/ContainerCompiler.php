@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
-use Maduser\Argon\Container\ServiceContainer;
-use Maduser\Argon\Container\ServiceDescriptor;
 use ReflectionClass;
 use ReflectionException;
-use ReflectionParameter;
 
 class ContainerCompiler
 {
@@ -19,24 +16,28 @@ class ContainerCompiler
         $this->container = $container;
     }
 
-    public function compileToFile(string $outputPath): void
+    public function compileToFile(string $outputPath, string $className = 'CachedContainer'): void
     {
         $serviceDefinitions = $this->getCompiledServiceDefinitions();
+        $tagMappings = $this->getTagMappings();
 
         $matchEntries = [];
         $methodBodies = [];
 
         foreach ($serviceDefinitions as $id => [$fqcn, $dependencies]) {
             $methodName = $this->methodNameFromClass($id);
-            $matchEntries[] = "            '$id' => \$this->$methodName(),";
+            $matchEntries[] = "            '" . addslashes($id) . "' => \$this->$methodName(),";
 
             $dependencyCalls = array_map(fn($dep) => "\$this->get('$dep')", $dependencies);
             $args = implode(', ', $dependencyCalls);
-            $methodBodies[] = "    private function $methodName(): \\{$fqcn}\n    {\n        return new \\{$fqcn}($args);\n    }";
+            $methodBodies[] = "    private function $methodName(): \\{$fqcn}\n    " .
+                "{\n        return new \\{$fqcn}($args);\n    }"
+            ;
         }
 
         $matchBlock = implode("\n", $matchEntries);
         $methods = implode("\n\n", $methodBodies);
+        $tagsExport = var_export($tagMappings, true);
 
         $classCode = <<<PHP
 <?php
@@ -46,8 +47,14 @@ declare(strict_types=1);
 use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 
-class CachedContainer extends ServiceContainer
-{
+class $className extends ServiceContainer
+{  
+    public function __construct()
+    {
+        parent::__construct();
+        \$this->tags = $tagsExport;
+    }
+    
     public function get(string \$id): object
     {
         return match (\$id) {
@@ -112,5 +119,27 @@ PHP;
         }
 
         return $definitions;
+    }
+
+    /**
+     * Extracts tag mappings from the container.
+     *
+     * @return array<string, string[]> [tag => [serviceIds]]
+     */
+    private function getTagMappings(): array
+    {
+        if (!property_exists($this->container, 'tags')) {
+            return [];
+        }
+
+        $reflection = new \ReflectionObject($this->container);
+
+        try {
+            $prop = $reflection->getProperty('tags');
+            $prop->setAccessible(true);
+            return $prop->getValue($this->container) ?? [];
+        } catch (\ReflectionException) {
+            return [];
+        }
     }
 }

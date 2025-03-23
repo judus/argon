@@ -35,11 +35,12 @@ class ContainerCompilerTest extends TestCase
         $container->singleton(Mailer::class, fn() => new Mailer($container->get(Logger::class)));
 
         $compiler = new ContainerCompiler($container);
-        $compiler->compileToFile($this->cacheFile);
+        $this->cacheFile = __DIR__ . '/CachedContainerA.php';
+        $compiler->compileToFile($this->cacheFile, 'CachedContainerA');
 
         require_once $this->cacheFile;
 
-        $compiled = new \CachedContainer();
+        $compiled = new \CachedContainerA();
 
         $mailer = $compiled->get(Mailer::class);
 
@@ -60,15 +61,52 @@ class ContainerCompilerTest extends TestCase
         $container->bind(Mailer::class, Mailer::class);
 
         $compiler = new ContainerCompiler($container);
-        $compiler->compileToFile($this->cacheFile);
+        $this->cacheFile = __DIR__ . '/CachedContainerB.php';
+        $compiler->compileToFile($this->cacheFile, 'CachedContainerB');
 
         require_once $this->cacheFile;
 
-        $compiled = new \CachedContainer();
+        $compiled = new \CachedContainerB();
 
         $mailer = $compiled->get(Mailer::class);
 
         $this->assertInstanceOf(Mailer::class, $mailer);
         $this->assertInstanceOf(Logger::class, $mailer->logger);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testCompiledContainerPreservesTags(): void
+    {
+        $container = new ServiceContainer();
+
+        $container->singleton(Logger::class, Logger::class);
+        $container->singleton(Mailer::class, Mailer::class);
+
+        // Tag the services
+        $container->tag(Logger::class, ['loggers']);
+        $container->tag(Mailer::class, ['mailers', 'loggers']);
+
+        // Compile
+        $compiler = new ContainerCompiler($container);
+        $this->cacheFile = __DIR__ . '/CachedContainerC.php';
+        $compiler->compileToFile($this->cacheFile, 'CachedContainerC');
+
+        require_once $this->cacheFile;
+        $compiled = new \CachedContainerC();
+
+        // Check tagged services
+        $loggers = $compiled->getTaggedServices('loggers');
+        $mailers = $compiled->getTaggedServices('mailers');
+
+        $this->assertCount(2, $loggers);
+        $this->assertCount(1, $mailers);
+
+        $this->assertInstanceOf(Logger::class, $loggers[0]);
+        $this->assertInstanceOf(Mailer::class, $loggers[1]);
+        $this->assertInstanceOf(Mailer::class, $mailers[0]);
     }
 }

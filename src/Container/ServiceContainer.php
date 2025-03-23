@@ -58,7 +58,7 @@ class ServiceContainer implements ContainerInterface
     /**
      * @var array
      */
-    private array $tags = [];
+    protected array $tags = [];
 
     /**
      * Constructor for ServiceContainer.
@@ -74,6 +74,11 @@ class ServiceContainer implements ContainerInterface
     public function getServices(): array
     {
         return $this->services;
+    }
+
+    public function getTags(): array
+    {
+        return $this->tags;
     }
 
     /**
