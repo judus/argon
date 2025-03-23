@@ -11,6 +11,12 @@ class NotFoundException extends Exception implements NotFoundExceptionInterface
 {
     private string $serviceId;
 
+    public function __construct(string $serviceId)
+    {
+        parent::__construct("Service '$serviceId' not found.", 404);
+        $this->serviceId = $serviceId;
+    }
+
     // Constructor or a static factory for this exception
     public static function forService(string $id): self
     {
