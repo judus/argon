@@ -6,4 +6,4 @@ argon.zip
 /.idea/
 compiled.php
 /app.php
-/tests/resources/cache/*
+/tests/resources/cache/*.php
