@@ -71,8 +71,6 @@ $singletonService = $container->get(MyOtherService::class);
 $implementation = $container->get(LoggerInterface::class);
 ```
 
-Note: You can also bind closures. Closure parameters are autowired just like class constructors. However, closures are currently **not included** in compiled containers.
-
 ### 2. Autowiring
 
 ```php
@@ -93,7 +91,7 @@ class ApiClient {
 }
 
 $container->getParameters()->set(ApiClient::class, [
-    'apiKey' => $isProd ? 'secret-prod-key' : 'secret-dev-key',
+    'apiKey' => $isProd ? 'prod-key' : 'dev-key',
     'apiUrl' => 'https://api.example.com'
 ]);
 
@@ -118,9 +116,8 @@ class ServiceB {
 $container->for(ServiceA::class)
     ->set(LoggerInterface::class, DatabaseLogger::class);
 
-// Closures work too:
 $container->for(ServiceB::class)
-    ->set(LoggerInterface::class, fn() => new FileLogger('/tmp/log.txt'));
+    ->set(LoggerInterface::class, FileLogger::class);
 ```
 
 ### 5. Service Providers
@@ -159,7 +156,7 @@ class MyInterceptor implements TypeInterceptorInterface {
     }
 }
 
-$container->registerTypeInterceptor(MyInterceptor::class);
+$container->registerInterceptor(MyInterceptor::class);
 $container->get(MyService::class)->flagged; // true
 ```
 
@@ -204,6 +201,82 @@ if (file_exists($file) && !$_ENV['DEV']) {
     $compiler->compileToFile($file);
 }
 ```
+
+### 10. Binding Closures
+
+Yes, you can bind closures — parameters will be autowired just like constructors.  
+But before you do that, consider this:
+
+1. **Closures are not compiled.**
+2. **They're not best practice.**
+3. **They're probably not even necessary.**
+
+If you *must* use closures in a compiled container:
+
+👉 **Register them at runtime in the `boot()` method of a service provider.**  
+
+Or... just don’t compile the container at all. Unless you’re building a monster enterprise app, you won’t notice the performance hit.
+
+---
+
+```php
+// ❌ Bad: Closure for a simple service — just use the parameter registry instead
+$container->singleton(LoggerInterface::class, fn() => new FileLogger('/tmp/log.txt'));
+
+// ❌ Also bad: Use the parameter registry unless config changes per-request
+$container->singleton(LoggerInterface::class, function (DatabaseConfig $config) {
+    return new DatabaseLogger($config->getConnection());
+});
+
+// ⚠️ Maybe-okay: Contextual closure for dynamic resolution
+$container->for(ControllerInterface::class)
+    ->set(Repository::class, function (Router $router) use ($container) {
+        $alias = $router->currentRoute()->segment(1);
+
+        if ($container->has($alias)) {
+            return $container->get($alias);
+        }
+
+        throw new \Exception("No service registered for alias: {$alias}");
+    });
+```
+
+---
+
+### 🦼 Better: Use a Factory Class Instead
+
+If you need logic, isolate it in a factory. Reusable, testable, and compiles cleanly.
+
+```php
+class RepositoryFactory
+{
+    public function __construct(
+        private Router $router,
+        private ServiceContainer $container
+    ) {}
+
+    public function __invoke(): Repository
+    {
+        $alias = $this->router->currentRoute()->segment(1);
+
+        if ($this->container->has($alias)) {
+            return $this->container->get($alias);
+        }
+
+        throw new \Exception("No service registered for alias: {$alias}");
+    }
+}
+
+// Register the factory itself
+$container->singleton(RepositoryFactory::class);
+
+// Use it contextually — no closures needed
+$container->for(ControllerInterface::class)
+    ->set(Repository::class, RepositoryFactory::class);
+```
+
+_"Closures are the duct tape of DI — good for emergencies, but don’t build a spaceship with it."_
+
 
 ---
 
