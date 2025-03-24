@@ -139,7 +139,7 @@ class AppServiceProvider implements ServiceProviderInterface {
     }
 }
 
-$container->registerServiceProvider(new AppServiceProvider());
+$container->registerServiceProvider(AppServiceProvider::class);
 $container->bootServiceProviders();
 ```
 
