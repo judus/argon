@@ -51,4 +51,22 @@ class ServiceProviderTest extends TestCase
         $container = new ServiceContainer();
         $container->registerServiceProvider(MyService::class);
     }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testBootServiceProvidersCallsBootMethod(): void
+    {
+        $container = new ServiceContainer();
+
+        DummyProvider::$booted = false;
+
+        $container->registerServiceProvider(DummyProvider::class);
+
+        $container->bootServiceProviders();
+
+        $this->assertTrue(DummyProvider::$booted, 'boot() should have been called after bootServiceProviders().');
+    }
 }

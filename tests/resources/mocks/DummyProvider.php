@@ -9,6 +9,8 @@ use stdClass;
 
 class DummyProvider implements ServiceProviderInterface
 {
+    public static bool $booted = false;
+
     /**
      * @throws ContainerException
      */
@@ -19,6 +21,6 @@ class DummyProvider implements ServiceProviderInterface
 
     public function boot(ServiceContainer $container): void
     {
-        // Not tested here, but valid to call after container is built
+        self::$booted = true;
     }
 }

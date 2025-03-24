@@ -126,10 +126,15 @@ class ServiceContainer implements ContainerInterface
      * Boots all registered service providers by calling their boot methods.
      *
      * @return void
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
      */
     public function bootServiceProviders(): void
     {
-        foreach ($this->serviceProviders as $provider) {
+        $providers = $this->getTagged('service.provider');
+
+        foreach ($providers as $provider) {
             $provider->boot($this);
         }
     }
