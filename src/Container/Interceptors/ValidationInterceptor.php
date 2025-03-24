@@ -5,19 +5,18 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container\Interceptors;
 
 use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
-use Maduser\Argon\Container\Contracts\ValidationInterface;
+use Maduser\Argon\Container\Interceptors\Contracts\ValidationInterface;
 
 class ValidationInterceptor implements TypeInterceptorInterface
 {
-    public function supports(object $service): bool
+    public static function supports(object|string $target): bool
     {
-        // Apply this interceptor only to services that implement ValidationInterface
-        return $service instanceof ValidationInterface;
+        return $target instanceof ValidationInterface
+            || (is_string($target) && is_subclass_of($target, ValidationInterface::class));
     }
 
-    public function intercept(object $service): void
+    public function intercept(object $instance): void
     {
-        // Automatically call validate() if the service supports validation
-        $service->validate();
+        $instance->validate();
     }
 }
