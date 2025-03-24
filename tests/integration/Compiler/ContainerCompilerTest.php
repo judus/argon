@@ -8,10 +8,12 @@ use Maduser\Argon\Container\ServiceContainer;
 use Maduser\Argon\Container\ContainerCompiler;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
+use stdClass;
 use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
+use Tests\Mocks\DummyProvider;
 
 class ContainerCompilerTest extends TestCase
 {
@@ -176,5 +178,28 @@ class ContainerCompilerTest extends TestCase
 
         $this->assertInstanceOf(Logger::class, $logger);
         $this->assertTrue($logger->intercepted, 'Logger instance should be intercepted.');
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledContainerIncludesServiceProviders(): void
+    {
+        $container = new ServiceContainer();
+        $container->registerServiceProvider(DummyProvider::class);
+
+        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerG');
+
+        // Ensure service provider is still tagged
+        $providers = $compiled->getTagged('service.provider');
+        $this->assertNotEmpty($providers, 'Expected at least one tagged service provider');
+
+        $this->assertInstanceOf(DummyProvider::class, $providers[0]);
+
+        // Ensure the service registered by the provider is present
+        $this->assertTrue($compiled->has('dummy.service'));
+        $this->assertInstanceOf(stdClass::class, $compiled->get('dummy.service'));
     }
 }

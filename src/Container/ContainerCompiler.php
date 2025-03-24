@@ -27,6 +27,7 @@ class ContainerCompiler
         $compiledParameters = $this->getCompiledParameters();
 
         $matchEntries = [];
+        $matchKeys = [];
         $methodBodies = [];
         $interceptorBodies = [];
         $usedInterceptorClasses = [];
@@ -37,6 +38,7 @@ class ContainerCompiler
         foreach ($serviceDefinitions as $id => [$fqcn, $dependencies, $isSingleton]) {
             $methodName = $this->methodNameFromClass($id);
             $matchEntries[] = "            '" . addslashes($id) . "' => \$this->$methodName(),";
+            $matchKeys[] = "        '" . addslashes($id) . "',";
 
             $args = implode(', ', $dependencies);
             $body = "\$instance = new \\{$fqcn}($args);";
@@ -84,6 +86,7 @@ PHP;
         }
 
         $matchBlock = implode("\n", $matchEntries);
+        $matchKeysFormatted = implode("\n", $matchKeys);
         $methods = implode("\n\n", array_merge($methodBodies, $interceptorBodies));
         $tagsExport = var_export($tagMappings, true);
         $paramsExport = var_export($compiledParameters, true);
@@ -117,6 +120,13 @@ $matchBlock
             default => parent::get(\$id),
         };
     }
+    
+    public function has(string \$id): bool
+    {
+        return in_array(\$id, [
+$matchKeysFormatted
+        ], true) || parent::has(\$id);
+    }
 
 $methods
 }
@@ -127,7 +137,7 @@ PHP;
 
     private function methodNameFromClass(string $fqcn): string
     {
-        return 'get' . str_replace(['\\', '/'], '', $fqcn);
+        return 'get_' . preg_replace('/[^A-Za-z0-9_]/', '_', $fqcn);
     }
 
     /**

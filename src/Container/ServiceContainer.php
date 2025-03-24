@@ -98,13 +98,28 @@ class ServiceContainer implements ContainerInterface
     /**
      * Registers a service provider and triggers the registration method.
      *
-     * @param ServiceProviderInterface $provider The service provider instance.
+     * @param string $className
      * @return void
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
      */
-    public function registerServiceProvider(ServiceProviderInterface $provider): void
+    public function registerServiceProvider(string $className): void
     {
+        if (!class_exists($className)) {
+            throw new ContainerException("Service provider class '$className' does not exist.");
+        }
+
+        if (!is_subclass_of($className, ServiceProviderInterface::class)) {
+            throw new ContainerException("Service provider '$className' must implement ServiceProviderInterface.");
+        }
+
+        $this->singleton($className);
+        $this->tag($className, ['service.provider']);
+
+        /** @var ServiceProviderInterface $provider */
+        $provider = $this->get($className);
         $provider->register($this);
-        $this->serviceProviders[] = $provider;
     }
 
     /**
