@@ -9,7 +9,7 @@ use Closure;
 readonly class ContextualBindingBuilder
 {
     public function __construct(
-        private ContextualBindingRegistry $registry,
+        private ContextualBindings $registry,
         private string $target
     ) {
     }

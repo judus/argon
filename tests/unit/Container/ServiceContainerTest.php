@@ -235,7 +235,7 @@ class ServiceContainerTest extends TestCase
 
         // Register interceptor as FQCN (as expected now)
         $container = new ServiceContainer();
-        $container->registerTypeInterceptor(get_class($interceptor));
+        $container->registerInterceptor(get_class($interceptor));
 
         // Bind a service (autowiring would also work)
         $container->bind('service', fn() => new \stdClass());
@@ -255,19 +255,27 @@ class ServiceContainerTest extends TestCase
     public function testReflectionCacheUsed(): void
     {
         $container = new ServiceContainer();
-        $reflectionProperty = new ReflectionProperty($container, 'reflectionCache');
-        $reflectionProperty->setAccessible(true);
+
+        // Get the ReflectionCache instance from the container
+        $reflectionCacheProperty = new ReflectionProperty($container, 'reflectionCache');
+        $reflectionCacheProperty->setAccessible(true);
+        $reflectionCache = $reflectionCacheProperty->getValue($container);
+
+        // Now reflect into the ReflectionCache's internal cache
+        $internalCacheProperty = new ReflectionProperty($reflectionCache, 'reflectionCache');
+        $internalCacheProperty->setAccessible(true);
 
         // First time - cache should be empty
-        $this->assertEmpty($reflectionProperty->getValue($container));
+        $this->assertEmpty($internalCacheProperty->getValue($reflectionCache));
 
         // Resolve a class (stdClass doesn't have dependencies)
-        $container->bind('service', stdClass::class);
+        $container->bind('service', \stdClass::class);
         $container->get('service');
 
         // Now the reflection cache should contain one entry
-        $this->assertCount(1, $reflectionProperty->getValue($container));
+        $this->assertCount(1, $internalCacheProperty->getValue($reflectionCache));
     }
+
 
     /**
      * @throws ReflectionException
@@ -675,5 +683,12 @@ class ServiceContainerTest extends TestCase
             $service = $container->get("service$i");
             $this->assertInstanceOf(stdClass::class, $service);
         }
+    }
+
+    public function testCanResolveReturnsTrueForExistingClass(): void
+    {
+        $container = new ServiceContainer();
+        $this->assertTrue($container->canResolve(\stdClass::class));
+        $this->assertFalse($container->canResolve('NonExistentClass'));
     }
 }

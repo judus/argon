@@ -42,6 +42,7 @@ class ServiceProviderTest extends TestCase
     /**
      * @throws ReflectionException
      * @throws NotFoundException
+     * @psalm-suppress InvalidArgument
      */
     public function testInvalidServiceProviderThrowsException(): void
     {

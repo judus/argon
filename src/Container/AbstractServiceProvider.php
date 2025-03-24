@@ -6,7 +6,7 @@ namespace Maduser\Argon\Container;
 
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 
-abstract class ServiceProvider implements ServiceProviderInterface
+abstract class AbstractServiceProvider implements ServiceProviderInterface
 {
     /**
      * Registers services in the container.

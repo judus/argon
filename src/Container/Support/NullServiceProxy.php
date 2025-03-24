@@ -16,7 +16,7 @@ final class NullServiceProxy
         return null;
     }
 
-    public function __set(string $name, $value): void
+    public function __set(string $name, mixed $value): void
     {
         // Ignore
     }

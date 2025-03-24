@@ -27,7 +27,7 @@ class ValidationInterceptorTest extends TestCase
     {
         // Arrange
         $container = new ServiceContainer();
-        $container->registerTypeInterceptor(ValidationInterceptor::class);
+        $container->registerInterceptor(ValidationInterceptor::class);
 
         // Provide a valid request object
         $container->bind(ValidRequest::class);
@@ -52,7 +52,7 @@ class ValidationInterceptorTest extends TestCase
         $container = new ServiceContainer();
         $container->bind(InvalidRequest::class);
 
-        $container->registerTypeInterceptor(ValidationInterceptor::class);
+        $container->registerInterceptor(ValidationInterceptor::class);
 
         $container->get(InvalidRequest::class);
     }
@@ -71,7 +71,7 @@ class ValidationInterceptorTest extends TestCase
             'title' => 'Valid Title',
         ]));
 
-        $container->registerTypeInterceptor(ValidationInterceptor::class);
+        $container->registerInterceptor(ValidationInterceptor::class);
 
         // Resolve the FormRequest
         $request = $container->get(BlogPostRequest::class);
@@ -91,7 +91,7 @@ class ValidationInterceptorTest extends TestCase
 
         $container = new ServiceContainer();
 
-        $container->registerTypeInterceptor(ValidationInterceptor::class);
+        $container->registerInterceptor(ValidationInterceptor::class);
 
         // This will throw from validate()
         $container->get(BlogPostRequest::class);

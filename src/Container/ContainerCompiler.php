@@ -127,6 +127,19 @@ $matchBlock
 $matchKeysFormatted
         ], true) || parent::has(\$id);
     }
+    
+    public function getTagged(string \$tag): array
+    {
+        \$taggedServices = [];
+    
+        if (isset(\$this->tags[\$tag])) {
+            foreach (\$this->tags[\$tag] as \$serviceId) {
+                \$taggedServices[] = \$this->get(\$serviceId);
+            }
+        }
+
+    return \$taggedServices;
+}
 
 $methods
 }
@@ -205,17 +218,9 @@ PHP;
      */
     private function getTagMappings(): array
     {
-        if (!property_exists($this->container, 'tags')) {
-            return [];
-        }
-
-        $reflection = new \ReflectionObject($this->container);
-
         try {
-            $prop = $reflection->getProperty('tags');
-            $prop->setAccessible(true);
-            return $prop->getValue($this->container) ?? [];
-        } catch (\ReflectionException) {
+            return $this->container->getTags();
+        } catch (\Throwable) {
             return [];
         }
     }
@@ -245,10 +250,10 @@ PHP;
                 continue;
             }
 
-            foreach ($this->container->getTypeInterceptors() as $interceptorClass) {
+            foreach ($this->container->getInterceptors() as $interceptorClass) {
                 if ($this->isValidInterceptor($interceptorClass)) {
                     if ($interceptorClass::supports($concrete)) {
-                        $method = 'interceptWith' . str_replace(['\\', '/'], '', (string)$interceptorClass);
+                        $method = 'interceptWith' . str_replace(['\\', '/'], '', $interceptorClass);
                         $resolved[$concrete] = [
                             'interceptor' => $interceptorClass,
                             'method' => $method,

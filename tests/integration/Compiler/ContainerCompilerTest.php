@@ -178,7 +178,7 @@ class ContainerCompilerTest extends TestCase
     {
         $container = new ServiceContainer();
         $container->singleton(Logger::class);
-        $container->registerTypeInterceptor(LoggerInterceptor::class);
+        $container->registerInterceptor(LoggerInterceptor::class);
 
         $compiled = $this->compileAndLoadContainer($container, 'CachedContainerF');
 

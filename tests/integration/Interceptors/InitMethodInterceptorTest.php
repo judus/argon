@@ -24,7 +24,7 @@ class InitMethodInterceptorTest extends TestCase
         $container = new ServiceContainer();
 
         $container->singleton(NeedsInit::class);
-        $container->registerTypeInterceptor(InitMethodInterceptor::class);
+        $container->registerInterceptor(InitMethodInterceptor::class);
 
         $instance = $container->get(NeedsInit::class);
 

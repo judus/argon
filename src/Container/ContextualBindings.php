@@ -6,7 +6,7 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 
-class ContextualBindingRegistry
+class ContextualBindings
 {
     private array $bindings = [];
 
