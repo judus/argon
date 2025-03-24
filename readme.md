@@ -217,8 +217,6 @@ If you *must* use closures in a compiled container:
 
 Or... just don’t compile the container at all. Unless you’re building a monster enterprise app, you won’t notice the performance hit.
 
----
-
 ```php
 // ❌ Bad: Closure for a simple service — just use the parameter registry instead
 $container->singleton(LoggerInterface::class, fn() => new FileLogger('/tmp/log.txt'));
@@ -241,9 +239,7 @@ $container->for(ControllerInterface::class)
     });
 ```
 
----
-
-### 🦼 Better: Use a Factory Class Instead
+#### 🦼 Better: Use a Factory Class Instead
 
 If you need logic, isolate it in a factory. Reusable, testable, and compiles cleanly.
 
