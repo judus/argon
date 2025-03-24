@@ -11,8 +11,6 @@
         <directory name="tests"/>
         <ignoreFiles>
             <directory name="vendor"/>
-            <directory name="tests/app"/>
-            <directory name="src/Container/Interceptors"/>
             <directory name="src/Kernel/EnvApp"/>
             <file name="src/Container/ContainerFacade.php"/>
         </ignoreFiles>
