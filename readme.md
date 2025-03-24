@@ -4,9 +4,9 @@
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-success)](#)
 [![Build](https://img.shields.io/github/actions/workflow/status/maduser/argon/ci.yml?branch=main)](https://github.com/maduser/argon/actions)
-
 [![Latest Version](https://img.shields.io/packagist/v/maduser/argon.svg)](https://packagist.org/packages/maduser/argon)
 -->
+
 # Argon Service Container
 
 A high-performance, PSR-11 compliant dependency injection container for modern PHP applications.
@@ -23,6 +23,7 @@ Argon focuses on ease of use without compromising features, performance, or flex
 - **♻️ Singleton & Transient Services**: Use shared or separate instances per request.
 - **🧩 Parameter Overrides**: Inject primitives and custom values into your services.
 - **🔁 Contextual Bindings**: Different dependencies per consumer class.
+- **🧰 Service Providers**: Group and encapsulate service registrations.
 - **🛠 Type Interceptors**: Apply behavior-modifying logic when services are resolved.
 - **❓ Conditional Resolution**: Safely access optional services using `if()`.
 - **⏱ Lazy Loading**: Services are only instantiated when first accessed.
@@ -70,6 +71,8 @@ $singletonService = $container->get(MyOtherService::class);
 $implementation = $container->get(LoggerInterface::class);
 ```
 
+Note: You can also bind closures. Closure parameters are autowired just like class constructors. However, closures are currently **not included** in compiled containers.
+
 ### 2. Autowiring
 
 ```php
@@ -96,6 +99,7 @@ $container->getParameters()->set(ApiClient::class, [
 
 $apiClient = $container->get(ApiClient::class); // Uses parameters above
 ```
+
 ### 4. Contextual Bindings
 
 ```php
@@ -112,20 +116,34 @@ class ServiceB {
 }
 
 $container->for(ServiceA::class)
-    ->set(LoggerInterface::class, FileLogger::class);
-
-$container->for(ServiceB::class)
     ->set(LoggerInterface::class, DatabaseLogger::class);
-```
 
-Closures work too:
-
-```php
-$container->for(ServiceA::class)
+// Closures work too:
+$container->for(ServiceB::class)
     ->set(LoggerInterface::class, fn() => new FileLogger('/tmp/log.txt'));
 ```
 
-### 5. Type Interceptors
+### 5. Service Providers
+
+Service providers are a convenient way to group related service bindings:
+
+```php
+class AppServiceProvider implements ServiceProviderInterface {
+    public function register(ServiceContainer $container): void {
+        $container->singleton(LoggerInterface::class, FileLogger::class);
+        $container->bind(CacheInterface::class, RedisCache::class);
+    }
+
+    public function boot(ServiceContainer $container): void {
+        // Optional setup logic
+    }
+}
+
+$container->registerServiceProvider(new AppServiceProvider());
+$container->bootServiceProviders();
+```
+
+### 6. Type Interceptors
 
 ```php
 class MyService {
@@ -145,7 +163,7 @@ $container->registerTypeInterceptor(MyInterceptor::class);
 $container->get(MyService::class)->flagged; // true
 ```
 
-### 6. Tags
+### 7. Tags
 
 ```php
 $container->singleton(FileLogger::class);
@@ -161,7 +179,7 @@ foreach ($loggers as $logger) {
 }
 ```
 
-### 7. Conditional Service Access (`if()`)
+### 8. Conditional Service Access (`if()`)
 
 ```php
 // Suppose SomeLogger is optional
@@ -170,7 +188,7 @@ $container->if(SomeLogger::class)->log('Only if logger exists');
 // This won't throw, even if SomeLogger wasn't registered
 ```
 
-### 8. Compiling the Container
+### 9. Compiling the Container
 
 ```php
 $file = __DIR__ . '/CompiledContainer.php';
