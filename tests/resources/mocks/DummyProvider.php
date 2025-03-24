@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Mocks;
 
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;

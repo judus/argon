@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <psalm
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        totallyTyped="false"
+        totallyTyped="true"
         xmlns="https://getpsalm.org/schema/config"
         xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
 >
@@ -11,33 +11,18 @@
         <directory name="tests"/>
         <ignoreFiles>
             <directory name="vendor"/>
-            <directory name="src/Kernel/EnvApp"/>
+            <directory name="src/Kernel"/>
+            <directory name="src/Middlewares"/>
+            <file name="src/App.php"/>
             <file name="src/Container/ContainerFacade.php"/>
+            <file name="tests/resources/cache/*.php"/>
         </ignoreFiles>
     </projectFiles>
 
     <!-- Issue handlers -->
     <issueHandlers>
-        <MissingPropertyType errorLevel="suppress"/>
-        <PossiblyInvalidMethodCall errorLevel="suppress"/>
-        <ArgumentTypeCoercion errorLevel="suppress"/>
-        <LessSpecificReturnStatement errorLevel="suppress"/>
-        <MoreSpecificReturnType errorLevel="suppress"/>
-        <InvalidStringClass errorLevel="suppress"/>
-        <MoreSpecificImplementedParamType errorLevel="suppress"/>
-        <InvalidNullableReturnType errorLevel="suppress"/>
-        <NullableReturnStatement errorLevel="suppress"/>
-        <PossiblyInvalidArgument errorLevel="suppress"/>
-        <MissingClosureReturnType errorLevel="suppress"/>
         <DeprecatedMethod errorLevel="info"/>
-        <MissingParamType errorLevel="info"/>
-        <MissingClosureParamType errorLevel="info"/>
-        <MissingReturnType errorLevel="info"/>
         <DeprecatedClass errorLevel="info"/>
-        <PossiblyNullReference errorLevel="info"/>
-        <PossiblyNullArgument errorLevel="info"/>
-        <PossiblyNullOperand errorLevel="info"/>
-        <LessSpecificImplementedReturnType errorLevel="info"/>
         <UndefinedClass>
             <errorLevel type="suppress">
                 <directory name="tests"/>

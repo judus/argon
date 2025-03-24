@@ -6,7 +6,7 @@ namespace Tests\Integration\Interceptors\Mocks;
 
 use Maduser\Argon\Container\Interceptors\Contracts\ValidationInterface;
 
-class ValidRequest implements ValidationInterface
+class BlogPostRequest implements ValidationInterface
 {
     public bool $wasValidated = false;
 
@@ -17,5 +17,13 @@ class ValidRequest implements ValidationInterface
     public function validate(): void
     {
         $this->wasValidated = true;
+
+        if (empty($this->request->get('title'))) {
+            throw new \InvalidArgumentException('The title is required.');
+        }
+
+        if (strlen($this->request->get('title')) < 3) {
+            throw new \InvalidArgumentException('The title must be at least 3 characters.');
+        }
     }
 }

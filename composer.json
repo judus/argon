@@ -20,7 +20,8 @@
   "require-dev": {
     "phpunit/phpunit": "^9.5",
     "vimeo/psalm": "^5.26.1",
-    "squizlabs/php_codesniffer": "^3.10"
+    "squizlabs/php_codesniffer": "^3.12",
+    "slevomat/coding-standard": "^8.16"
   },
   "autoload-dev": {
     "psr-4": {
@@ -47,5 +48,10 @@
     "watch": "find src/ | entr -r composer check",
     "watch-test": "find src/ | entr -r composer test",
     "watch-fix": "find src/ | entr -r composer fix"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
   }
 }

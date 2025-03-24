@@ -30,7 +30,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testSingletonServiceBinding()
+    public function testSingletonServiceBinding(): void
     {
         $container = new ServiceContainer();
         $container->singleton('service', fn() => new stdClass());
@@ -46,7 +46,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testTransientServiceBinding()
+    public function testTransientServiceBinding(): void
     {
         $container = new ServiceContainer();
         $container->bind('service', fn() => new stdClass());
@@ -62,7 +62,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testRegisterFactorySingleton()
+    public function testRegisterFactorySingleton(): void
     {
         $container = new ServiceContainer();
         $container->registerFactory('factory', fn() => new stdClass());
@@ -82,7 +82,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testRegisterFactoryTransient()
+    public function testRegisterFactoryTransient(): void
     {
         $container = new ServiceContainer();
         $container->registerFactory('factory', fn() => new stdClass(), false);
@@ -102,7 +102,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testCircularDependencyDetection()
+    public function testCircularDependencyDetection(): void
     {
         $container = new ServiceContainer();
 
@@ -125,7 +125,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testParameterResolutionWithOverride()
+    public function testParameterResolutionWithOverride(): void
     {
         $parameters = $this->createMock(ParameterRegistry::class);
 
@@ -151,7 +151,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testTaggingAndRetrievingServices()
+    public function testTaggingAndRetrievingServices(): void
     {
         $container = new ServiceContainer();
         $container->singleton('service1', fn() => new stdClass());
@@ -171,7 +171,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testThrowsNotFoundException()
+    public function testThrowsNotFoundException(): void
     {
         $this->expectException(NotFoundException::class);
 
@@ -183,7 +183,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws NotFoundException
      */
-    public function testThrowsContainerExceptionForUninstantiableClass()
+    public function testThrowsContainerExceptionForUninstantiableClass(): void
     {
         $this->expectException(ContainerException::class);
 
@@ -191,7 +191,7 @@ class ServiceContainerTest extends TestCase
         $container->get(UninstantiableClass::class);  // Abstract class, can't be instantiated
     }
 
-    public function testBindThrowsExceptionForInvalidClass()
+    public function testBindThrowsExceptionForInvalidClass(): void
     {
         $this->expectException(ContainerException::class);
         $container = new ServiceContainer();
@@ -202,7 +202,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws NotFoundException
      */
-    public function testMissingParameterOverrideThrowsException()
+    public function testMissingParameterOverrideThrowsException(): void
     {
         $parameters = $this->createMock(ParameterRegistry::class);
         $parameters->method('get')->willReturn([]);
@@ -252,7 +252,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testReflectionCacheUsed()
+    public function testReflectionCacheUsed(): void
     {
         $container = new ServiceContainer();
         $reflectionProperty = new ReflectionProperty($container, 'reflectionCache');
@@ -274,7 +274,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testMultipleParameterOverrides()
+    public function testMultipleParameterOverrides(): void
     {
         $parameters = $this->createMock(ParameterRegistry::class);
         $parameters->method('get')
@@ -293,7 +293,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testCallResolvesMethodDependencies()
+    public function testCallResolvesMethodDependencies(): void
     {
         $container = new ServiceContainer();
 
@@ -313,7 +313,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testCallResolvesMethodWithOverride()
+    public function testCallResolvesMethodWithOverride(): void
     {
         $container = new ServiceContainer();
 
@@ -334,7 +334,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws NotFoundException
      */
-    public function testThrowsContainerExceptionForNonInstantiableClass()
+    public function testThrowsContainerExceptionForNonInstantiableClass(): void
     {
         $container = new ServiceContainer();
 
@@ -354,7 +354,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testThrowsContainerExceptionForCircularDependency()
+    public function testThrowsContainerExceptionForCircularDependency(): void
     {
         $container = new ServiceContainer();
 
@@ -381,7 +381,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws NotFoundException
      */
-    public function testThrowsContainerExceptionForUnresolvedPrimitive()
+    public function testThrowsContainerExceptionForUnresolvedPrimitive(): void
     {
         $container = new ServiceContainer();
 
@@ -399,7 +399,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testThrowsNotFoundExceptionForNonExistentDependency()
+    public function testThrowsNotFoundExceptionForNonExistentDependency(): void
     {
         $container = new ServiceContainer();
 
@@ -416,7 +416,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testSingletonReturnsSameInstance()
+    public function testSingletonReturnsSameInstance(): void
     {
         $container = new ServiceContainer();
 
@@ -436,7 +436,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testTransientReturnsDifferentInstances()
+    public function testTransientReturnsDifferentInstances(): void
     {
         $container = new ServiceContainer();
 
@@ -456,7 +456,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testServiceReceivesDependencyThroughAutowiring()
+    public function testServiceReceivesDependencyThroughAutowiring(): void
     {
         $container = new ServiceContainer();
 
@@ -472,7 +472,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testServiceReceivesDependencyWithoutAutowiring()
+    public function testServiceReceivesDependencyWithoutAutowiring(): void
     {
         $container = new ServiceContainer();
 
@@ -494,7 +494,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testInterfaceToClassResolution()
+    public function testInterfaceToClassResolution(): void
     {
         $container = new ServiceContainer();
 
@@ -512,7 +512,7 @@ class ServiceContainerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testInterfaceResolutionThrowsExceptionIfNotBound()
+    public function testInterfaceResolutionThrowsExceptionIfNotBound(): void
     {
         $container = new ServiceContainer();
 
@@ -526,7 +526,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testConcreteClassIsResolved()
+    public function testConcreteClassIsResolved(): void
     {
         $container = new ServiceContainer();
 
@@ -542,7 +542,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testBindingClassToItselfWorksFabulously()
+    public function testBindingClassToItselfWorksFabulously(): void
     {
         $container = new ServiceContainer();
 
@@ -558,7 +558,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testAutowiringWithMultipleDependencies()
+    public function testAutowiringWithMultipleDependencies(): void
     {
         $parameters = $this->createMock(ParameterRegistry::class);
         $parameters->method('get')
@@ -581,7 +581,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testRecursiveDependencyResolution()
+    public function testRecursiveDependencyResolution(): void
     {
         $container = new ServiceContainer();
 
@@ -602,7 +602,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testPrimitiveParameterResolutionWithOverrides()
+    public function testPrimitiveParameterResolutionWithOverrides(): void
     {
         $parameters = $this->createMock(ParameterRegistry::class);
         $parameters->method('get')
@@ -621,7 +621,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testLazyLoadingOfServices()
+    public function testLazyLoadingOfServices(): void
     {
         $container = new ServiceContainer();
 
@@ -650,7 +650,7 @@ class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testAutowiringWithEmptyConstructor()
+    public function testAutowiringWithEmptyConstructor(): void
     {
         $container = new ServiceContainer();
         $instance = $container->get(ClassWithEmptyConstructor::class);
@@ -663,7 +663,7 @@ class ServiceContainerTest extends TestCase
      * @throws NotFoundException
      * @throws ContainerException
      */
-    public function testMultipleServicesResolution()
+    public function testMultipleServicesResolution(): void
     {
         $container = new ServiceContainer();
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Mocks;
 
 class TestService
@@ -15,7 +17,7 @@ class TestService
     }
 
     // Method that accepts a parameter (which we will override in the test)
-    public function someMethod(string $dependency = 'defaultValue')
+    public function someMethod(string $dependency = 'defaultValue'): string
     {
         return $dependency;
     }

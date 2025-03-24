@@ -11,7 +11,9 @@ use Maduser\Argon\Container\Interceptors\ValidationInterceptor;
 use Maduser\Argon\Container\ServiceContainer;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
+use Tests\Integration\Interceptors\Mocks\BlogPostRequest;
 use Tests\Integration\Interceptors\Mocks\InvalidRequest;
+use Tests\Integration\Interceptors\Mocks\Request;
 use Tests\Integration\Interceptors\Mocks\ValidRequest;
 
 class ValidationInterceptorTest extends TestCase
@@ -53,5 +55,45 @@ class ValidationInterceptorTest extends TestCase
         $container->registerTypeInterceptor(ValidationInterceptor::class);
 
         $container->get(InvalidRequest::class);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testFormRequestValidatesAutomatically(): void
+    {
+        $container = new ServiceContainer();
+
+        // Simulate user input
+        $container->singleton(Request::class, fn() => new Request([
+            'title' => 'Valid Title',
+        ]));
+
+        $container->registerTypeInterceptor(ValidationInterceptor::class);
+
+        // Resolve the FormRequest
+        $request = $container->get(BlogPostRequest::class);
+
+        $this->assertTrue($request->wasValidated);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testFormRequestThrowsIfInvalid(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The title is required.');
+
+        $container = new ServiceContainer();
+
+        $container->registerTypeInterceptor(ValidationInterceptor::class);
+
+        // This will throw from validate()
+        $container->get(BlogPostRequest::class);
     }
 }

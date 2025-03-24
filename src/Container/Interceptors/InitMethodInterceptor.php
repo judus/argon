@@ -17,6 +17,10 @@ class InitMethodInterceptor implements TypeInterceptorInterface
 
     public static function supports(object|string $target): bool
     {
+        if (is_string($target)) {
+            return class_exists($target) && method_exists($target, 'init');
+        }
+
         return method_exists($target, 'init');
     }
 

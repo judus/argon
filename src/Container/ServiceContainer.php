@@ -9,6 +9,7 @@ use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\NullServiceProxy;
 use Psr\Container\ContainerInterface;
 use ReflectionClass;
 use ReflectionException;
@@ -202,17 +203,34 @@ class ServiceContainer implements ContainerInterface
      */
     public function registerFactory(string $id, callable $factory, bool $isSingleton = true): void
     {
-        $this->services[$id] = new ServiceDescriptor($factory, $isSingleton);
+        // Convert callable to Closure to satisfy type requirements
+        $factoryClosure = function () use ($factory): mixed {
+            return call_user_func($factory);
+        };
+
+        $this->services[$id] = new ServiceDescriptor($factoryClosure, $isSingleton);
     }
 
     /**
-     * Determines whether the container has a service by its identifier.
+     * Determines whether the container has a service registered by its identifier.
      *
      * @param string $id The service identifier.
      *
      * @return bool True if the service is registered in the container, false otherwise.
      */
     public function has(string $id): bool
+    {
+        return isset($this->services[$id]);
+    }
+
+    /**
+     * Determines whether the container can resolve a service by its identifier, registered or not.
+     *
+     * @param string $id The service identifier.
+     *
+     * @return bool True if the service is registered in the container, false otherwise.
+     */
+    public function canResolve(string $id): bool
     {
         return isset($this->services[$id]) || class_exists($id);
     }
@@ -226,7 +244,9 @@ class ServiceContainer implements ContainerInterface
     public function tag(string $id, array $tags): void
     {
         foreach ($tags as $tag) {
-            $this->tags[$tag][] = $id;
+            if (!in_array($id, $this->tags[$tag] ?? [], true)) {
+                $this->tags[$tag][] = $id;
+            }
         }
     }
 
@@ -256,11 +276,14 @@ class ServiceContainer implements ContainerInterface
     /**
      * Resolves and retrieves a service by its identifier.
      *
-     * @param string $id The service identifier.
-     * @return object The resolved service.
-     * @throws ContainerException
-     * @throws NotFoundException
-     * @throws ReflectionException
+     * @template T of object
+     * @param class-string<T>|string $id Service identifier or class name
+     * @return object The resolved service instance
+     * @psalm-return ($id is class-string<T> ? T : object)
+     *
+     * @throws ContainerException If the service cannot be instantiated
+     * @throws NotFoundException If the service is not found
+     * @throws ReflectionException If reflection fails
      */
     public function get(string $id): object
     {
@@ -291,7 +314,8 @@ class ServiceContainer implements ContainerInterface
                     throw ContainerException::forNonInstantiableClass($id, $reflection->getName());
                 }
 
-                return $this->resolveClass($id, $parameters);
+                $instance = $this->resolveClass($id, $parameters);
+                return $this->applyTypeInterceptors($instance);
             }
 
             throw NotFoundException::forService($id);
@@ -358,7 +382,13 @@ class ServiceContainer implements ContainerInterface
      */
     private function getReflection(string $className): ReflectionClass
     {
-        return $this->reflectionCache[$className] ??= new ReflectionClass($className);
+        if (!isset($this->reflectionCache[$className])) {
+            if (!class_exists($className) && !interface_exists($className) && !trait_exists($className)) {
+                throw new ReflectionException("Class, interface, or trait '$className' does not exist");
+            }
+            $this->reflectionCache[$className] = new ReflectionClass($className);
+        }
+        return $this->reflectionCache[$className];
     }
 
     /**
@@ -405,6 +435,11 @@ class ServiceContainer implements ContainerInterface
 
         // If there's no constructor, just instantiate the class
         if (is_null($constructor)) {
+            // Add class_exists check to help Psalm understand this is valid
+            if (!class_exists($className)) {
+                throw new ContainerException("Class '$className' does not exist");
+            }
+            /** @var class-string $className */
             return new $className();
         }
 
@@ -432,7 +467,6 @@ class ServiceContainer implements ContainerInterface
         $className = $param->getDeclaringClass() ? $param->getDeclaringClass()->getName() : 'unknown class';
         $paramName = $param->getName();
 
-        // Merge parameter overrides
         $mergedParameters = array_merge(
             $this->parameters->get($className),
             $parameters
@@ -445,22 +479,21 @@ class ServiceContainer implements ContainerInterface
         /** @var ReflectionNamedType|null $type */
         $type = $param->getType();
 
-        if ($type === null || !$type->isBuiltin()) {
-            if ($this->contextualBindings->has($className, $type->getName())) {
-                return $this->resolveContextual($className, $type->getName());
+        if ($type !== null && !$type->isBuiltin()) {
+            $typeName = $type->getName();
+            if ($this->contextualBindings->has($className, $typeName)) {
+                return $this->resolveContextual($className, $typeName);
             }
 
-            return $this->get($type->getName());
+            return $this->get($typeName);
         }
 
-        // Primitive fallback or default
         if ($param->isOptional()) {
             return $param->getDefaultValue();
         }
 
         throw ContainerException::forUnresolvedPrimitive($className, $paramName);
     }
-
 
     /**
      * Removes the service identifier from the resolving stack after resolution.
@@ -565,7 +598,7 @@ class ServiceContainer implements ContainerInterface
             }
 
             // Check if there's an override for this primitive in the registry
-            $className = $param->getDeclaringClass()->getName();
+            $className = $param->getDeclaringClass() ? $param->getDeclaringClass()->getName() : 'unknown';
             $paramName = $param->getName();
             $parameter = $this->parameters->getScoped($className, $paramName);
 
@@ -577,6 +610,10 @@ class ServiceContainer implements ContainerInterface
         }
 
         // Resolve by class type from the container
+        if ($type === null) {
+            throw new ContainerException("Parameter '{$param->getName()}' has no type hint and cannot be resolved");
+        }
+
         return $this->get($type->getName());
     }
 
@@ -593,12 +630,7 @@ class ServiceContainer implements ContainerInterface
     public function if(string $id): object
     {
         if (!$this->has($id)) {
-            return new class {
-                public function __call(string $name, array $arguments): void
-                {
-                    // Silent no-op
-                }
-            };
+            return new NullServiceProxy();
         }
 
         return $this->get($id);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Integration\Compiler;
 
 use Maduser\Argon\Container\Exceptions\ContainerException;
@@ -33,6 +35,13 @@ class ContainerCompilerTest extends TestCase
         require_once $file;
 
         $fqcn = "$namespace\\$className";
+
+        // Add class existence check to help Psalm understand this is a valid class
+        if (!class_exists($fqcn)) {
+            throw new \RuntimeException("Failed to load compiled container class: $fqcn");
+        }
+
+        /** @var class-string $fqcn */
         return new $fqcn();
     }
 

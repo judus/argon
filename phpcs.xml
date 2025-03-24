@@ -1,9 +1,19 @@
 <?xml version="1.0"?>
 <ruleset name="MaduserStandard">
-    <description>Maduser's project coding standard</description>
+    <description>Strict PHP coding standard for the Argon container</description>
 
-    <!-- Define the coding standard -->
+    <!-- Base standard -->
     <rule ref="PSR12"/>
+
+    <!-- Required extensions -->
+    <config name="installed_paths" value="vendor/slevomat/coding-standard"/>
+
+    <!-- Strict types declaration -->
+    <rule ref="SlevomatCodingStandard.TypeHints.DeclareStrictTypes">
+        <properties>
+            <property name="spacesCountAroundEqualsSign" value="0"/>
+        </properties>
+    </rule>
 
     <!-- Specify the directories to check -->
     <file>src/</file>

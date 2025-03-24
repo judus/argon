@@ -246,9 +246,9 @@ PHP;
             }
 
             foreach ($this->container->getTypeInterceptors() as $interceptorClass) {
-                if (is_string($interceptorClass) && method_exists($interceptorClass, 'supports')) {
+                if ($this->isValidInterceptor($interceptorClass)) {
                     if ($interceptorClass::supports($concrete)) {
-                        $method = 'interceptWith' . str_replace(['\\', '/'], '', $interceptorClass);
+                        $method = 'interceptWith' . str_replace(['\\', '/'], '', (string)$interceptorClass);
                         $resolved[$concrete] = [
                             'interceptor' => $interceptorClass,
                             'method' => $method,
@@ -259,5 +259,17 @@ PHP;
         }
 
         return $resolved;
+    }
+
+    /**
+     * @param mixed $interceptorClass
+     * @return bool
+     */
+    public function isValidInterceptor(mixed $interceptorClass): bool
+    {
+        return
+            is_string($interceptorClass) &&
+            class_exists($interceptorClass) &&
+            method_exists($interceptorClass, 'supports');
     }
 }
