@@ -11,7 +11,7 @@
 
 A high-performance, PSR-11 compliant dependency injection container for modern PHP applications.
 
-Argon focuses on ease of use without compromising features, performance, or flexibility. It combines intuitive service binding with blazing-fast compiled resolution, and supports powerful service lifecycle extensions via type interceptors.
+Argon focuses on ease of use without compromising features, performance, or flexibility. It combines intuitive service binding with blazing-fast compiled resolution, and supports powerful service lifecycle extensions via customizable type interceptors.
 
 ---
 
@@ -24,7 +24,7 @@ Argon focuses on ease of use without compromising features, performance, or flex
 - **🧩 Parameter Overrides**: Inject primitives and custom values into your services.
 - **🔁 Contextual Bindings**: Different dependencies per consumer class.
 - **🧰 Service Providers**: Group and encapsulate service registrations.
-- **🛠 Type Interceptors**: Apply behavior-modifying logic when services are resolved.
+- **🛠 Type Interceptors**: Add post-resolution behavior to specific services (e.g., validation, tagging, initialization).
 - **❓ Conditional Resolution**: Safely access optional services using `if()`.
 - **⏱ Lazy Loading**: Services are only instantiated when first accessed.
 - **🚨 Circular Dependency Detection**: Detects and protects against infinite resolution loops.
@@ -44,6 +44,14 @@ Requires PHP 8.2+
 ```bash
 vendor/bin/phpunit
 ```
+
+---
+
+### Philosophy: Why Argon?
+
+The Argon Service Container provides a human-friendly API and compiles your service graph into native PHP code. There’s no reflection overhead, no service guessing, and no performance surprises. It favors **a single, consistent way** of doing things — no YAML vs. XML debates, no annotation magic, no framework coupling. Just clear, explicit, testable PHP.
+
+Argon gives you modern, enterprise-grade dependency injection with the simplicity and control of raw PHP.
 
 ---
 
@@ -76,7 +84,8 @@ $implementation = $container->get(LoggerInterface::class);
 ```php
 class Logger {}
 
-class UserService {
+class UserService
+{
     public function __construct(Logger $logger) {}
 }
 
@@ -84,54 +93,65 @@ $container->get(UserService::class); // Works out of the box
 ```
 
 ### 3. Parameter Overrides
-
+Parameter overrides allow you to inject primitive values or custom arguments into service constructors. These values are matched by parameter name.
 ```php
-class ApiClient {
+class ApiClient
+{
     public function __construct(string $apiKey, string $apiUrl) {}
 }
 
 $container->getParameters()->set(ApiClient::class, [
-    'apiKey' => $isProd ? 'prod-key' : 'dev-key',
+    'apiKey' => $_ENV['APP_ENV'] === 'prod' ? 'prod-key' : 'dev-key',
     'apiUrl' => 'https://api.example.com'
 ]);
 
-$apiClient = $container->get(ApiClient::class); // Uses parameters above
+$apiClient = $container->get(ApiClient::class);
 ```
 
 ### 4. Contextual Bindings
+
+Contextual bindings allow different consumers to receive different implementations of the same interface.
 
 ```php
 interface LoggerInterface {}
 class FileLogger implements LoggerInterface {}
 class DatabaseLogger implements LoggerInterface {}
 
-class ServiceA {
+class ServiceA 
+{
     public function __construct(LoggerInterface $logger) {}
 }
 
-class ServiceB {
+class ServiceB 
+{
     public function __construct(LoggerInterface $logger) {}
 }
 
 $container->for(ServiceA::class)
     ->set(LoggerInterface::class, DatabaseLogger::class);
 
+// Same Interface, different implementation
 $container->for(ServiceB::class)
     ->set(LoggerInterface::class, FileLogger::class);
 ```
 
 ### 5. Service Providers
 
-Service providers are a convenient way to group related service bindings:
+Service providers allow grouping service bindings and optional boot-time logic.
 
 ```php
-class AppServiceProvider implements ServiceProviderInterface {
-    public function register(ServiceContainer $container): void {
+class AppServiceProvider implements ServiceProviderInterface
+{
+    // called before compilation and should be used to declare bindings
+    public function register(ServiceContainer $container): void 
+    {
         $container->singleton(LoggerInterface::class, FileLogger::class);
         $container->bind(CacheInterface::class, RedisCache::class);
     }
-
-    public function boot(ServiceContainer $container): void {
+    
+    // Executed after compilation, once the container is ready to resolve services
+    public function boot(ServiceContainer $container): void 
+    {
         // Optional setup logic
     }
 }
@@ -142,33 +162,49 @@ $container->bootServiceProviders();
 
 ### 6. Type Interceptors
 
+Type interceptors allow you to hook into service resolution to apply post-construction logic. 
+
 ```php
-class MyService {
-    public bool $flagged = false;
+interface Validatable
+{
+    public function validate(): void;
 }
 
-class MyInterceptor implements TypeInterceptorInterface {
-    public static function supports(object|string $target): bool {
-        return $target === MyService::class;
-    }
-    public function intercept(object $instance): void {
-        $instance->flagged = true;
+class MyDTO implements Validatable
+{
+    public function validate(): void
+    {
+        // Verify required state after construction
     }
 }
 
-$container->registerInterceptor(MyInterceptor::class);
-$container->get(MyService::class)->flagged; // true
+class ValidationInterceptor implements TypeInterceptorInterface
+{
+    public static function supports(object|string $target): bool
+    {
+        return is_subclass_of($target, Validatable::class);
+    }
+
+    public function intercept(object $instance): void
+    {
+        $instance->validate();
+    }
+}
+
+// Register the interceptor
+$container->registerInterceptor(ValidationInterceptor::class);
+
+// validate() is automatically called after resolution
+$dto = $container->get(MyDTO::class);
 ```
 
 ### 7. Tags
 
 ```php
-$container->singleton(FileLogger::class);
-$container->singleton(DatabaseLogger::class);
-
 $container->tag(FileLogger::class, ['loggers', 'file']);
 $container->tag(DatabaseLogger::class, ['loggers', 'db']);
 
+/** @var iterable<LoggerInterface> $loggers */
 $loggers = $container->getTagged('loggers');
 
 foreach ($loggers as $logger) {
@@ -176,7 +212,9 @@ foreach ($loggers as $logger) {
 }
 ```
 
-### 8. Conditional Service Access (`if()`)
+### 8. Conditional Service Acces
+
+`if()` returns a proxy if the service is unavailable — safe for optional dependencies.
 
 ```php
 // Suppose SomeLogger is optional
@@ -185,7 +223,21 @@ $container->if(SomeLogger::class)->log('Only if logger exists');
 // This won't throw, even if SomeLogger wasn't registered
 ```
 
-### 9. Compiling the Container
+### 9. Closure Bindings with Autowired Parameters
+
+Closure bindings are convenient for CLI scripts, testing, or quick one-off tools, but generally not suited for production service graphs. They are not included in the compiled container and must be registered at runtime:
+
+```php
+// In a ServiceProvider 
+public function boot(ServiceContainer $container): void
+{
+    $container->singleton(LoggerInterface::class, fn (Config $config) => {
+        return new FileLogger($config->get('log.path'));
+    });
+}
+```
+
+### 10. Compiling the Container
 
 ```php
 $file = __DIR__ . '/CompiledContainer.php';
@@ -201,82 +253,17 @@ if (file_exists($file) && !$_ENV['DEV']) {
     $compiler->compileToFile($file);
 }
 ```
+The compiled container is a pure PHP class with zero runtime resolution logic for standard bindings. It eliminates reflections and parameter lookups by generating dedicated methods for each service. All bindings, tags, parameters, and interceptors are statically resolved and written as native PHP code — ready to be opcode-cached and preloaded in production.
 
-### 10. Binding Closures
+No config parsing. No service resolution logic. No performance bottlenecks.
 
-Yes, you can bind closures — parameters will be autowired just like constructors.  
-But before you do that, consider this:
-
-1. **Closures are not compiled.**
-2. **They're not best practice.**
-3. **They're probably not even necessary.**
-
-If you *must* use closures in a compiled container:
-
-👉 **Register them at runtime in the `boot()` method of a service provider.**  
-
-Or... just don’t compile the container at all. Unless you’re building a monster enterprise app, you won’t notice the performance hit.
-
-```php
-// ❌ Bad: Closure for a simple service — just use the parameter registry instead
-$container->singleton(LoggerInterface::class, fn() => new FileLogger('/tmp/log.txt'));
-
-// ❌ Also bad: Use the parameter registry unless config changes per-request
-$container->singleton(LoggerInterface::class, function (DatabaseConfig $config) {
-    return new DatabaseLogger($config->getConnection());
-});
-
-// ⚠️ Maybe-okay: Contextual closure for dynamic resolution
-$container->for(ControllerInterface::class)
-    ->set(Repository::class, function (Router $router) use ($container) {
-        $alias = $router->currentRoute()->segment(1);
-
-        if ($container->has($alias)) {
-            return $container->get($alias);
-        }
-
-        throw new \Exception("No service registered for alias: {$alias}");
-    });
-```
-
-#### 🦼 Better: Use a Factory Class Instead
-
-If you need logic, isolate it in a factory. Reusable, testable, and compiles cleanly.
-
-```php
-class RepositoryFactory
-{
-    public function __construct(
-        private Router $router,
-        private ServiceContainer $container
-    ) {}
-
-    public function __invoke(): Repository
-    {
-        $alias = $this->router->currentRoute()->segment(1);
-
-        if ($this->container->has($alias)) {
-            return $this->container->get($alias);
-        }
-
-        throw new \Exception("No service registered for alias: {$alias}");
-    }
-}
-
-// Register the factory itself
-$container->singleton(RepositoryFactory::class);
-
-// Use it contextually — no closures needed
-$container->for(ControllerInterface::class)
-    ->set(Repository::class, RepositoryFactory::class);
-```
-
-_"Closures are the duct tape of DI — good for emergencies, but don’t build a spaceship with it."_
-
+Just raw, optimized, dependency injection at runtime speed.
 
 ---
 
 ## License
 
 MIT License
-
+<!--
+Argon is free and open-source. If you use it commercially or benefit from it in your work, please consider sponsoring or contributing back to support continued development.
+-->
