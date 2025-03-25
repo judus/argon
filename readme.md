@@ -70,13 +70,13 @@ $container->singleton(MyOtherService::class, MyOtherService::class);
 $container->bind(MyOtherService::class, MyOtherService::class, true);
 
 // Bind an interface to a concrete implementation
-$container->bind(LoggerInterface::class, FileLogger::class);
-$container->singleton(LoggerInterface::class, DatabaseLogger::class);
+$container->bind(LoggerInterface::class, FileLogger::class)
+$container->singleton(CacheInterface::class, InMemoryCache::class);
 
 // Resolve service
 $transientService = $container->get(MyService::class);
 $singletonService = $container->get(MyOtherService::class);
-$implementation = $container->get(LoggerInterface::class);
+$fileLogger = $container->get(LoggerInterface::class);
 ```
 
 ### 2. Autowiring
