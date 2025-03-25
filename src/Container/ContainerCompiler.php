@@ -6,7 +6,7 @@ namespace Maduser\Argon\Container;
 
 use ReflectionClass;
 use ReflectionException;
-use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
+use Maduser\Argon\Container\Contracts\InterceptorInterface;
 
 class ContainerCompiler
 {
@@ -163,7 +163,7 @@ PHP;
         $definitions = [];
         $parameters = $this->container->getParameters();
 
-        foreach ($this->container->getServices() as $id => $descriptor) {
+        foreach ($this->container->getBindings() as $id => $descriptor) {
             $concrete = $descriptor->getConcrete();
 
             if ($concrete instanceof \Closure) {
@@ -238,13 +238,13 @@ PHP;
     /**
      * Auto-discovers interceptors by calling supports(FQCN) statically.
      *
-     * @return array<string, array{interceptor: class-string<TypeInterceptorInterface>, method: string}>
+     * @return array<string, array{interceptor: class-string<InterceptorInterface>, method: string}>
      */
     private function getApplicableInterceptors(): array
     {
         $resolved = [];
 
-        foreach ($this->container->getServices() as $id => $descriptor) {
+        foreach ($this->container->getBindings() as $id => $descriptor) {
             $concrete = $descriptor->getConcrete();
             if ($concrete instanceof \Closure) {
                 continue;

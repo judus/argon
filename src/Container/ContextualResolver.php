@@ -5,18 +5,29 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
+use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use ReflectionException;
 
-readonly class ContextualResolver
+/**
+ * Resolves contextual bindings or falls back to container resolution.
+ */
+final readonly class ContextualResolver implements ContextualResolverInterface
 {
     public function __construct(
         private ServiceContainer $container,
-        private ContextualBindings $registry
+        private ContextualBindingsInterface $registry
     ) {
     }
 
+    /**
+     * Creates a contextual binding builder for the given target.
+     *
+     * @param string $target
+     * @return ContextualBindingBuilder
+     */
     public function for(string $target): ContextualBindingBuilder
     {
         return new ContextualBindingBuilder($this->registry, $target);
@@ -25,7 +36,10 @@ readonly class ContextualResolver
     /**
      * Resolves a contextual override or throws if not found.
      *
-     * @throws ReflectionException
+     * @param string $consumer
+     * @param string $dependency
+     * @return object
+     *
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -44,6 +58,13 @@ readonly class ContextualResolver
         return $this->container->get($override);
     }
 
+    /**
+     * Checks if a contextual override exists for the given consumer and dependency.
+     *
+     * @param string $consumer
+     * @param string $dependency
+     * @return bool
+     */
     public function has(string $consumer, string $dependency): bool
     {
         return $this->registry->has($consumer, $dependency);

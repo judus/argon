@@ -24,7 +24,7 @@ class ServiceProviderTest extends TestCase
     public function testServiceProviderIsRegisteredAndTagged(): void
     {
         $container = new ServiceContainer();
-        $container->registerServiceProvider(DummyProvider::class);
+        $container->registerProvider(DummyProvider::class);
 
         // The provider should be registered as a service
         $this->assertTrue($container->has(DummyProvider::class));
@@ -50,7 +50,7 @@ class ServiceProviderTest extends TestCase
         $this->expectExceptionMessage("must implement ServiceProviderInterface");
 
         $container = new ServiceContainer();
-        $container->registerServiceProvider(MyService::class);
+        $container->registerProvider(MyService::class);
     }
 
     /**
@@ -64,9 +64,9 @@ class ServiceProviderTest extends TestCase
 
         DummyProvider::$booted = false;
 
-        $container->registerServiceProvider(DummyProvider::class);
+        $container->registerProvider(DummyProvider::class);
 
-        $container->bootServiceProviders();
+        $container->boot();
 
         $this->assertTrue(DummyProvider::$booted, 'boot() should have been called after bootServiceProviders().');
     }

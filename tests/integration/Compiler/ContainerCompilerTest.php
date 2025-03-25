@@ -48,7 +48,6 @@ class ContainerCompilerTest extends TestCase
     /**
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
     public function testCompiledContainerResolvesClosures(): void
     {
@@ -197,7 +196,7 @@ class ContainerCompilerTest extends TestCase
     public function testCompiledContainerIncludesServiceProviders(): void
     {
         $container = new ServiceContainer();
-        $container->registerServiceProvider(DummyProvider::class);
+        $container->registerProvider(DummyProvider::class);
 
         $compiled = $this->compileAndLoadContainer($container, 'CachedContainerG');
 

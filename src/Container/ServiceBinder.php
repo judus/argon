@@ -5,24 +5,29 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
+use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 
 /**
- * Handles registration of services into the container.
+ * Handles service registrations into the container.
  */
-class ServiceBinder
+final class ServiceBinder implements ServiceBinderInterface
 {
     /**
-     * @param array<string, ServiceDescriptor> $bindings Reference to the container's service map
+     * @var array<string, ServiceDescriptor>
      */
     private array $descriptors = [];
 
+    /**
+     * @return array<string, ServiceDescriptor>
+     */
     public function getDescriptors(): array
     {
         return $this->descriptors;
     }
 
-    public function getDescriptor(string $id): ?ServiceDescriptor
+    public function getDescriptor(string $id): ?ServiceDescriptorInterface
     {
         return $this->descriptors[$id] ?? null;
     }
@@ -33,7 +38,7 @@ class ServiceBinder
     }
 
     /**
-     * Register a singleton service.
+     * Registers a singleton service.
      *
      * @param string $id
      * @param Closure|string|null $concrete
@@ -41,11 +46,11 @@ class ServiceBinder
      */
     public function singleton(string $id, Closure|string|null $concrete = null): void
     {
-        $this->bind($id, $concrete ?? $id, true);
+        $this->bind($id, $concrete, true);
     }
 
     /**
-     * Register a service (transient or singleton).
+     * Registers a service (transient or singleton).
      *
      * @param string $id
      * @param Closure|string|null $concrete
@@ -56,7 +61,7 @@ class ServiceBinder
     {
         $concrete ??= $id;
 
-        if (!($concrete instanceof Closure) && !class_exists($concrete)) {
+        if (!$concrete instanceof Closure && !class_exists($concrete)) {
             throw ContainerException::fromServiceId($id, "Class '$concrete' does not exist.");
         }
 
@@ -64,15 +69,17 @@ class ServiceBinder
     }
 
     /**
-     * Register a factory callable.
+     * Registers a factory service.
      *
      * @param string $id
-     * @param callable $factory
+     * @param callable(): mixed $factory
      * @param bool $singleton
      */
     public function registerFactory(string $id, callable $factory, bool $singleton = true): void
     {
-        $factoryClosure = fn(): mixed => call_user_func($factory);
-        $this->descriptors[$id] = new ServiceDescriptor($factoryClosure, $singleton);
+        $this->descriptors[$id] = new ServiceDescriptor(
+            static fn(): mixed => $factory(),
+            $singleton
+        );
     }
 }

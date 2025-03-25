@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Container;
+namespace Tests\Integration\Container;
 
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ServiceContainer;
 use PHPUnit\Framework\TestCase;
-use ReflectionException;
 use Tests\Mocks\DatabaseLogger;
 use Tests\Mocks\FileLogger;
 use Tests\Mocks\LoggerInterface;
@@ -20,7 +19,6 @@ class ContextualBindingTest extends TestCase
     /**
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
     public function testContextualBindingWithClassString(): void
     {
@@ -42,7 +40,6 @@ class ContextualBindingTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */

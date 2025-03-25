@@ -26,7 +26,7 @@ class ServiceContainerIfTest extends TestCase
         $container = new ServiceContainer();
         $container->singleton(TestService::class, fn() => $stub);
 
-        $container->if(TestService::class)->callMe();
+        $container->optional(TestService::class)->callMe();
 
         $this->assertTrue($stub->called, 'Expected method doSomething to be called.');
     }
@@ -40,7 +40,7 @@ class ServiceContainerIfTest extends TestCase
     {
         $container = new ServiceContainer();
 
-        $result = $container->if('nonexistent')->callMe(); // returns void, no exception
+        $result = $container->optional('nonexistent')->callMe(); // returns void, no exception
 
         $this->assertNull($result);
     }

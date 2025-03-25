@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 
 /**
- * Class ServiceDescriptor
- *
- * Holds metadata about a service, including whether it's a singleton and the concrete implementation.
+ * Holds metadata about a service: its concrete implementation and singleton state.
  */
-class ServiceDescriptor
+final class ServiceDescriptor implements ServiceDescriptorInterface
 {
     /**
      * @var class-string|Closure
      */
     private string|Closure $concrete;
+
     private bool $isSingleton;
+
     private ?object $instance = null;
 
     /**
@@ -29,43 +30,24 @@ class ServiceDescriptor
         $this->isSingleton = $isSingleton;
     }
 
-    /**
-     * Checks if the service is a singleton.
-     *
-     * @return bool
-     */
     public function isSingleton(): bool
     {
         return $this->isSingleton;
     }
 
     /**
-     * Returns the concrete class or closure that defines the service.
-     *
-     * @return string|Closure
-     * @psalm-return class-string|Closure
+     * @return class-string|Closure
      */
     public function getConcrete(): string|Closure
     {
         return $this->concrete;
     }
 
-    /**
-     * Returns the singleton instance if available.
-     *
-     * @return object|null
-     */
     public function getInstance(): ?object
     {
         return $this->instance;
     }
 
-    /**
-     * Stores the resolved instance for singletons.
-     *
-     * @param object $instance
-     * @return void
-     */
     public function storeInstance(object $instance): void
     {
         if ($this->isSingleton && $this->instance === null) {

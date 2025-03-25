@@ -5,39 +5,53 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
+use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
+use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
+use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use ReflectionClass;
-use ReflectionException;
 use ReflectionParameter;
 
-class ServiceResolver
+/**
+ * Resolves services, handling recursive instantiation and singleton caching.
+ */
+final class ServiceResolver implements ServiceResolverInterface
 {
     /**
+     * Map of service ID to descriptor (bindings).
+     *
      * @var array<string, ServiceDescriptor>
      */
     private array $descriptors = [];
 
-    /** @var array<string, true> */
+    /**
+     * Currently resolving IDs (to detect circular dependencies).
+     *
+     * @var array<string, true>
+     */
     private array $resolving = [];
 
     public function __construct(
-        private readonly ServiceBinder $binder,
-        private readonly ReflectionCache $reflectionCache,
-        private readonly InterceptorRegistry $interceptors,
-        private readonly ParameterResolver $parameterResolver
+        private readonly ServiceBinderInterface $binder,
+        private readonly ReflectionCacheInterface $reflectionCache,
+        private readonly InterceptorRegistryInterface $interceptors,
+        private readonly ParameterResolverInterface $parameterResolver
     ) {
     }
 
     /**
+     * Resolves a service by ID or class name.
+     *
      * @template T of object
      * @param class-string<T>|string $id
-     * @param array $parameters
+     * @param array<string, mixed> $parameters
      * @return object
      * @psalm-return ($id is class-string<T> ? T : object)
+     *
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
     public function resolve(string $id, array $parameters = []): object
     {
@@ -45,9 +59,10 @@ class ServiceResolver
 
         $descriptor = $this->binder->getDescriptor($id);
 
+        // If there's no descriptor, try to resolve by class reflection
         if (!$descriptor) {
             if (!class_exists($id)) {
-                throw NotFoundException::forService($id);
+                throw new NotFoundException($id);
             }
 
             $reflection = $this->reflectionCache->get($id);
@@ -59,41 +74,44 @@ class ServiceResolver
             return $this->interceptors->apply($instance);
         }
 
-        $instance = $descriptor->getInstance();
-        $concrete = $descriptor->getConcrete();
-
-        if ($descriptor->isSingleton() && $instance !== null) {
+        // Return cached instance if it's a singleton and already resolved
+        if ($descriptor->isSingleton() && ($instance = $descriptor->getInstance())) {
             $this->removeFromResolving($id);
             return $instance;
         }
 
+        $concrete = $descriptor->getConcrete();
+
+        // Closure factory? Just invoke.
         $instance = $concrete instanceof Closure
             ? $concrete()
             : $this->resolveClass($concrete, $parameters);
 
         $instance = $this->interceptors->apply($instance);
 
+        // If singleton, store the created instance
         if ($descriptor->isSingleton()) {
             $descriptor->storeInstance($instance);
         }
 
         $this->removeFromResolving($id);
+
         return $instance;
     }
 
     /**
-     * @template T of object
-     * @param class-string<T> $className
-     * @param array $parameters
+     * Resolves a concrete class by analyzing its constructor dependencies.
+     *
+     * @param class-string $className
+     * @param array<string, mixed> $parameters
      * @return object
+     *
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
     private function resolveClass(string $className, array $parameters = []): object
     {
-        $descriptor = $this->binder->getDescriptor($className);
-        if ($descriptor) {
+        if ($descriptor = $this->binder->getDescriptor($className)) {
             $concrete = $descriptor->getConcrete();
 
             if ($concrete instanceof Closure) {
@@ -116,18 +134,48 @@ class ServiceResolver
         }
 
         $constructor = $reflection->getConstructor();
-        if (is_null($constructor)) {
-            return new $className();
+
+        if ($constructor === null) {
+            try {
+                return new $className();
+            } catch (\Throwable $e) {
+                throw ContainerException::forDirectInstantiationFailure($className, $e);
+            }
         }
 
-        $dependencies = array_map(
-            fn(ReflectionParameter $param): mixed => $this->parameterResolver->resolve($param, $parameters),
-            $constructor->getParameters()
-        );
+        $dependencies = $this->resolveConstructorParameters($constructor->getParameters(), $parameters);
 
-        return $reflection->newInstanceArgs($dependencies);
+        try {
+            return $reflection->newInstanceArgs(array_values($dependencies));
+        } catch (\Throwable $e) {
+            throw ContainerException::forInstantiationFailure($className, $e);
+        }
     }
 
+    /**
+     * Resolves constructor parameters using contextual/primitive logic.
+     *
+     * @param array<int, ReflectionParameter> $params
+     * @param array<string, mixed> $overrides
+     * @return array<int, mixed>
+     *
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function resolveConstructorParameters(array $params, array $overrides): array
+    {
+        return array_map(
+            fn(ReflectionParameter $param): mixed => $this->parameterResolver->resolve($param, $overrides),
+            $params
+        );
+    }
+
+    /**
+     * Detects circular dependencies by tracking resolution chain.
+     *
+     * @param string $id
+     * @throws ContainerException
+     */
     private function checkCircularDependency(string $id): void
     {
         if (isset($this->resolving[$id])) {
@@ -139,6 +187,11 @@ class ServiceResolver
         $this->resolving[$id] = true;
     }
 
+    /**
+     * Removes a service ID from the current resolving stack.
+     *
+     * @param string $id
+     */
     private function removeFromResolving(string $id): void
     {
         unset($this->resolving[$id]);

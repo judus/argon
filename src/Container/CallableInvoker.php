@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\CallableWrapperInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\CallableWrapper;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
@@ -25,32 +27,21 @@ readonly class CallableInvoker
      *
      * @param object|string $target
      * @param string|null $method
-     * @param array $parameters
+     * @param array<string, mixed> $parameters
      * @return mixed
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
     public function call(object|string $target, ?string $method = null, array $parameters = []): mixed
     {
-        [$callable, $reflection] = $this->resolveCallable($target, $method);
+        $callableWrapper = $this->resolveCallable($target, $method);
 
         $resolvedParams = array_map(
             fn(ReflectionParameter $param): mixed => $this->parameterResolver->resolve($param, $parameters),
-            $reflection->getParameters()
+            $callableWrapper->reflection->getParameters()
         );
 
-        // For class methods
-        if ($reflection instanceof ReflectionMethod) {
-            return $reflection->invokeArgs($callable, $resolvedParams);
-        }
-
-        // For closures
-        if ($reflection instanceof ReflectionFunction) {
-            return $reflection->invokeArgs($resolvedParams);
-        }
-
-        throw new ContainerException('Unhandled reflection type.');
+        return $this->invokeCallable($callableWrapper, $resolvedParams);
     }
 
     /**
@@ -58,25 +49,72 @@ readonly class CallableInvoker
      *
      * @param object|string $target
      * @param string|null $method
-     * @return array{object|null, \ReflectionFunctionAbstract}
+     * @return CallableWrapperInterface
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
-    public function resolveCallable(object|string $target, ?string $method): array
+    private function resolveCallable(object|string $target, ?string $method): CallableWrapperInterface
     {
-        if (!is_null($method)) {
-            $object = is_string($target)
-                ? $this->serviceResolver->resolve($target)
-                : $target;
+        try {
+            if ($target instanceof Closure) {
+                return new CallableWrapper(null, new ReflectionFunction($target));
+            }
 
-            return [$object, new ReflectionMethod($object, $method)];
+            if (is_string($target)) {
+                $target = $this->serviceResolver->resolve($target);
+            }
+
+            if ($method !== null) {
+                return new CallableWrapper($target, new ReflectionMethod($target, $method));
+            }
+        } catch (ReflectionException $e) {
+            throw new ContainerException(
+                sprintf(
+                    'Failed to reflect callable: %s::%s',
+                    is_object($target) ? $target::class : $target,
+                    $method ?? 'closure'
+                ),
+                $target instanceof \Stringable ? (string) $target : null,
+                0,
+                $e
+            );
         }
 
-        if ($target instanceof Closure) {
-            return [null, new ReflectionFunction($target)];
-        }
+        throw new ContainerException(sprintf(
+            'Unsupported callable type: %s (method: %s)',
+            get_debug_type($target),
+            (string) $method
+        ));
+    }
 
-        throw new ContainerException("Unsupported callable type: must be method or closure.");
+    /**
+     * Invokes the given callable using reflection and resolved parameters.
+     *
+     * @param CallableWrapperInterface $callable
+     * @param array<int, mixed> $resolvedParams
+     * @return mixed
+     * @throws ContainerException
+     */
+    private function invokeCallable(CallableWrapperInterface $callable, array $resolvedParams): mixed
+    {
+        $reflection = $callable->reflection;
+
+        try {
+            return match (true) {
+                $reflection instanceof ReflectionMethod => $reflection->invokeArgs(
+                    $callable->instance,
+                    $resolvedParams
+                ),
+                $reflection instanceof ReflectionFunction => $reflection->invokeArgs($resolvedParams),
+                default => throw new ContainerException('Unhandled reflection type: ' . get_class($reflection)),
+            };
+        } catch (ReflectionException $e) {
+            throw new ContainerException(
+                'Failed to invoke callable: ' . $reflection->getName(),
+                null,
+                0,
+                $e
+            );
+        }
     }
 }

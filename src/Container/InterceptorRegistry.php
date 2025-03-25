@@ -4,18 +4,22 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
-use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
+use Maduser\Argon\Container\Contracts\InterceptorInterface;
+use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 
-class InterceptorRegistry
+/**
+ * Manages registration and execution of type interceptors.
+ */
+final class InterceptorRegistry implements InterceptorRegistryInterface
 {
     /**
-     * @var array<class-string<TypeInterceptorInterface>>
+     * @var list<class-string<InterceptorInterface>>
      */
     private array $interceptors = [];
 
     /**
-     * @return array<class-string<TypeInterceptorInterface>>
+     * @return list<class-string<InterceptorInterface>>
      */
     public function all(): array
     {
@@ -23,8 +27,7 @@ class InterceptorRegistry
     }
 
     /**
-     * @param class-string<TypeInterceptorInterface> $interceptorClass
-     * @return void
+     * @param class-string<InterceptorInterface> $interceptorClass
      * @throws ContainerException
      */
     public function register(string $interceptorClass): void
@@ -33,7 +36,7 @@ class InterceptorRegistry
             throw new ContainerException("Interceptor class '$interceptorClass' does not exist.");
         }
 
-        if (!is_subclass_of($interceptorClass, TypeInterceptorInterface::class)) {
+        if (!is_subclass_of($interceptorClass, InterceptorInterface::class)) {
             throw new ContainerException("Interceptor '$interceptorClass' must implement TypeInterceptorInterface.");
         }
 
@@ -41,17 +44,16 @@ class InterceptorRegistry
     }
 
     /**
-     * Apply registered type-specific interceptors to the resolved instance.
+     * Applies all supported interceptors to the given instance.
      *
-     * @param object $instance The resolved service instance.
-     * @return object The intercepted instance.
+     * @param object $instance
+     * @return object
      */
     public function apply(object $instance): object
     {
         foreach ($this->interceptors as $interceptorClass) {
             if ($interceptorClass::supports($instance)) {
-                $interceptor = new $interceptorClass();
-                $interceptor->intercept($instance);
+                (new $interceptorClass())->intercept($instance);
             }
         }
 

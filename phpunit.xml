@@ -15,8 +15,12 @@
     <!-- Coverage configuration (optional) -->
     <coverage processUncoveredFiles="true">
         <include>
-            <directory>src</directory>
-            <directory>tests/app</directory>
+            <directory suffix=".php">src/Container</directory>
         </include>
+        <report>
+            <clover outputFile="build/logs/clover.xml"/>
+            <html outputDirectory="build/coverage/html"/>
+            <text outputFile="php://stdout"/>
+        </report>
     </coverage>
 </phpunit>

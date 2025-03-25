@@ -6,22 +6,23 @@ namespace Maduser\Argon\Container;
 
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 
+/**
+ * Base class for service providers.
+ *
+ * Allows registration of bindings and optional bootstrapping logic.
+ */
 abstract class AbstractServiceProvider implements ServiceProviderInterface
 {
     /**
-     * Registers services in the container.
-     *
-     * @param ServiceContainer $container
+     * Register services in the container.
      */
     abstract public function register(ServiceContainer $container): void;
 
     /**
-     * Bootstraps additional setup after registration.
-     *
-     * @param ServiceContainer $container
+     * Optionally bootstrap services after registration.
      */
     public function boot(ServiceContainer $container): void
     {
-        // Optional boot logic, can be left empty
+        // Optional, override if needed
     }
 }

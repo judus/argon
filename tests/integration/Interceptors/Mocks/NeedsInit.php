@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Interceptors\Mocks;
 
-class NeedsInit
+use Maduser\Argon\Container\Interceptors\Contracts\InitInterface;
+
+class NeedsInit implements InitInterface
 {
     public bool $initialized = false;
 

@@ -14,7 +14,6 @@
             <directory name="src/Kernel"/>
             <directory name="src/Middlewares"/>
             <file name="src/App.php"/>
-            <file name="src/Container/ContainerFacade.php"/>
             <file name="tests/resources/cache/*.php"/>
         </ignoreFiles>
     </projectFiles>

@@ -4,32 +4,35 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
+use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
+use Maduser\Argon\Container\Exceptions\ContainerException;
 use ReflectionClass;
-use ReflectionException;
 
-class ReflectionCache
+/**
+ * Caches ReflectionClass instances for reuse across the container.
+ */
+final class ReflectionCache implements ReflectionCacheInterface
 {
     /**
-     * @var array<string, ReflectionClass>
+     * @var array<class-string, ReflectionClass<object>>
      */
     private array $reflectionCache = [];
 
     /**
-     * Retrieves the ReflectionClass instance for a given class name.
-     * Caches the ReflectionClass for future resolutions.
-     *
-     * @param string $className The class name.
-     * @return ReflectionClass The cached or newly created ReflectionClass.
-     * @throws ReflectionException
+     * @param class-string $className
+     * @return ReflectionClass<object>
+     * @throws ContainerException
      */
     public function get(string $className): ReflectionClass
     {
         if (!isset($this->reflectionCache[$className])) {
             if (!class_exists($className) && !interface_exists($className) && !trait_exists($className)) {
-                throw new ReflectionException("Class, interface, or trait '$className' does not exist");
+                throw new ContainerException("Class, interface, or trait '$className' does not exist.", $className);
             }
 
-            $this->reflectionCache[$className] = new ReflectionClass($className);
+            /** @var ReflectionClass<object> $reflection */
+            $reflection = new ReflectionClass($className);
+            $this->reflectionCache[$className] = $reflection;
         }
 
         return $this->reflectionCache[$className];

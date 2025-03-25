@@ -5,25 +5,29 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
+use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
+use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
+use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
-use Psr\Container\ContainerInterface;
-use ReflectionException;
-use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
+use Maduser\Argon\Container\Contracts\InterceptorInterface;
+use Maduser\Argon\Container\Contracts\ServiceProviderRegistryInterface;
+use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Support\NullServiceProxy;
+use Psr\Container\ContainerInterface;
 
 /**
- * Class ServiceContainer
+ * Base container implementation.
  *
- * A PSR-11 compliant, modular dependency injection container.
- * Responsibilities are delegated to specialized components.
+ * This class may be extended by generated or compiled containers.
+ * Do not subclass this manually.
  *
  * @template T of object
  */
 class ServiceContainer implements ContainerInterface
 {
-    // Core dependencies delegated to internal subsystems
     private readonly TagManager $tags;
     private readonly CallableInvoker $invoker;
     private readonly ContextualBindings $contextualBindings;
@@ -33,31 +37,18 @@ class ServiceContainer implements ContainerInterface
     private readonly ParameterResolver $parameterResolver;
     private readonly ServiceBinder $binder;
 
-    /**
-     * @param ParameterRegistry $parameters Global parameter override registry.
-     * @param ReflectionCache $reflectionCache Shared reflection cache.
-     * @param InterceptorRegistry $interceptors Type interceptor registry.
-     * @param TagManager|null $tags Tag manager instance.
-     * @param CallableInvoker|null $invoker Callable/method injector.
-     * @param ContextualBindings|null $contextualRegistry Per-consumer contextual bindings.
-     * @param ContextualResolver|null $contextual Resolver for contextual dependencies.
-     * @param ServiceProviderRegistry|null $providers Service provider registry and boot logic.
-     * @param ServiceResolver|null $serviceResolver Core resolution engine.
-     * @param ParameterResolver|null $parameterResolver Argument/parameter resolver.
-     * @param ServiceBinder|null $binder Binding registry and factory manager.
-     */
     public function __construct(
-        private readonly ParameterRegistry $parameters = new ParameterRegistry(),
-        private readonly ReflectionCache $reflectionCache = new ReflectionCache(),
-        private readonly InterceptorRegistry $interceptors = new InterceptorRegistry(),
-        ?TagManager $tags = null,
-        ?CallableInvoker $invoker = null,
-        ?ContextualBindings $contextualRegistry = null,
-        ?ContextualResolver $contextual = null,
-        ?ServiceProviderRegistry $providers = null,
-        ?ServiceResolver $serviceResolver = null,
-        ?ParameterResolver $parameterResolver = null,
-        ?ServiceBinder $binder = null,
+        private readonly ParameterRegistryInterface   $parameters = new ParameterRegistry(),
+        private readonly ReflectionCacheInterface     $reflectionCache = new ReflectionCache(),
+        private readonly InterceptorRegistryInterface $interceptors = new InterceptorRegistry(),
+        ?TagManagerInterface                          $tags = null,
+        ?CallableInvoker                              $invoker = null,
+        ?ContextualBindings                           $contextualRegistry = null,
+        ?ContextualResolver                           $contextual = null,
+        ?ServiceProviderRegistryInterface             $providers = null,
+        ?ServiceResolver                              $serviceResolver = null,
+        ?ParameterResolver                            $parameterResolver = null,
+        ?ServiceBinderInterface                       $binder = null,
     ) {
         $this->contextualBindings = $contextualRegistry ?? new ContextualBindings();
         $this->contextual = $contextual ?? new ContextualResolver($this, $this->contextualBindings);
@@ -70,6 +61,7 @@ class ServiceContainer implements ContainerInterface
             $this->parameters,
             $this->contextualBindings
         );
+
         $this->serviceResolver = $serviceResolver ?? new ServiceResolver(
             $this->binder,
             $this->reflectionCache,
@@ -86,177 +78,88 @@ class ServiceContainer implements ContainerInterface
     }
 
     /**
-     * Begin a contextual binding chain for a specific class.
-     *
-     * @param string $target Class that will receive the contextual override.
-     * @return ContextualBindingBuilder
-     */
-    public function for(string $target): ContextualBindingBuilder
-    {
-        return $this->contextual->for($target);
-    }
-
-    /**
-     * Resolve a dependency from the container.
-     *
      * @template TGet of object
      * @param class-string<TGet>|string $id
      * @return object
      * @psalm-return ($id is class-string<TGet> ? TGet : object)
-     *
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
     public function get(string $id): object
     {
         return $this->serviceResolver->resolve($id);
     }
 
-    /**
-     * Determine if a service is explicitly registered.
-     *
-     * @param class-string<T>|string $id
-     * @return bool
-     */
     public function has(string $id): bool
     {
         return $this->binder->has($id);
     }
 
     /**
-     * Determine if a service can be resolved (registered or class exists).
-     *
-     * @param class-string<T>|string $id
-     * @return bool
-     */
-    public function canResolve(string $id): bool
-    {
-        return $this->binder->has($id) || class_exists($id);
-    }
-
-    /**
-     * Register a singleton binding.
-     *
-     * @param class-string<T>|string $id
-     * @param Closure|string|null $concrete
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null): void
-    {
-        $this->binder->singleton($id, $concrete);
-    }
-
-    /**
-     * Register a transient binding or override.
-     *
-     * @param class-string<T>|string $id
-     * @param Closure|string|null $concrete
-     * @param bool $isSingleton
-     * @throws ContainerException
-     */
-    public function bind(string $id, Closure|string|null $concrete = null, bool $isSingleton = false): void
+    public function bind(string $id, Closure|string|null $concrete = null, bool $isSingleton = false): ServiceContainer
     {
         $this->binder->bind($id, $concrete, $isSingleton);
+
+        return $this;
     }
 
     /**
-     * Register a factory closure or callable for a service.
-     *
-     * @param string $id
-     * @param callable $factory
-     * @param bool $isSingleton
-     */
-    public function registerFactory(string $id, callable $factory, bool $isSingleton = true): void
-    {
-        $this->binder->registerFactory($id, $factory, $isSingleton);
-    }
-
-    /**
-     * Register a service provider class.
-     *
-     * @param class-string<ServiceProviderInterface> $className
-     * @throws ContainerException
-     * @throws NotFoundException
-     * @throws ReflectionException
-     */
-    public function registerServiceProvider(string $className): void
-    {
-        $this->providers->register($className);
-    }
-
-    /**
-     * Boot all loaded service providers.
-     *
-     * @throws ContainerException
-     * @throws NotFoundException
-     * @throws ReflectionException
-     */
-    public function bootServiceProviders(): void
-    {
-        $this->providers->boot();
-    }
-
-    /**
-     * Register a type-level interceptor.
-     *
-     * @param class-string<TypeInterceptorInterface> $interceptorClass
      * @throws ContainerException
      */
-    public function registerInterceptor(string $interceptorClass): void
+    public function singleton(string $id, Closure|string|null $concrete = null): ServiceContainer
     {
-        $this->interceptors->register($interceptorClass);
+        $this->binder->singleton($id, $concrete);
+
+        return $this;
     }
 
     /**
-     * Add one or more tags to a service binding.
-     *
-     * @param string $id
-     * @param array<string> $tags
-     */
-    public function tag(string $id, array $tags): void
-    {
-        $this->tags->tag($id, $tags);
-    }
-
-    /**
-     * Retrieve all services associated with a tag.
-     *
-     * @param string $tag
-     * @return array<object>
-     * @throws ContainerException
-     * @throws NotFoundException
-     * @throws ReflectionException
-     */
-    public function getTagged(string $tag): array
-    {
-        return $this->tags->getTagged($tag);
-    }
-
-    /**
-     * Get a map of all tags and associated services.
-     *
-     * @return array<string, array<string>>
-     */
-    public function getTags(): array
-    {
-        return $this->tags->all();
-    }
-
-    /**
-     * Return the raw registered service descriptors.
-     *
      * @return array<string, ServiceDescriptor>
      */
-    public function getServices(): array
+    public function getBindings(): array
     {
         return $this->binder->getDescriptors();
     }
 
+    public function getParameters(): ParameterRegistryInterface
+    {
+        return $this->parameters;
+    }
+
+    public function registerFactory(string $id, callable $factory, bool $isSingleton = true): ServiceContainer
+    {
+        $this->binder->registerFactory($id, $factory, $isSingleton);
+
+        return $this;
+    }
+
     /**
-     * Get all registered type interceptor class names.
-     *
-     * @return array<class-string<TypeInterceptorInterface>>
+     * @param class-string<ServiceProviderInterface> $className
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function registerProvider(string $className): ServiceContainer
+    {
+        $this->providers->register($className);
+
+        return $this;
+    }
+
+    /**
+     * @param class-string<InterceptorInterface> $interceptorClass
+     * @throws ContainerException
+     */
+    public function registerInterceptor(string $interceptorClass): ServiceContainer
+    {
+        $this->interceptors->register($interceptorClass);
+
+        return $this;
+    }
+
+    /**
+     * @return list<class-string<InterceptorInterface>>
      */
     public function getInterceptors(): array
     {
@@ -264,42 +167,96 @@ class ServiceContainer implements ContainerInterface
     }
 
     /**
-     * Get the global parameter override registry.
-     *
-     * @return ParameterRegistry
+     * @param string $id
+     * @param list<string> $tags
+     * @return ServiceContainer
      */
-    public function getParameters(): ParameterRegistry
+    public function tag(string $id, array $tags): ServiceContainer
     {
-        return $this->parameters;
+        $this->tags->tag($id, $tags);
+
+        return $this;
     }
 
     /**
-     * Resolve and invoke a method or closure with autowired parameters.
+     * @return array<string, list<string>>
+     */
+    public function getTags(): array
+    {
+        return $this->tags->all();
+    }
+
+    /**
+     * @param string $tag
+     * @return list<object>
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function getTagged(string $tag): array
+    {
+        return $this->tags->getTagged($tag);
+    }
+
+    public function isResolvable(string $id): bool
+    {
+        return $this->binder->has($id) || class_exists($id);
+    }
+
+    public function boot(): ServiceContainer
+    {
+        $this->providers->boot();
+
+        return $this;
+    }
+
+    /**
+     * Extends an already-resolved service at runtime.
      *
+     * This method only works after the service has been resolved.
+     * It should be called during `boot()` or runtime setup — not `register()`.
+     *
+     * @param string $id
+     * @param callable(object):object $decorator
+     * @return ServiceContainer
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function extend(string $id, callable $decorator): ServiceContainer
+    {
+        $instance = $this->get($id);
+        $decorated = $decorator($instance);
+
+        $this->binder->singleton($id, fn() => $decorated);
+        $this->binder->getDescriptor($id)?->storeInstance($decorated);
+
+        return $this;
+    }
+
+    public function for(string $target): ContextualBindingBuilder
+    {
+        return $this->contextual->for($target);
+    }
+
+    /**
      * @param object|string $classOrCallable
      * @param string|null $method
-     * @param array $parameters
+     * @param array<string, mixed> $parameters
      * @return mixed
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
-    public function call(object|string $classOrCallable, ?string $method = null, array $parameters = []): mixed
+    public function invoke(object|string $classOrCallable, ?string $method = null, array $parameters = []): mixed
     {
         return $this->invoker->call($classOrCallable, $method, $parameters);
     }
 
     /**
-     * Attempt to retrieve a service, or return a NullServiceProxy if unavailable.
-     *
-     * @param class-string<T>|string $id
+     * @param string $id
      * @return object
-     * @psalm-return T|NullServiceProxy
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
-    public function if(string $id): object
+    public function optional(string $id): object
     {
         return $this->has($id)
             ? $this->get($id)

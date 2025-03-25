@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler\Mocks;
 
-use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
+use Maduser\Argon\Container\Contracts\InterceptorInterface;
 
-class LoggerInterceptor implements TypeInterceptorInterface
+class LoggerInterceptor implements InterceptorInterface
 {
     public static function supports(object|string $target): bool
     {

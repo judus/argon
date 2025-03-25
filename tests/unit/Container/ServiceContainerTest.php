@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Container;
 
-use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
+use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
+use Maduser\Argon\Container\Contracts\InterceptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ParameterRegistry;
 use Maduser\Argon\Container\ServiceContainer;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use ReflectionProperty;
@@ -127,7 +129,8 @@ class ServiceContainerTest extends TestCase
      */
     public function testParameterResolutionWithOverride(): void
     {
-        $parameters = $this->createMock(ParameterRegistry::class);
+        /** @var MockObject&ParameterRegistryInterface $parameters */
+        $parameters = $this->createMock(ParameterRegistryInterface::class);
 
         // Mock the override for the 'dependency' parameter in TestService
         $parameters->expects($this->once())
@@ -146,11 +149,6 @@ class ServiceContainerTest extends TestCase
         $this->assertEquals('overriddenValue', $resolvedService->getDependency());
     }
 
-    /**
-     * @throws NotFoundException
-     * @throws ReflectionException
-     * @throws ContainerException
-     */
     public function testTaggingAndRetrievingServices(): void
     {
         $container = new ServiceContainer();
@@ -204,7 +202,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testMissingParameterOverrideThrowsException(): void
     {
-        $parameters = $this->createMock(ParameterRegistry::class);
+        $parameters = $this->createMock(ParameterRegistryInterface::class);
         $parameters->method('get')->willReturn([]);
 
         $container = new ServiceContainer($parameters);
@@ -221,7 +219,7 @@ class ServiceContainerTest extends TestCase
     public function testTypeInterceptorModifiesResolvedInstance(): void
     {
         // Define a concrete interceptor class inline for clarity/testing
-        $interceptor = new class implements TypeInterceptorInterface {
+        $interceptor = new class implements InterceptorInterface {
             public static function supports(object|string $target): bool
             {
                 return $target === stdClass::class || $target instanceof \stdClass;
@@ -284,7 +282,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testMultipleParameterOverrides(): void
     {
-        $parameters = $this->createMock(ParameterRegistry::class);
+        $parameters = $this->createMock(ParameterRegistryInterface::class);
         $parameters->method('get')
             ->willReturn(['param1' => 'override1', 'param2' => 'override2']);
 
@@ -310,7 +308,7 @@ class ServiceContainerTest extends TestCase
 
         // Resolve the service and call the method
         $service = $container->get(TestService::class);
-        $result = $container->call($service, 'someMethod');
+        $result = $container->invoke($service, 'someMethod');
 
         // Assert that the method returns the default value ('defaultValue')
         $this->assertEquals('defaultValue', $result);
@@ -332,7 +330,7 @@ class ServiceContainerTest extends TestCase
         $service = $container->get(TestService::class);
 
         // Call the method with an override for 'dependency'
-        $result = $container->call($service, 'someMethod', ['dependency' => 'overrideValue']);
+        $result = $container->invoke($service, 'someMethod', ['dependency' => 'overrideValue']);
 
         // Assert that the method returns the overridden value
         $this->assertEquals('overrideValue', $result);
@@ -396,7 +394,7 @@ class ServiceContainerTest extends TestCase
         // Expect a ContainerException with the fully qualified class name
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessage(
-            "Cannot resolve primitive type parameter 'dependency' in service 'Tests\Mocks\TestService'."
+            "Cannot resolve primitive parameter 'dependency' in service 'Tests\Mocks\TestService'."
         );
 
         // Trigger the exception by calling the method that has a primitive parameter
@@ -568,7 +566,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testAutowiringWithMultipleDependencies(): void
     {
-        $parameters = $this->createMock(ParameterRegistry::class);
+        $parameters = $this->createMock(ParameterRegistryInterface::class);
         $parameters->method('get')
             ->willReturn([
                 'param1' => 'stringValue', // Override for string param
@@ -612,7 +610,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testPrimitiveParameterResolutionWithOverrides(): void
     {
-        $parameters = $this->createMock(ParameterRegistry::class);
+        $parameters = $this->createMock(ParameterRegistryInterface::class);
         $parameters->method('get')
             ->willReturn(['param1' => 'override1', 'param2' => 123]);
 
@@ -688,7 +686,7 @@ class ServiceContainerTest extends TestCase
     public function testCanResolveReturnsTrueForExistingClass(): void
     {
         $container = new ServiceContainer();
-        $this->assertTrue($container->canResolve(\stdClass::class));
-        $this->assertFalse($container->canResolve('NonExistentClass'));
+        $this->assertTrue($container->isResolvable(\stdClass::class));
+        $this->assertFalse($container->isResolvable('NonExistentClass'));
     }
 }

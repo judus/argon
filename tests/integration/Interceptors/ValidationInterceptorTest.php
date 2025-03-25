@@ -20,7 +20,6 @@ class ValidationInterceptorTest extends TestCase
 {
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testValidationInterceptorCallsValidateMethod(): void
@@ -40,7 +39,6 @@ class ValidationInterceptorTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -59,7 +57,6 @@ class ValidationInterceptorTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testFormRequestValidatesAutomatically(): void
@@ -81,7 +78,6 @@ class ValidationInterceptorTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testFormRequestThrowsIfInvalid(): void

@@ -6,21 +6,18 @@ namespace Maduser\Argon\Container\Contracts;
 
 use Maduser\Argon\Container\ServiceContainer;
 
+/**
+ * Declares a service provider capable of registering and bootstrapping bindings.
+ */
 interface ServiceProviderInterface
 {
     /**
-     * Registers services within the container.
-     *
-     * @param ServiceContainer $container
-     * @return void
+     * Register bindings in the container.
      */
     public function register(ServiceContainer $container): void;
 
     /**
-     * Bootstraps any additional setup after registration.
-     *
-     * @param ServiceContainer $container
-     * @return void
+     * Optionally perform post-registration setup.
      */
     public function boot(ServiceContainer $container): void;
 }

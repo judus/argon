@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
-class ParameterRegistry
+use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
+
+/**
+ * Stores parameter sets scoped by identifier (typically FQCN).
+ */
+final class ParameterRegistry implements ParameterRegistryInterface
 {
     /**
-     * Holds parameters scoped by identifier (usually FQCN).
-     *
      * @var array<string, array<string, mixed>>
      */
     private array $parameters = [];
@@ -19,8 +22,7 @@ class ParameterRegistry
     }
 
     /**
-     * @param array $parameters
-     * @return void
+     * @param array<string, array<string, mixed>> $parameters
      */
     public function setParameters(array $parameters): void
     {
@@ -28,8 +30,6 @@ class ParameterRegistry
     }
 
     /**
-     * Sets a scoped parameter set for a given key (e.g., FQCN).
-     *
      * @param string $scope
      * @param array<string, mixed> $params
      */
@@ -39,8 +39,6 @@ class ParameterRegistry
     }
 
     /**
-     * Retrieves all parameters for the given scope.
-     *
      * @param string $scope
      * @return array<string, mixed>
      */
@@ -50,11 +48,8 @@ class ParameterRegistry
     }
 
     /**
-     * Checks whether a parameter is defined under a scope.
-     *
      * @param string $scope
      * @param string $name
-     * @return bool
      */
     public function has(string $scope, string $name): bool
     {
@@ -62,8 +57,6 @@ class ParameterRegistry
     }
 
     /**
-     * Gets a single parameter value under a specific scope.
-     *
      * @param string $scope
      * @param string $name
      * @param mixed|null $default
@@ -75,8 +68,6 @@ class ParameterRegistry
     }
 
     /**
-     * Returns all stored parameters.
-     *
      * @return array<string, array<string, mixed>>
      */
     public function all(): array

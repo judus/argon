@@ -94,6 +94,7 @@ $container->get(UserService::class); // Works out of the box
 
 ### 3. Parameter Overrides
 Parameter overrides allow you to inject primitive values or custom arguments into service constructors. These values are matched by parameter name.
+
 ```php
 class ApiClient
 {
@@ -156,13 +157,13 @@ class AppServiceProvider implements ServiceProviderInterface
     }
 }
 
-$container->registerServiceProvider(AppServiceProvider::class);
-$container->bootServiceProviders();
+$container->registerProvider(AppServiceProvider::class);
+$container->boot();
 ```
 
 ### 6. Type Interceptors
 
-Type interceptors allow you to hook into service resolution to apply post-construction logic. 
+Type interceptors allow you to hook into service resolution to apply post-construction logic.
 
 ```php
 interface Validatable
@@ -218,7 +219,7 @@ foreach ($loggers as $logger) {
 
 ```php
 // Suppose SomeLogger is optional
-$container->if(SomeLogger::class)->log('Only if logger exists');
+$container->optional(SomeLogger::class)->log('Only if logger exists');
 
 // This won't throw, even if SomeLogger wasn't registered
 ```
@@ -258,6 +259,33 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 No config parsing. No service resolution logic. No performance bottlenecks.
 
 Just raw, optimized, dependency injection at runtime speed.
+
+---
+
+## 🧩 API
+
+| Container Facade        | ServiceContainer        | Parameters                                                                 | Return                                     | Description                                                        |
+| ----------------------- | ----------------------- | -------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------ |
+| `set()`                 | *N/A*                   | `ServiceContainer $container`                                              | `void`                                     | Sets the global container instance for the static facade.          |
+| `get()`                 | `get()`                 | `string $id`                                                               | `object`                                   | Resolves and returns the service.                                  |
+| `has()`                 | `has()`                 | `string $id`                                                               | `bool`                                     | Checks if a service binding exists.                                |
+| `bind()`                | `bind()`                | `string $id`, `Closure\|string\|null $concrete`, `bool $singleton = false` | `ServiceContainer`                         | Binds a service, optionally as singleton.                          |
+| `singleton()`           | `singleton()`           | `string $id`, `Closure\|string\|null $concrete`                            | `ServiceContainer`                         | Registers a service as a singleton.                                |
+| `bindings()`            | `getBindings()`         | –                                                                          | `array<string, ServiceDescriptor>`         | Returns all registered service descriptors.                        |
+| `parameters()`          | `getParameters()`       | –                                                                          | `ParameterRegistryInterface`               | Returns the global parameter registry instance.                    |
+| `registerFactory()`     | `registerFactory()`     | `string $id`, `callable $factory`, `bool $singleton = true`                | `ServiceContainer`                         | Registers a factory to build the service instance.                 |
+| `registerInterceptor()` | `registerInterceptor()` | `class-string<InterceptorInterface> $class`                                | `ServiceContainer`                         | Registers a type interceptor.                                      |
+| `registerProvider()`    | `registerProvider()`    | `class-string<ServiceProviderInterface> $class`                            | `ServiceContainer`                         | Registers and invokes a service provider.                          |
+| `tag()`                 | `tag()`                 | `string $id`, `list<string> $tags`                                         | `ServiceContainer`                         | Tags a service with one or more labels.                            |
+| `tags()`                | `getTags()`             | –                                                                          | `array<string, list<string>>`              | Returns all tag definitions in the container.                      |
+| `tagged()`              | `getTagged()`           | `string $tag`                                                              | `list<object>`                             | Resolves all services tagged with the given label.                 |
+| `boot()`                | `boot()`                | –                                                                          | `ServiceContainer`                         | Bootstraps all registered service providers.                       |
+| `for()`                 | `for()`                 | `string $target`                                                           | `ContextualBindingBuilder`                 | Starts a contextual binding chain for a specific class.            |
+| `instance()`            | *N/A*                   | –                                                                          | `ServiceContainer`                         | Returns the current container instance, or creates one.            |
+| `interceptors()`        | `getInterceptors()`     | –                                                                          | `list<class-string<InterceptorInterface>>` | Lists all registered interceptors.                                 |
+| `invoke()`              | `invoke()`              | `object\|string $target`, `?string $method`, `array $params = []`          | `mixed`                                    | Calls a method or closure with auto-injected dependencies.         |
+| `isResolvable()`        | `isResolvable()`        | `string $id`                                                               | `bool`                                     | Checks if a service can be resolved, even if not explicitly bound. |
+| `optional()`            | `optional()`            | `string $id`                                                               | `object`                                   | Resolves a service or returns a NullServiceProxy if not found.     |
 
 ---
 

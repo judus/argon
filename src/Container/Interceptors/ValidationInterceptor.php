@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container\Interceptors;
 
-use Maduser\Argon\Container\Contracts\TypeInterceptorInterface;
+use Maduser\Argon\Container\Contracts\InterceptorInterface;
 use Maduser\Argon\Container\Interceptors\Contracts\ValidationInterface;
 
-class ValidationInterceptor implements TypeInterceptorInterface
+/**
+ * Intercepts resolved instances that implement ValidationInterface and triggers validation logic.
+ */
+final readonly class ValidationInterceptor implements InterceptorInterface
 {
     public static function supports(object|string $target): bool
     {
@@ -17,6 +20,8 @@ class ValidationInterceptor implements TypeInterceptorInterface
 
     public function intercept(object $instance): void
     {
-        $instance->validate();
+        if ($instance instanceof ValidationInterface) {
+            $instance->validate();
+        }
     }
 }

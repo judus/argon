@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
+use Maduser\Argon\Container\Contracts\ServiceProviderRegistryInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use ReflectionException;
 
-readonly class ServiceProviderRegistry
+/**
+ * Registers and boots service providers via the container.
+ */
+final readonly class ServiceProviderRegistry implements ServiceProviderRegistryInterface
 {
     public function __construct(
         private ServiceContainer $container
@@ -19,10 +22,9 @@ readonly class ServiceProviderRegistry
     /**
      * Registers a service provider and tags it.
      *
-     * @param string $className
+     * @param class-string<ServiceProviderInterface> $className
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
     public function register(string $className): void
     {
@@ -37,8 +39,9 @@ readonly class ServiceProviderRegistry
         $this->container->singleton($className);
         $this->container->tag($className, ['service.provider']);
 
-        /** @var ServiceProviderInterface $provider */
         $provider = $this->container->get($className);
+        assert($provider instanceof ServiceProviderInterface);
+
         $provider->register($this->container);
     }
 
@@ -47,13 +50,13 @@ readonly class ServiceProviderRegistry
      *
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
     public function boot(): void
     {
         $providers = $this->container->getTagged('service.provider');
 
         foreach ($providers as $provider) {
+            assert($provider instanceof ServiceProviderInterface);
             $provider->boot($this->container);
         }
     }

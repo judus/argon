@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Container;
 
+use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\ReflectionCache;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionException;
 use stdClass;
+use Tests\Unit\Container\Mocks\SampleInterface;
+use Tests\Unit\Container\Mocks\SampleTrait;
 
 class ReflectionCacheTest extends TestCase
 {
     /**
-     * @throws ReflectionException
+     * @throws ContainerException
      */
     public function testReturnsReflectionInstance(): void
     {
@@ -25,7 +28,7 @@ class ReflectionCacheTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
+     * @throws ContainerException
      */
     public function testCachesReflectionInstance(): void
     {
@@ -37,11 +40,37 @@ class ReflectionCacheTest extends TestCase
         $this->assertSame($first, $second, 'Reflection instance should be cached and reused.');
     }
 
+    /**
+     * @psalm-suppress ArgumentTypeCoercion
+     * @psalm-suppress UndefinedClass
+     */
     public function testThrowsExceptionForNonExistentClass(): void
     {
-        $this->expectException(ReflectionException::class);
+        $this->expectException(ContainerException::class);
 
         $cache = new ReflectionCache();
-        $cache->get('This\\Class\\Does\\Not\\Exist');
+        $cache->get('NonExistentClass');
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testReflectionWorksForInterface(): void
+    {
+        $cache = new ReflectionCache();
+        $reflection = $cache->get(SampleInterface::class);
+
+        $this->assertTrue($reflection->isInterface());
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testReflectionWorksForTrait(): void
+    {
+        $cache = new ReflectionCache();
+        $reflection = $cache->get(SampleTrait::class);
+
+        $this->assertTrue($reflection->isTrait());
     }
 }

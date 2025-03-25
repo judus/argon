@@ -4,34 +4,42 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
+use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
+use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
+use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
+use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use ReflectionException;
 use ReflectionNamedType;
 use ReflectionParameter;
 
-class ParameterResolver
+/**
+ * Resolves constructor and method parameters with contextual or container-based resolution.
+ */
+final class ParameterResolver implements ParameterResolverInterface
 {
-    private ?ServiceResolver $serviceResolver = null;
+    private ?ServiceResolverInterface $serviceResolver = null;
 
     public function __construct(
-        private readonly ContextualResolver $contextualResolver,
-        private readonly ParameterRegistry $registry,
-        private readonly ContextualBindings $contextualBindings
+        private readonly ContextualResolverInterface $contextualResolver,
+        private readonly ParameterRegistryInterface $registry,
+        private readonly ContextualBindingsInterface $contextualBindings
     ) {
     }
 
-    public function setServiceResolver(ServiceResolver $resolver): void
+    public function setServiceResolver(ServiceResolverInterface $resolver): void
     {
         $this->serviceResolver = $resolver;
     }
 
     /**
-     * Resolves a parameter for a given consumer (class/method).
+     * @param ReflectionParameter $param
+     * @param array<string, mixed> $overrides
+     * @return mixed
      *
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
     public function resolve(ReflectionParameter $param, array $overrides = []): mixed
     {
@@ -44,10 +52,23 @@ class ParameterResolver
             return $merged[$paramName];
         }
 
-        /** @var ReflectionNamedType|null $type */
+        return $this->resolveByType($param, $className, $paramName);
+    }
+
+    /**
+     * @param ReflectionParameter $param
+     * @param string $className
+     * @param string $paramName
+     * @return mixed
+     *
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function resolveByType(ReflectionParameter $param, string $className, string $paramName): mixed
+    {
         $type = $param->getType();
 
-        if ($type !== null && !$type->isBuiltin()) {
+        if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
             $typeName = $type->getName();
 
             if ($this->contextualBindings->has($className, $typeName)) {
