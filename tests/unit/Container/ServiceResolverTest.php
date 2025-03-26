@@ -18,6 +18,9 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionException;
 use stdClass;
+use Tests\Unit\Container\Mocks\ExplodingConstructor;
+use Tests\Unit\Container\Mocks\FailsInConstructor;
+use Tests\Unit\Container\Mocks\SampleInterface;
 
 class ServiceResolverTest extends TestCase
 {
@@ -81,7 +84,7 @@ class ServiceResolverTest extends TestCase
 
         $this->binder->method('getDescriptor')->willReturn($descriptor);
 
-        $this->interceptors->method('apply')->willReturnCallback(fn($instance): object => $instance);
+        $this->interceptors->method('apply')->willReturnCallback(fn(object $instance): object => $instance);
 
         $result = $this->resolver->resolve('closureService');
 
@@ -108,6 +111,10 @@ class ServiceResolverTest extends TestCase
 
         eval('abstract class AbstractClassTest {}');
 
+        /**
+         * @psalm-suppress ArgumentTypeCoercion
+         * @psalm-suppress UndefinedClass
+         */
         $this->reflectionCache->method('get')->willReturn(new ReflectionClass('AbstractClassTest'));
 
         $this->expectException(ContainerException::class);
@@ -131,7 +138,7 @@ class ServiceResolverTest extends TestCase
 
         $this->binder->method('getDescriptor')->willReturn(null);
         $this->reflectionCache->method('get')->willReturn($reflection);
-        $this->interceptors->method('apply')->willReturnCallback(fn($instance) => $instance);
+        $this->interceptors->method('apply')->willReturnCallback(fn(object $instance): object => $instance);
 
         $instance = $this->resolver->resolve($className);
 
@@ -183,5 +190,62 @@ class ServiceResolverTest extends TestCase
         $result = $this->resolver->resolve('interceptedService');
 
         $this->assertSame($intercepted, $result);
+    }
+
+    /**
+     * @throws NotFoundException
+     */
+    public function testThrowsForInterface(): void
+    {
+        $descriptor = $this->createMock(ServiceDescriptorInterface::class);
+        $descriptor->method('getConcrete')->willReturn(SampleInterface::class);
+        $descriptor->method('isSingleton')->willReturn(false);
+        $descriptor->method('getInstance')->willReturn(null);
+
+        $this->binder->method('getDescriptor')->willReturn($descriptor);
+        $this->reflectionCache->method('get')
+            ->willReturn(new \ReflectionClass(SampleInterface::class));
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Cannot instantiate interface');
+
+        $this->resolver->resolve(SampleInterface::class);
+    }
+
+    /**
+     * @throws NotFoundException
+     */
+    public function testThrowsForDirectInstantiationFailure(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage(
+            "Failed to instantiate '" . FailsInConstructor::class . "' with resolved dependencies."
+        );
+
+        $this->binder->method('getDescriptor')->willReturn(null);
+        $this->reflectionCache->method('get')->willReturn(new \ReflectionClass(FailsInConstructor::class));
+
+        $this->resolver->resolve(FailsInConstructor::class);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
+    public function testThrowsForInstantiationFailureWithDependencies(): void
+    {
+        $className = ExplodingConstructor::class;
+        $reflection = new ReflectionClass($className);
+
+        $this->binder->method('getDescriptor')->willReturn(null);
+        $this->reflectionCache->method('get')->willReturn($reflection);
+        $this->parameterResolver->method('resolve')->willReturn('test');
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage(
+            "Failed to instantiate '$className' with resolved dependencies."
+        );
+
+        $this->resolver->resolve($className);
     }
 }

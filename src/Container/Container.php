@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\InterceptorInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
@@ -194,7 +195,7 @@ class Container
      *
      * This allows overriding dependencies when resolving that class.
      */
-    public static function for(string $target): ContextualBindingBuilder
+    public static function for(string $target): ContextualBindingBuilderInterface
     {
         return self::instance()->for($target);
     }

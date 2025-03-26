@@ -11,10 +11,7 @@
         <directory name="tests"/>
         <ignoreFiles>
             <directory name="vendor"/>
-            <directory name="src/Kernel"/>
-            <directory name="src/Middlewares"/>
-            <file name="src/App.php"/>
-            <file name="tests/resources/cache/*.php"/>
+            <directory name="tests/resources/cache"/>
         </ignoreFiles>
     </projectFiles>
 

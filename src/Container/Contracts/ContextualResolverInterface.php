@@ -10,7 +10,7 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 
 interface ContextualResolverInterface
 {
-    public function for(string $target): ContextualBindingBuilder;
+    public function for(string $target): ContextualBindingBuilderInterface;
 
     /**
      * @throws ContainerException

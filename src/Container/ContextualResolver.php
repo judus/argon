@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
@@ -26,9 +27,9 @@ final readonly class ContextualResolver implements ContextualResolverInterface
      * Creates a contextual binding builder for the given target.
      *
      * @param string $target
-     * @return ContextualBindingBuilder
+     * @return ContextualBindingBuilderInterface
      */
-    public function for(string $target): ContextualBindingBuilder
+    public function for(string $target): ContextualBindingBuilderInterface
     {
         return new ContextualBindingBuilder($this->registry, $target);
     }

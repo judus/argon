@@ -29,7 +29,6 @@ class ServiceContainerTest extends TestCase
 {
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testSingletonServiceBinding(): void
@@ -45,7 +44,6 @@ class ServiceContainerTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testTransientServiceBinding(): void
@@ -61,7 +59,6 @@ class ServiceContainerTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testRegisterFactorySingleton(): void
@@ -81,7 +78,6 @@ class ServiceContainerTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testRegisterFactoryTransient(): void
@@ -100,7 +96,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -123,7 +118,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -149,6 +143,10 @@ class ServiceContainerTest extends TestCase
         $this->assertEquals('overriddenValue', $resolvedService->getDependency());
     }
 
+    /**
+     * @throws NotFoundException
+     * @throws ContainerException
+     */
     public function testTaggingAndRetrievingServices(): void
     {
         $container = new ServiceContainer();
@@ -166,7 +164,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testThrowsNotFoundException(): void
@@ -178,7 +175,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws NotFoundException
      */
     public function testThrowsContainerExceptionForUninstantiableClass(): void
@@ -197,7 +193,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws NotFoundException
      */
     public function testMissingParameterOverrideThrowsException(): void
@@ -212,7 +207,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -274,9 +268,7 @@ class ServiceContainerTest extends TestCase
         $this->assertCount(1, $internalCacheProperty->getValue($reflectionCache));
     }
 
-
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -296,7 +288,6 @@ class ServiceContainerTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testCallResolvesMethodDependencies(): void
@@ -316,7 +307,6 @@ class ServiceContainerTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testCallResolvesMethodWithOverride(): void
@@ -337,7 +327,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws NotFoundException
      */
     public function testThrowsContainerExceptionForNonInstantiableClass(): void
@@ -357,7 +346,6 @@ class ServiceContainerTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testThrowsContainerExceptionForCircularDependency(): void
@@ -384,7 +372,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws NotFoundException
      */
     public function testThrowsContainerExceptionForUnresolvedPrimitive(): void
@@ -402,7 +389,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testThrowsNotFoundExceptionForNonExistentDependency(): void
@@ -419,7 +405,6 @@ class ServiceContainerTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testSingletonReturnsSameInstance(): void
@@ -439,7 +424,6 @@ class ServiceContainerTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testTransientReturnsDifferentInstances(): void
@@ -458,7 +442,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -474,7 +457,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -496,7 +478,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -515,7 +496,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testInterfaceResolutionThrowsExceptionIfNotBound(): void
@@ -528,7 +508,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -544,7 +523,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -560,7 +538,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -583,7 +560,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -604,7 +580,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -623,7 +598,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -652,7 +626,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      * @throws NotFoundException
      */
@@ -665,7 +638,6 @@ class ServiceContainerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws NotFoundException
      * @throws ContainerException
      */
@@ -688,5 +660,37 @@ class ServiceContainerTest extends TestCase
         $container = new ServiceContainer();
         $this->assertTrue($container->isResolvable(\stdClass::class));
         $this->assertFalse($container->isResolvable('NonExistentClass'));
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testExtendOverridesResolvedService(): void
+    {
+        $container = new ServiceContainer();
+
+        // Original service
+        $container->singleton(stdClass::class, fn() => new stdClass());
+
+        // Trigger the initial resolution
+        $original = $container->get(stdClass::class);
+
+        // Now extend it with a decorator
+        $decoratedInstance = new class ($original) extends stdClass {
+            public function __construct(public stdClass $wrapped)
+            {
+            }
+        };
+
+        /** @psalm-suppress ArgumentTypeCoercion */
+        $container->extend(stdClass::class, fn(stdClass $original): object => $decoratedInstance);
+
+        // Re-resolve the service
+        $resolved = $container->get(stdClass::class);
+
+        $this->assertInstanceOf(stdClass::class, $resolved);
+        $this->assertSame($decoratedInstance, $resolved);
+        $this->assertSame($original, $resolved->wrapped);
     }
 }

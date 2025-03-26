@@ -135,6 +135,7 @@ class ServiceBinderTest extends TestCase
         $binder->registerFactory('non-single-factory', $factory, false);
 
         $descriptor = $binder->getDescriptor('non-single-factory');
+        $this->assertInstanceOf(ServiceDescriptor::class, $descriptor);
         $this->assertFalse($descriptor->isSingleton());
     }
 }

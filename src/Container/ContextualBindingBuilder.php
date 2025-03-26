@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 
 /**
  * Facilitates defining contextual bindings for a specific target.
  */
-final readonly class ContextualBindingBuilder
+final readonly class ContextualBindingBuilder implements ContextualBindingBuilderInterface
 {
     public function __construct(
         private ContextualBindingsInterface $registry,

@@ -6,5 +6,4 @@ namespace Tests\Unit\Container\Mocks;
 
 interface SampleInterface
 {
-
 }

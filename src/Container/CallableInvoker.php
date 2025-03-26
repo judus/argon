@@ -6,6 +6,8 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 use Maduser\Argon\Container\Contracts\CallableWrapperInterface;
+use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Support\CallableWrapper;
@@ -17,8 +19,8 @@ use ReflectionParameter;
 readonly class CallableInvoker
 {
     public function __construct(
-        private ServiceResolver $serviceResolver,
-        private ParameterResolver $parameterResolver
+        private ServiceResolverInterface $serviceResolver,
+        private ParameterResolverInterface $parameterResolver
     ) {
     }
 
@@ -38,7 +40,7 @@ readonly class CallableInvoker
 
         $resolvedParams = array_map(
             fn(ReflectionParameter $param): mixed => $this->parameterResolver->resolve($param, $parameters),
-            $callableWrapper->reflection->getParameters()
+            $callableWrapper->getReflection()->getParameters()
         );
 
         return $this->invokeCallable($callableWrapper, $resolvedParams);
@@ -97,24 +99,17 @@ readonly class CallableInvoker
      */
     private function invokeCallable(CallableWrapperInterface $callable, array $resolvedParams): mixed
     {
-        $reflection = $callable->reflection;
+        $reflection = $callable->getReflection();
 
         try {
             return match (true) {
-                $reflection instanceof ReflectionMethod => $reflection->invokeArgs(
-                    $callable->instance,
-                    $resolvedParams
-                ),
+                $reflection instanceof ReflectionMethod => $reflection
+                    ->invokeArgs($callable->getInstance(), $resolvedParams),
                 $reflection instanceof ReflectionFunction => $reflection->invokeArgs($resolvedParams),
                 default => throw new ContainerException('Unhandled reflection type: ' . get_class($reflection)),
             };
-        } catch (ReflectionException $e) {
-            throw new ContainerException(
-                'Failed to invoke callable: ' . $reflection->getName(),
-                null,
-                0,
-                $e
-            );
+        } catch (\Throwable $e) {
+            throw ContainerException::forInstantiationFailure($reflection->getName(), $e);
         }
     }
 }

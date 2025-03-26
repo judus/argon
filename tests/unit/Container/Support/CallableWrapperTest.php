@@ -22,8 +22,8 @@ class CallableWrapperTest extends TestCase
 
         $wrapper = new CallableWrapper(null, $reflection);
 
-        $this->assertNull($wrapper->instance);
-        $this->assertSame($reflection, $wrapper->reflection);
+        $this->assertNull($wrapper->getInstance());
+        $this->assertSame($reflection, $wrapper->getReflection());
     }
 
     /**
@@ -40,7 +40,7 @@ class CallableWrapperTest extends TestCase
         $reflection = new ReflectionMethod($object, 'method');
         $wrapper = new CallableWrapper($object, $reflection);
 
-        $this->assertSame($object, $wrapper->instance);
-        $this->assertSame($reflection, $wrapper->reflection);
+        $this->assertSame($object, $wrapper->getInstance());
+        $this->assertSame($reflection, $wrapper->getReflection());
     }
 }

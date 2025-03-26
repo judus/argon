@@ -19,6 +19,11 @@ use ReflectionNamedType;
 use ReflectionParameter;
 use RuntimeException;
 use stdClass;
+use Tests\Unit\Container\Mocks\AppThing;
+use Tests\Unit\Container\Mocks\MyConsumer;
+use Tests\Unit\Container\Mocks\ServiceConsumer;
+use Tests\Unit\Container\Mocks\ServiceX;
+use Tests\Unit\Container\Mocks\SomeClass;
 
 class ParameterResolverTest extends TestCase
 {
@@ -47,7 +52,7 @@ class ParameterResolverTest extends TestCase
      */
     public function testResolveReturnsOverride(): void
     {
-        $param = $this->mockParam('param1', null, '\Tests\Unit\Container\Mocks\SomeClass');
+        $param = $this->mockParam('param1', null, SomeClass::class);
 
         $this->registry->expects($this->once())
             ->method('get')
@@ -66,7 +71,7 @@ class ParameterResolverTest extends TestCase
      */
     public function testResolveReturnsRegistryValue(): void
     {
-        $param = $this->mockParam('param2', null, 'Tests\Unit\Container\Mocks\SomeClass');
+        $param = $this->mockParam('param2', null, SomeClass::class);
 
         $this->registry->method('get')
             ->willReturn(['param2' => 'value-from-registry']);
@@ -83,13 +88,15 @@ class ParameterResolverTest extends TestCase
      */
     public function testResolveReturnsContextualBinding(): void
     {
-        $param = $this->mockParam('dependency', stdClass::class, 'Tests\Unit\Container\Mocks\MyConsumer');
+        $param = $this->mockParam('dependency', stdClass::class, MyConsumer::class);
 
         $this->registry->method('get')->willReturn([]);
-        $this->bindings->method('has')->with('Tests\Unit\Container\Mocks\MyConsumer', stdClass::class)->willReturn(true);
+        $this->bindings->method('has')
+            ->with(MyConsumer::class, stdClass::class)
+            ->willReturn(true);
         $this->contextual->expects($this->once())
             ->method('resolve')
-            ->with('Tests\Unit\Container\Mocks\MyConsumer', stdClass::class)
+            ->with(MyConsumer::class, stdClass::class)
             ->willReturn(new stdClass());
 
         $result = $this->resolver->resolve($param);
@@ -104,7 +111,7 @@ class ParameterResolverTest extends TestCase
      */
     public function testResolveFallsBackToServiceResolver(): void
     {
-        $param = $this->mockParam('service', stdClass::class, 'Tests\Unit\Container\Mocks\ServiceConsumer');
+        $param = $this->mockParam('service', stdClass::class, ServiceConsumer::class);
 
         $this->registry->method('get')->willReturn([]);
         $this->bindings->method('has')->willReturn(false);
@@ -129,7 +136,7 @@ class ParameterResolverTest extends TestCase
      */
     public function testResolveThrowsWhenNoServiceResolver(): void
     {
-        $param = $this->mockParam('missingResolver', stdClass::class, 'Tests\Unit\Container\Mocks\AppThing');
+        $param = $this->mockParam('missingResolver', stdClass::class, AppThing::class);
 
         $this->registry->method('get')->willReturn([]);
         $this->bindings->method('has')->willReturn(false);
@@ -150,7 +157,7 @@ class ParameterResolverTest extends TestCase
         $param = $this->mockParam(
             'limit',
             'int',
-            'Tests\Unit\Container\Mocks\SomeClass',
+            SomeClass::class,
             isBuiltin: true,
             isOptional: true,
             defaultValue: 42
@@ -172,7 +179,7 @@ class ParameterResolverTest extends TestCase
         $param = $this->mockParam(
             'primitive',
             'string',
-            'Tests\Unit\Container\Mocks\ServiceX',
+            ServiceX::class,
             isBuiltin: true,
             isOptional: false
         );
@@ -181,13 +188,16 @@ class ParameterResolverTest extends TestCase
 
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessage(
-            "Cannot resolve primitive parameter 'primitive' in service 'Tests\\Unit\\Container\\Mocks\\ServiceX'."
+            "Cannot resolve primitive parameter 'primitive' in service '" . ServiceX::class . "'."
         );
         $this->resolver->resolve($param);
     }
 
     /**
      * Utility to mock a ReflectionParameter with type metadata
+     *
+     * @param class-string $declaringClass The FQCN of the declaring class.
+     *
      * @throws ReflectionException
      */
     private function mockParam(

@@ -53,4 +53,3 @@ class ValidationInterceptorTest extends TestCase
         $this->assertTrue(true); // no exceptions, we're good
     }
 }
-

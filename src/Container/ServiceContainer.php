@@ -5,13 +5,18 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
+use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
+use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
+use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Contracts\InterceptorInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderRegistryInterface;
+use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
@@ -28,27 +33,27 @@ use Psr\Container\ContainerInterface;
  */
 class ServiceContainer implements ContainerInterface
 {
-    private readonly TagManager $tags;
+    private readonly TagManagerInterface $tags;
     private readonly CallableInvoker $invoker;
-    private readonly ContextualBindings $contextualBindings;
-    private readonly ContextualResolver $contextual;
-    private readonly ServiceProviderRegistry $providers;
-    private readonly ServiceResolver $serviceResolver;
-    private readonly ParameterResolver $parameterResolver;
-    private readonly ServiceBinder $binder;
+    private readonly ContextualBindingsInterface $contextualBindings;
+    private readonly ContextualResolverInterface $contextual;
+    private readonly ServiceProviderRegistryInterface $providers;
+    private readonly ServiceResolverInterface $serviceResolver;
+    private readonly ParameterResolverInterface $parameterResolver;
+    private readonly ServiceBinderInterface $binder;
 
     public function __construct(
-        private readonly ParameterRegistryInterface   $parameters = new ParameterRegistry(),
-        private readonly ReflectionCacheInterface     $reflectionCache = new ReflectionCache(),
+        private readonly ParameterRegistryInterface $parameters = new ParameterRegistry(),
+        private readonly ReflectionCacheInterface $reflectionCache = new ReflectionCache(),
         private readonly InterceptorRegistryInterface $interceptors = new InterceptorRegistry(),
-        ?TagManagerInterface                          $tags = null,
-        ?CallableInvoker                              $invoker = null,
-        ?ContextualBindings                           $contextualRegistry = null,
-        ?ContextualResolver                           $contextual = null,
-        ?ServiceProviderRegistryInterface             $providers = null,
-        ?ServiceResolver                              $serviceResolver = null,
-        ?ParameterResolver                            $parameterResolver = null,
-        ?ServiceBinderInterface                       $binder = null,
+        ?TagManagerInterface $tags = null,
+        ?CallableInvoker $invoker = null,
+        ?ContextualBindingsInterface $contextualRegistry = null,
+        ?ContextualResolverInterface $contextual = null,
+        ?ServiceProviderRegistryInterface $providers = null,
+        ?ServiceResolverInterface $serviceResolver = null,
+        ?ParameterResolverInterface $parameterResolver = null,
+        ?ServiceBinderInterface $binder = null,
     ) {
         $this->contextualBindings = $contextualRegistry ?? new ContextualBindings();
         $this->contextual = $contextual ?? new ContextualResolver($this, $this->contextualBindings);
@@ -232,7 +237,7 @@ class ServiceContainer implements ContainerInterface
         return $this;
     }
 
-    public function for(string $target): ContextualBindingBuilder
+    public function for(string $target): ContextualBindingBuilderInterface
     {
         return $this->contextual->for($target);
     }

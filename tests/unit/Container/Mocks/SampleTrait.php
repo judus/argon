@@ -6,5 +6,4 @@ namespace Tests\Unit\Container\Mocks;
 
 trait SampleTrait
 {
-
 }

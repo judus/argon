@@ -19,7 +19,6 @@ class ServiceProviderTest extends TestCase
     /**
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      */
     public function testServiceProviderIsRegisteredAndTagged(): void
     {
@@ -40,7 +39,6 @@ class ServiceProviderTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws NotFoundException
      * @psalm-suppress InvalidArgument
      */
@@ -55,7 +53,6 @@ class ServiceProviderTest extends TestCase
 
     /**
      * @throws NotFoundException
-     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testBootServiceProvidersCallsBootMethod(): void
