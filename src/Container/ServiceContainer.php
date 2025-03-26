@@ -11,6 +11,8 @@ use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
 use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
+use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
@@ -153,22 +155,37 @@ class ServiceContainer implements ContainerInterface
     }
 
     /**
+     * Registers an interceptor (pre- or post-resolution).
+     *
      * @param class-string<InterceptorInterface> $interceptorClass
      * @throws ContainerException
      */
     public function registerInterceptor(string $interceptorClass): ServiceContainer
     {
-        $this->interceptors->register($interceptorClass);
+        if (!class_exists($interceptorClass)) {
+            throw ContainerException::fromServiceId(
+                $interceptorClass,
+                "Interceptor class '$interceptorClass' does not exist."
+            );
+        }
+
+        if (is_subclass_of($interceptorClass, PreResolutionInterceptorInterface::class)) {
+            $this->interceptors->registerPre($interceptorClass);
+        }
+
+        if (is_subclass_of($interceptorClass, PostResolutionInterceptorInterface::class)) {
+            $this->interceptors->registerPost($interceptorClass);
+        }
 
         return $this;
     }
 
     /**
-     * @return list<class-string<InterceptorInterface>>
+     * @return array<class-string<InterceptorInterface>>
      */
     public function getInterceptors(): array
     {
-        return $this->interceptors->all();
+        return $this->interceptors->allPost();
     }
 
     /**
