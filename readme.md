@@ -92,22 +92,83 @@ class UserService
 $container->get(UserService::class); // Works out of the box
 ```
 
-### 3. Parameter Overrides
-Parameter overrides allow you to inject primitive values or custom arguments into service constructors. These values are matched by parameter name.
+### 3. Constructor Arguments & Parameter Registry
+
+You can inject primitive values or custom arguments into service constructors by matching argument names. Arguments can be either raw values or retrieved from the parameter registry. They may be applied when binding a service or passed at resolution time (for transient services only).
 
 ```php
 class ApiClient
 {
     public function __construct(string $apiKey, string $apiUrl) {}
 }
+```
 
-$container->getParameters()->set(ApiClient::class, [
+---
+
+#### 🔹 Bind custom arguments to a service
+
+```php
+$container->bind(ApiClient::class, args: [
     'apiKey' => $_ENV['APP_ENV'] === 'prod' ? 'prod-key' : 'dev-key',
     'apiUrl' => 'https://api.example.com'
 ]);
 
-$apiClient = $container->get(ApiClient::class);
+$container->get(ApiClient::class);
 ```
+
+These arguments will be applied every time this binding is resolved.
+
+---
+
+#### 🔹 Resolve a service with custom arguments (transients only)
+
+```php
+$container->get(ApiClient::class, args: [
+    'apiKey' => $_ENV['APP_ENV'] === 'prod' ? 'prod-key' : 'dev-key',
+    'apiUrl' => 'https://api.example.com'
+]);
+```
+
+These arguments are used only for this specific call. They will not affect singleton instances.
+
+---
+
+#### 🔹 Store parameters in the parameter registry
+
+```php
+$parameters = $container->getParameters();
+
+$parameters->set('apiUrl', 'https://api.example.com');
+$parameters->set('apiKey', $_ENV['APP_ENV'] === 'prod' ? 'prod-key' : 'dev-key');
+```
+
+---
+
+#### 🔹 Bind arguments using values from the registry
+
+```php
+$container->bind(ApiClient::class, args: [
+    'apiKey' => $parameters->get('apiKey'),
+    'apiUrl' => $parameters->get('apiUrl')
+]);
+
+$container->get(ApiClient::class);
+```
+
+---
+
+#### 🔹 Resolve a service with arguments from the registry (transients only)
+
+```php
+$container->get(ApiClient::class, args: [
+    'apiKey' => $parameters->get('apiKey'),
+    'apiUrl' => $parameters->get('apiUrl')
+]);
+```
+
+These arguments will only apply to this specific resolution.
+
+
 
 ### 4. Contextual Bindings
 
@@ -161,43 +222,82 @@ $container->registerProvider(AppServiceProvider::class);
 $container->boot();
 ```
 
-### 6. Type Interceptors
+### 6. Interceptors
 
-Type interceptors allow you to hook into service resolution to apply post-construction logic.
+Interceptors allow you to hook into the service resolution lifecycle. They are automatically called either **before** or **after** a service is constructed.
+
+#### 🔹 Post-Resolution Interceptors
+
+These are executed **after** a service is created, and can modify the object (e.g., inject metadata, call validation, register hooks).
 
 ```php
-interface Validatable
-{
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
+
+interface Validatable {
     public function validate(): void;
 }
 
-class MyDTO implements Validatable
-{
-    public function validate(): void
-    {
-        // Verify required state after construction
+class MyDTO implements Validatable {
+    public function validate(): void {
+        // Verify required state
     }
 }
 
-class ValidationInterceptor implements TypeInterceptorInterface
-{
-    public static function supports(object|string $target): bool
-    {
-        return is_subclass_of($target, Validatable::class);
+class ValidationInterceptor implements PostResolutionInterceptorInterface {
+    public static function supports(string $id): bool {
+        return is_subclass_of($id, Validatable::class);
     }
 
-    public function intercept(object $instance): void
-    {
+    public function intercept(object $instance): void {
         $instance->validate();
     }
 }
 
-// Register the interceptor
 $container->registerInterceptor(ValidationInterceptor::class);
-
-// validate() is automatically called after resolution
-$dto = $container->get(MyDTO::class);
+$dto = $container->get(MyDTO::class); // validate() is automatically called
 ```
+
+#### 🔹 Pre-Resolution Interceptors
+
+These run **before** a service is instantiated. They can modify constructor parameters or short-circuit the entire resolution.
+
+```php
+use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
+
+class EnvOverrideInterceptor implements PreResolutionInterceptorInterface {
+    public static function supports(string $id): bool {
+        return $id === ApiClient::class;
+    }
+
+    public function intercept(string $id, array &$parameters): ?object {
+        $parameters['apiKey'] = $_ENV['APP_ENV'] === 'prod'
+            ? 'prod-key'
+            : 'dev-key';
+
+        return null; // let container continue
+    }
+}
+
+class StubInterceptor implements PreResolutionInterceptorInterface {
+    public static function supports(string $id): bool {
+        return $id === SomeHeavyService::class && $_ENV['TESTING'];
+    }
+
+    public function intercept(string $id, array &$parameters): ?object {
+        return new FakeService(); // short-circuit
+    }
+}
+
+$container->registerInterceptor(EnvOverrideInterceptor::class);
+$container->registerInterceptor(StubInterceptor::class);
+```
+
+- Interceptors must implement either `PreResolutionInterceptorInterface` or `PostResolutionInterceptorInterface`
+- Both require a static `supports(string $id): bool` method to prevent unnecessary instantiation
+- Interceptors are resolved lazily and only when matched
+- You can register as many interceptors as you want. They're evaluated in the order they were added.
+
+
 
 ### 7. Tags
 
