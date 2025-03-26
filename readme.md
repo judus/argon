@@ -24,8 +24,9 @@ Argon focuses on ease of use without compromising features, performance, or flex
 - **🧩 Parameter Overrides**: Inject primitives and custom values into your services.
 - **🔁 Contextual Bindings**: Different dependencies per consumer class.
 - **🧰 Service Providers**: Group and encapsulate service registrations.
-- **🛠 Type Interceptors**: Add post-resolution behavior to specific services (e.g., validation, tagging, initialization).
-- **❓ Conditional Resolution**: Safely access optional services using `if()`.
+- **🛠 Interceptors**: Add pre- or post-resolution behavior to specific services.
+- **🧱 Runtime Service Extension**: Override, decorate etc. services at runtime.
+- **❓ Conditional Resolution**: Safely access optional services using.
 - **⏱ Lazy Loading**: Services are only instantiated when first accessed.
 - **🚨 Circular Dependency Detection**: Detects and protects against infinite resolution loops.
 
@@ -103,8 +104,6 @@ class ApiClient
 }
 ```
 
----
-
 #### 🔹 Bind custom arguments to a service
 
 ```php
@@ -118,7 +117,6 @@ $container->get(ApiClient::class);
 
 These arguments will be applied every time this binding is resolved.
 
----
 
 #### 🔹 Resolve a service with custom arguments (transients only)
 
@@ -131,7 +129,6 @@ $container->get(ApiClient::class, args: [
 
 These arguments are used only for this specific call. They will not affect singleton instances.
 
----
 
 #### 🔹 Store parameters in the parameter registry
 
@@ -142,7 +139,6 @@ $parameters->set('apiUrl', 'https://api.example.com');
 $parameters->set('apiKey', $_ENV['APP_ENV'] === 'prod' ? 'prod-key' : 'dev-key');
 ```
 
----
 
 #### 🔹 Bind arguments using values from the registry
 
@@ -155,7 +151,6 @@ $container->bind(ApiClient::class, args: [
 $container->get(ApiClient::class);
 ```
 
----
 
 #### 🔹 Resolve a service with arguments from the registry (transients only)
 
@@ -233,22 +228,28 @@ These are executed **after** a service is created, and can modify the object (e.
 ```php
 use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 
-interface Validatable {
+interface Validatable
+{
     public function validate(): void;
 }
 
-class MyDTO implements Validatable {
-    public function validate(): void {
+class MyDTO implements Validatable
+{
+    public function validate(): void
+    {
         // Verify required state
     }
 }
 
-class ValidationInterceptor implements PostResolutionInterceptorInterface {
-    public static function supports(string $id): bool {
+class ValidationInterceptor implements PostResolutionInterceptorInterface
+{
+    public static function supports(string $id): bool
+    {
         return is_subclass_of($id, Validatable::class);
     }
 
-    public function intercept(object $instance): void {
+    public function intercept(object $instance): void
+    {
         $instance->validate();
     }
 }
@@ -264,12 +265,15 @@ These run **before** a service is instantiated. They can modify constructor para
 ```php
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 
-class EnvOverrideInterceptor implements PreResolutionInterceptorInterface {
-    public static function supports(string $id): bool {
+class EnvOverrideInterceptor implements PreResolutionInterceptorInterface
+{
+    public static function supports(string $id): bool
+    {
         return $id === ApiClient::class;
     }
 
-    public function intercept(string $id, array &$parameters): ?object {
+    public function intercept(string $id, array &$parameters): ?object
+    {
         $parameters['apiKey'] = $_ENV['APP_ENV'] === 'prod'
             ? 'prod-key'
             : 'dev-key';
@@ -278,12 +282,15 @@ class EnvOverrideInterceptor implements PreResolutionInterceptorInterface {
     }
 }
 
-class StubInterceptor implements PreResolutionInterceptorInterface {
-    public static function supports(string $id): bool {
+class StubInterceptor implements PreResolutionInterceptorInterface
+{
+    public static function supports(string $id): bool
+    {
         return $id === SomeHeavyService::class && $_ENV['TESTING'];
     }
 
-    public function intercept(string $id, array &$parameters): ?object {
+    public function intercept(string $id, array &$parameters): ?object
+    {
         return new FakeService(); // short-circuit
     }
 }
@@ -297,9 +304,24 @@ $container->registerInterceptor(StubInterceptor::class);
 - Interceptors are resolved lazily and only when matched
 - You can register as many interceptors as you want. They're evaluated in the order they were added.
 
+### 7. Extending Services
+
+Extends an already-resolved service instance during runtime. Useful for wrapping, decorating, or modifying an existing service after resolution.
+
+```php
+// For example in a ServiceProvider 
+public function boot(ServiceContainer $container): void
+{
+    $container->extend(LoggerInterface::class, function (object $logger): object {
+        return new BufferingLogger($logger);
+    });
+}
+```
+
+From this point on, all calls to `get(LoggerInterface::class)` will return the wrapped instance.
 
 
-### 7. Tags
+### 8. Tags
 
 ```php
 $container->tag(FileLogger::class, ['loggers', 'file']);
@@ -313,7 +335,7 @@ foreach ($loggers as $logger) {
 }
 ```
 
-### 8. Conditional Service Acces
+### 9. Conditional Service Acces
 
 `if()` returns a proxy if the service is unavailable — safe for optional dependencies.
 
@@ -324,7 +346,7 @@ $container->optional(SomeLogger::class)->log('Only if logger exists');
 // This won't throw, even if SomeLogger wasn't registered
 ```
 
-### 9. Closure Bindings with Autowired Parameters
+### 10. Closure Bindings with Autowired Parameters
 
 Closure bindings are convenient for CLI scripts, testing, or quick one-off tools, but generally not suited for production service graphs. They are not included in the compiled container and must be registered at runtime:
 
@@ -338,7 +360,7 @@ public function boot(ServiceContainer $container): void
 }
 ```
 
-### 10. Compiling the Container
+### 11. Compiling the Container
 
 ```php
 $file = __DIR__ . '/CompiledContainer.php';
