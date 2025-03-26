@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Container\Interceptors;
 
-use Maduser\Argon\Container\Interceptors\ValidationInterceptor;
-use Maduser\Argon\Container\Interceptors\Contracts\ValidationInterface;
-use PHPUnit\Framework\MockObject\MockObject;
+use Maduser\Argon\Container\Interceptors\Post\Contracts\ValidationInterface;
+use Maduser\Argon\Container\Interceptors\Post\ValidationInterceptor;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 use Tests\Unit\Container\Mocks\MockValidationClass;

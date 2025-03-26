@@ -6,10 +6,9 @@ namespace Tests\Integration\Interceptors;
 
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Interceptors\Post\InitInterceptor;
 use Maduser\Argon\Container\ServiceContainer;
-use Maduser\Argon\Container\Interceptors\InitInterceptor;
 use PHPUnit\Framework\TestCase;
-use ReflectionException;
 use Tests\Integration\Interceptors\Mocks\NeedsInit;
 
 class InitInterceptorTest extends TestCase

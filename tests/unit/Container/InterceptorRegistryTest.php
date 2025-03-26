@@ -17,7 +17,7 @@ class InterceptorRegistryTest extends TestCase
     {
         $registry = new InterceptorRegistry();
 
-        $this->assertSame([], $registry->all());
+        $this->assertSame([], $registry->allPost());
     }
 
     /**
@@ -27,9 +27,9 @@ class InterceptorRegistryTest extends TestCase
     {
         $registry = new InterceptorRegistry();
 
-        $registry->register(StubInterceptor::class);
+        $registry->registerPost(StubInterceptor::class);
 
-        $this->assertContains(StubInterceptor::class, $registry->all());
+        $this->assertContains(StubInterceptor::class, $registry->allPost());
     }
 
     /**
@@ -42,17 +42,17 @@ class InterceptorRegistryTest extends TestCase
         $this->expectExceptionMessage("Interceptor class 'NonExistentClass' does not exist.");
 
         $registry = new InterceptorRegistry();
-        $registry->register('NonExistentClass');
+        $registry->registerPost('NonExistentClass');
     }
 
     public function testRegisterThrowsIfClassDoesNotImplementInterface(): void
     {
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage("Interceptor 'stdClass' must implement TypeInterceptorInterface.");
+        $this->expectExceptionMessage("[stdClass] Interceptor 'stdClass' must implement PostResolutionInterceptorInterface.");
 
         $registry = new InterceptorRegistry();
         /** @psalm-suppress InvalidArgument intended */
-        $registry->register(stdClass::class);
+        $registry->registerPost(stdClass::class);
     }
 
     /**
@@ -61,12 +61,12 @@ class InterceptorRegistryTest extends TestCase
     public function testApplyRunsInterceptorIfSupported(): void
     {
         $registry = new InterceptorRegistry();
-        $registry->register(StubInterceptor::class);
+        $registry->registerPost(StubInterceptor::class);
 
         $object = new stdClass();
         $this->assertFalse(isset($object->intercepted));
 
-        $result = $registry->apply($object);
+        $result = $registry->matchPost($object);
 
         $this->assertTrue($result->intercepted);
     }
@@ -77,10 +77,10 @@ class InterceptorRegistryTest extends TestCase
     public function testApplySkipsInterceptorIfNotSupported(): void
     {
         $registry = new InterceptorRegistry();
-        $registry->register(NonMatchingInterceptor::class);
+        $registry->registerPost(NonMatchingInterceptor::class);
 
         $object = new stdClass();
-        $result = $registry->apply($object);
+        $result = $registry->matchPost($object);
 
         $this->assertObjectNotHasProperty('intercepted', $result);
     }

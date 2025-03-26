@@ -57,45 +57,54 @@ final class ServiceResolver implements ServiceResolverInterface
     {
         $this->checkCircularDependency($id);
 
-        $descriptor = $this->binder->getDescriptor($id);
-
-        // If there's no descriptor, try to resolve by class reflection
-        if (!$descriptor) {
-            if (!class_exists($id)) {
-                throw new NotFoundException($id);
+        // 🔹 PRE-RESOLUTION INTERCEPTORS
+        if ($interceptor = $this->interceptors->matchPre($id, $parameters)) {
+            $result = $interceptor->intercept($id, $parameters);
+            if ($result !== null) {
+                $this->removeFromResolving($id);
+                return $result;
             }
-
-            $reflection = $this->reflectionCache->get($id);
-            if (!$reflection->isInstantiable()) {
-                throw ContainerException::forNonInstantiableClass($id, $reflection->getName());
-            }
-
-            $instance = $this->resolveClass($id, $parameters);
-            return $this->interceptors->apply($instance);
         }
 
-        // Return cached instance if it's a singleton and already resolved
-        if ($descriptor->isSingleton() && ($instance = $descriptor->getInstance())) {
+        // 🔹 REGISTERED SERVICE
+        $descriptor = $this->binder->getDescriptor($id);
+        if ($descriptor) {
+            if ($descriptor->isSingleton() && $instance = $descriptor->getInstance()) {
+                $this->removeFromResolving($id);
+                return $instance;
+            }
+
+            $concrete = $descriptor->getConcrete();
+            $args = array_merge($descriptor->getArguments(), $parameters);
+
+            $instance = $concrete instanceof Closure
+                ? $concrete()
+                : $this->resolveClass($concrete, $args);
+
+            $instance = $this->interceptors->matchPost($instance);
+
+            if ($descriptor->isSingleton()) {
+                $descriptor->storeInstance($instance);
+            }
+
             $this->removeFromResolving($id);
             return $instance;
         }
 
-        $concrete = $descriptor->getConcrete();
-
-        // Closure factory? Just invoke.
-        $instance = $concrete instanceof Closure
-            ? $concrete()
-            : $this->resolveClass($concrete, $parameters);
-
-        $instance = $this->interceptors->apply($instance);
-
-        // If singleton, store the created instance
-        if ($descriptor->isSingleton()) {
-            $descriptor->storeInstance($instance);
+        // 🔹 UNREGISTERED (Direct class resolution)
+        if (!class_exists($id)) {
+            throw new NotFoundException($id);
         }
 
-        $this->removeFromResolving($id);
+        $reflection = $this->reflectionCache->get($id);
+        if (!$reflection->isInstantiable()) {
+            throw ContainerException::forNonInstantiableClass($id, $reflection->getName());
+        }
 
+        $instance = $this->resolveClass($id, $parameters);
+        $instance = $this->interceptors->matchPost($instance);
+
+        $this->removeFromResolving($id);
         return $instance;
     }
 
@@ -119,6 +128,7 @@ final class ServiceResolver implements ServiceResolverInterface
             }
 
             if ($concrete !== $className) {
+                $mergedArgs = array_merge($descriptor->getArguments(), $parameters);
                 return $this->resolveClass($concrete, $parameters);
             }
         }

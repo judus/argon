@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Interceptors\Mocks;
 
-use Maduser\Argon\Container\Interceptors\Contracts\ValidationInterface;
+use Maduser\Argon\Container\Interceptors\Post\Contracts\ValidationInterface;
 
 class BlogPostRequest implements ValidationInterface
 {

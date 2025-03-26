@@ -6,6 +6,7 @@ namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
 use Maduser\Argon\Container\Contracts\InterceptorInterface;
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ParameterRegistry;
@@ -213,7 +214,7 @@ class ServiceContainerTest extends TestCase
     public function testTypeInterceptorModifiesResolvedInstance(): void
     {
         // Define a concrete interceptor class inline for clarity/testing
-        $interceptor = new class implements InterceptorInterface {
+        $interceptor = new class implements PostResolutionInterceptorInterface {
             public static function supports(object|string $target): bool
             {
                 return $target === stdClass::class || $target instanceof \stdClass;

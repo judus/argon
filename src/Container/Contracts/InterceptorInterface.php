@@ -14,16 +14,8 @@ interface InterceptorInterface
     /**
      * Determines if the interceptor should apply to the given service.
      *
-     * @param class-string|object $target
+     * @param string|object $target
      * @return bool
      */
     public static function supports(object|string $target): bool;
-
-    /**
-     * Applies logic to the resolved instance.
-     *
-     * @param object $instance
-     * @return void
-     */
-    public function intercept(object $instance): void;
 }

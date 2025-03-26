@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
-use Maduser\Argon\Container\Contracts\InterceptorInterface;
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
+use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 
 /**
@@ -13,34 +14,52 @@ use Maduser\Argon\Container\Exceptions\ContainerException;
  */
 final class InterceptorRegistry implements InterceptorRegistryInterface
 {
-    /**
-     * @var list<class-string<InterceptorInterface>>
-     */
-    private array $interceptors = [];
+    /** @var array<class-string<PostResolutionInterceptorInterface>> */
+    private array $post = [];
 
-    /**
-     * @return list<class-string<InterceptorInterface>>
-     */
-    public function all(): array
+    /** @var array<class-string<PreResolutionInterceptorInterface>> */
+    private array $pre = [];
+
+    public function registerPost(string $interceptor): void
     {
-        return $this->interceptors;
+        if (!class_exists($interceptor)) {
+            throw ContainerException::fromInterceptor($interceptor, "Interceptor class '$interceptor' does not exist.");
+        }
+
+        if (!is_subclass_of($interceptor, PostResolutionInterceptorInterface::class)) {
+            throw ContainerException::fromInterceptor($interceptor, "Interceptor '$interceptor' must implement PostResolutionInterceptorInterface.");
+        }
+
+        $this->post[] = $interceptor;
+    }
+
+    public function registerPre(string $interceptor): void
+    {
+        if (!class_exists($interceptor)) {
+            throw ContainerException::fromInterceptor($interceptor, "Interceptor class '$interceptor' does not exist.");
+        }
+
+        if (!is_subclass_of($interceptor, PreResolutionInterceptorInterface::class)) {
+            throw ContainerException::fromInterceptor($interceptor, "Interceptor '$interceptor' must implement PreResolutionInterceptorInterface.");
+        }
+
+        $this->pre[] = $interceptor;
     }
 
     /**
-     * @param class-string<InterceptorInterface> $interceptorClass
-     * @throws ContainerException
+     * @return array<class-string<PostResolutionInterceptorInterface>>
      */
-    public function register(string $interceptorClass): void
+    public function allPost(): array
     {
-        if (!class_exists($interceptorClass)) {
-            throw new ContainerException("Interceptor class '$interceptorClass' does not exist.");
-        }
+        return $this->post;
+    }
 
-        if (!is_subclass_of($interceptorClass, InterceptorInterface::class)) {
-            throw new ContainerException("Interceptor '$interceptorClass' must implement TypeInterceptorInterface.");
-        }
-
-        $this->interceptors[] = $interceptorClass;
+    /**
+     * @return array<class-string<PreResolutionInterceptorInterface>>
+     */
+    public function allPre(): array
+    {
+        return $this->pre;
     }
 
     /**
@@ -49,14 +68,30 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
      * @param object $instance
      * @return object
      */
-    public function apply(object $instance): object
+    public function matchPost(object $instance): object
     {
-        foreach ($this->interceptors as $interceptorClass) {
+        foreach ($this->post as $interceptorClass) {
             if ($interceptorClass::supports($instance)) {
                 (new $interceptorClass())->intercept($instance);
             }
         }
 
         return $instance;
+    }
+
+    /**
+     * @param string $id
+     * @param array $parameters
+     * @return PreResolutionInterceptorInterface|null
+     */
+    public function matchPre(string $id, array $parameters = []): ?PreResolutionInterceptorInterface
+    {
+        foreach ($this->pre as $interceptorClass) {
+            if ($interceptorClass::supports($id)) {
+                return new $interceptorClass();
+            }
+        }
+
+        return null;
     }
 }

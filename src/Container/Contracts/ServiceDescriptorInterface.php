@@ -19,6 +19,7 @@ interface ServiceDescriptorInterface
     public function getConcrete(): string|Closure;
 
     public function getInstance(): ?object;
+    public function getArguments(): array;
 
     public function storeInstance(object $instance): void;
 }

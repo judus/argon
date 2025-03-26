@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Maduser\Argon\Container\Interceptors\Contracts;
+namespace Maduser\Argon\Container\Interceptors\Post\Contracts;
 
 interface InitInterface
 {

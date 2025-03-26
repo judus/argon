@@ -4,29 +4,42 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container\Contracts;
 
-use Maduser\Argon\Container\Exceptions\ContainerException;
-
 /**
- * Manages registration and execution of type interceptors.
+ * Registry for pre- and post-resolution interceptors.
  */
 interface InterceptorRegistryInterface
 {
     /**
-     * @return list<class-string<InterceptorInterface>>
-     */
-    public function all(): array;
-
-    /**
-     * @param class-string<InterceptorInterface> $interceptorClass
-     * @throws ContainerException
-     */
-    public function register(string $interceptorClass): void;
-
-    /**
-     * Applies all supported interceptors to the given instance.
+     * Registers a post-resolution interceptor.
      *
-     * @param object $instance
-     * @return object
+     * @param class-string<PostResolutionInterceptorInterface> $interceptor
      */
-    public function apply(object $instance): object;
+    public function registerPost(string $interceptor): void;
+
+    /**
+     * Registers a pre-resolution interceptor.
+     *
+     * @param class-string<PreResolutionInterceptorInterface> $interceptor
+     */
+    public function registerPre(string $interceptor): void;
+
+    /**
+     * @return array<class-string<PostResolutionInterceptorInterface>>
+     */
+    public function allPost(): array;
+
+    /**
+     * @return array<class-string<PreResolutionInterceptorInterface>>
+     */
+    public function allPre(): array;
+
+    /**
+     * Match and apply a post-resolution interceptor.
+     */
+    public function matchPost(object $instance): object;
+
+    /**
+     * Match and return a pre-resolution interceptor (or null).
+     */
+    public function matchPre(string $id, array $parameters = []): ?PreResolutionInterceptorInterface;
 }

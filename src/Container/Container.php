@@ -215,7 +215,7 @@ class Container
     /**
      * Returns a list of all registered interceptors.
      *
-     * @return list<class-string<InterceptorInterface>>
+     * @return array<class-string<InterceptorInterface>>
      */
     public static function interceptors(): array
     {

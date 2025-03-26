@@ -6,11 +6,12 @@ namespace Tests\Unit\Container\Stubs;
 
 use LogicException;
 use Maduser\Argon\Container\Contracts\InterceptorInterface;
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 
 /**
  * A stub interceptor that never supports anything.
  */
-class NonMatchingInterceptor implements InterceptorInterface
+class NonMatchingInterceptor implements PostResolutionInterceptorInterface
 {
     public static function supports(object|string $target): bool
     {

@@ -84,4 +84,9 @@ final class ContainerException extends Exception implements ContainerExceptionIn
             $previous
         );
     }
+
+    public static function fromInterceptor(string $interceptor, string $message): self
+    {
+        return new self("[$interceptor] $message");
+    }
 }

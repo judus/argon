@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Maduser\Argon\Container\Interceptors;
+namespace Maduser\Argon\Container\Interceptors\Post;
 
-use Maduser\Argon\Container\Contracts\InterceptorInterface;
-use Maduser\Argon\Container\Interceptors\Contracts\InitInterface;
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
+use Maduser\Argon\Container\Interceptors\Post\Contracts\InitInterface;
 
 /**
  * Intercepts resolved instances implementing InitInterface and triggers their init() method.
  */
-final readonly class InitInterceptor implements InterceptorInterface
+final readonly class InitInterceptor implements PostResolutionInterceptorInterface
 {
     public static function supports(object|string $target): bool
     {

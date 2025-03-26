@@ -62,7 +62,7 @@ class ServiceResolverTest extends TestCase
         $this->binder->method('getDescriptor')->willReturn($descriptor);
         $descriptor->method('isSingleton')->willReturn(true);
         $descriptor->method('getInstance')->willReturn($instance);
-        $this->interceptors->expects($this->never())->method('apply');
+        $this->interceptors->expects($this->never())->method('matchPost');
 
         $result = $this->resolver->resolve('singletonService');
 
@@ -84,7 +84,7 @@ class ServiceResolverTest extends TestCase
 
         $this->binder->method('getDescriptor')->willReturn($descriptor);
 
-        $this->interceptors->method('apply')->willReturnCallback(fn(object $instance): object => $instance);
+        $this->interceptors->method('matchPost')->willReturnCallback(fn(object $instance): object => $instance);
 
         $result = $this->resolver->resolve('closureService');
 
@@ -138,7 +138,7 @@ class ServiceResolverTest extends TestCase
 
         $this->binder->method('getDescriptor')->willReturn(null);
         $this->reflectionCache->method('get')->willReturn($reflection);
-        $this->interceptors->method('apply')->willReturnCallback(fn(object $instance): object => $instance);
+        $this->interceptors->method('matchPost')->willReturnCallback(fn(object $instance): object => $instance);
 
         $instance = $this->resolver->resolve($className);
 
@@ -185,7 +185,7 @@ class ServiceResolverTest extends TestCase
         $this->binder->method('getDescriptor')->willReturn($descriptor);
 
         $intercepted = new stdClass();
-        $this->interceptors->method('apply')->willReturn($intercepted);
+        $this->interceptors->method('matchPost')->willReturn($intercepted);
 
         $result = $this->resolver->resolve('interceptedService');
 

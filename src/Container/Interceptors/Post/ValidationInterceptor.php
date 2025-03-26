@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Maduser\Argon\Container\Interceptors;
+namespace Maduser\Argon\Container\Interceptors\Post;
 
-use Maduser\Argon\Container\Contracts\InterceptorInterface;
-use Maduser\Argon\Container\Interceptors\Contracts\ValidationInterface;
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
+use Maduser\Argon\Container\Interceptors\Post\Contracts\ValidationInterface;
 
 /**
  * Intercepts resolved instances that implement ValidationInterface and triggers validation logic.
  */
-final readonly class ValidationInterceptor implements InterceptorInterface
+final readonly class ValidationInterceptor implements PostResolutionInterceptorInterface
 {
     public static function supports(object|string $target): bool
     {

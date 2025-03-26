@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Tests\Integration\Compiler\Mocks;
 
 use Maduser\Argon\Container\Contracts\InterceptorInterface;
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 
-class LoggerInterceptor implements InterceptorInterface
+class LoggerInterceptor implements PostResolutionInterceptorInterface
 {
     public static function supports(object|string $target): bool
     {
