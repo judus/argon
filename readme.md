@@ -26,7 +26,7 @@ Argon focuses on ease of use without compromising features, performance, or flex
 - **🧰 Service Providers**: Group and encapsulate service registrations.
 - **🛠 Interceptors**: Add pre- or post-resolution behavior to specific services.
 - **🧱 Runtime Service Extension**: Override, decorate etc. services at runtime.
-- **❓ Conditional Resolution**: Safely access optional services using.
+- **❓ Conditional Resolution**: Call methods on missing services safely via `optional()` (no-op proxy).
 - **⏱ Lazy Loading**: Services are only instantiated when first accessed.
 - **🚨 Circular Dependency Detection**: Detects and protects against infinite resolution loops.
 
