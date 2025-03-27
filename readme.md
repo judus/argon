@@ -2,7 +2,7 @@
 [![CI](https://github.com/judus/argon/actions/workflows/php.yml/badge.svg)](https://github.com/judus/argon/actions)
 [![codecov](https://codecov.io/gh/judus/argon/branch/master/graph/badge.svg)](https://codecov.io/gh/judus/argon)
 [![Latest Version](https://img.shields.io/packagist/v/maduser/argon.svg)](https://packagist.org/packages/maduser/argon)
-[![License](https://img.shields.io/github/license/maduser/argon.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/judus/argon.svg)](LICENSE)
 
 # Argon Service Container
 
