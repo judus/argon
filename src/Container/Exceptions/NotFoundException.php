@@ -12,22 +12,8 @@ use Psr\Container\NotFoundExceptionInterface;
  */
 final class NotFoundException extends Exception implements NotFoundExceptionInterface
 {
-    public function __construct(
-        private readonly string $serviceId
-    ) {
+    public function __construct(string $serviceId)
+    {
         parent::__construct("Service '$serviceId' not found.", 404);
-    }
-
-    public function getServiceId(): string
-    {
-        return $this->serviceId;
-    }
-
-    /**
-     * @deprecated Just use `new NotFoundException($id)` directly.
-     */
-    public static function forService(string $id): self
-    {
-        return new self($id);
     }
 }

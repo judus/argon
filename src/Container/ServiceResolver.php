@@ -57,7 +57,7 @@ final class ServiceResolver implements ServiceResolverInterface
     {
         $this->checkCircularDependency($id);
 
-        // 🔹 PRE-RESOLUTION INTERCEPTORS
+        // Pre resolution interceptors
         if ($interceptor = $this->interceptors->matchPre($id, $parameters)) {
             $result = $interceptor->intercept($id, $parameters);
             if ($result !== null) {
@@ -66,7 +66,7 @@ final class ServiceResolver implements ServiceResolverInterface
             }
         }
 
-        // 🔹 REGISTERED SERVICE
+        // Registered service
         $descriptor = $this->binder->getDescriptor($id);
         if ($descriptor) {
             if ($descriptor->isSingleton() && $instance = $descriptor->getInstance()) {
@@ -91,7 +91,7 @@ final class ServiceResolver implements ServiceResolverInterface
             return $instance;
         }
 
-        // 🔹 UNREGISTERED (Direct class resolution)
+        // Unregistered service (Direct class resolution)
         if (!class_exists($id)) {
             throw new NotFoundException($id);
         }
@@ -145,15 +145,9 @@ final class ServiceResolver implements ServiceResolverInterface
 
         $constructor = $reflection->getConstructor();
 
-        if ($constructor === null) {
-            try {
-                return new $className();
-            } catch (\Throwable $e) {
-                throw ContainerException::forDirectInstantiationFailure($className, $e);
-            }
-        }
-
-        $dependencies = $this->resolveConstructorParameters($constructor->getParameters(), $parameters);
+        $dependencies = $constructor
+            ? $this->resolveConstructorParameters($constructor->getParameters(), $parameters)
+            : [];
 
         try {
             return $reflection->newInstanceArgs(array_values($dependencies));

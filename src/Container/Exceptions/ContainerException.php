@@ -15,16 +15,11 @@ final class ContainerException extends Exception implements ContainerExceptionIn
 {
     public function __construct(
         string $message,
-        private readonly ?string $serviceId = null,
+        ?string $serviceId = null,
         int $code = 0,
         ?Throwable $previous = null
     ) {
         parent::__construct($message);
-    }
-
-    public function getServiceId(): ?string
-    {
-        return $this->serviceId;
     }
 
     public static function fromServiceId(string $id, string $message): self
@@ -69,16 +64,6 @@ final class ContainerException extends Exception implements ContainerExceptionIn
     {
         return new self(
             "Failed to instantiate '$className' with resolved dependencies.",
-            $className,
-            0,
-            $previous
-        );
-    }
-
-    public static function forDirectInstantiationFailure(string $className, \Throwable $previous): self
-    {
-        return new self(
-            "Failed to instantiate '$className'.",
             $className,
             0,
             $previous
