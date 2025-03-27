@@ -21,6 +21,9 @@ class ContainerCompiler
         $this->container = $container;
     }
 
+    /**
+     * @throws \ReflectionException
+     */
     public function compile(
         string $outputFile,
         string $className = 'CachedContainer',
@@ -101,8 +104,13 @@ class ContainerCompiler
         // Interceptors
         $interceptMap = [];
         foreach ($services as $id => [$fqcn, , ]) {
+            assert(is_string($fqcn));
             foreach ($interceptors as $interceptorClass) {
-                if (is_subclass_of($interceptorClass, InterceptorInterface::class) && method_exists($interceptorClass, 'supports')) {
+                if (
+                    is_string($interceptorClass) &&
+                    is_subclass_of($interceptorClass, InterceptorInterface::class) &&
+                    method_exists($interceptorClass, 'supports')
+                ) {
                     if ($interceptorClass::supports($fqcn)) {
                         $method = 'interceptWith' . str_replace(['\\', '/'], '', $interceptorClass);
                         $interceptMap[$id] = [
@@ -116,7 +124,10 @@ class ContainerCompiler
                                 ->setPrivate()
                                 ->setReturnType($fqcn);
                             $m->addParameter('instance')->setType($fqcn);
-                            $m->setBody("\$interceptor = new \\{$interceptorClass}();\n\$interceptor->intercept(\$instance);\nreturn \$instance;");
+                            $m->setBody(
+                                "\$interceptor = new \\{$interceptorClass}();\n" .
+                                "\$interceptor->intercept(\$instance);\nreturn \$instance;"
+                            );
                         }
                     }
                 }
@@ -130,7 +141,8 @@ class ContainerCompiler
             ->setReturnType('object');
         $get->addParameter('id')->setType('string');
         $get->setBody("return match (\$id) {\n" .
-            implode("\n", array_map(fn($id) => "    '$id' => \$this->" . self::methodNameFromClass($id) . "(),", array_keys($services))) . "\n" .
+            implode("\n", array_map(fn($id) => "    '$id' => \$this->" . self::methodNameFromClass($id) .
+                "(),", array_keys($services))) . "\n" .
             "    default => parent::get(\$id),\n};");
 
         // has()
@@ -138,7 +150,10 @@ class ContainerCompiler
             ->setPublic()
             ->setReturnType('bool');
         $has->addParameter('id')->setType('string');
-        $has->setBody('return in_array($id, [' . implode(', ', array_map(fn($id) => "'$id'", array_keys($services))) . '], true) || parent::has($id);');
+        $has->setBody('return in_array($id, [' . implode(', ', array_map(
+            fn($id) => "'$id'",
+            array_keys($services)
+        )) . '], true) || parent::has($id);');
 
         // getTagged()
         $class->addMethod('getTagged')
@@ -162,7 +177,7 @@ class ContainerCompiler
             $methodName = self::methodNameFromClass($id);
             $method = $class->addMethod($methodName)
                 ->setPrivate()
-                ->setReturnType($fqcn);
+                ->setReturnType((string) $fqcn);
 
             $argsList = implode(', ', $args);
             $body = "\$instance = new \\{$fqcn}($argsList);";
