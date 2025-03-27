@@ -54,7 +54,7 @@ jobs:
       run: vendor/bin/psalm --output-format=github
 
     - name: Run PHP_CodeSniffer
-      run: vendor/bin/phpcs --standard=.phpcs.xml
+      run: vendor/bin/phpcs --standard=phpcs.xml
 
     - name: Run PHP CS Fixer (dry-run)
       run: vendor/bin/php-cs-fixer fix --dry-run --diff --ansi || true
