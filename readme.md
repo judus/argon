@@ -402,12 +402,12 @@ Just raw, optimized, dependency injection at runtime speed.
 | `tags()`                | `getTags()`             | –                                                                        | `array<string, list<string>>`              | Returns all tag definitions in the container.                      |
 | `tagged()`              | `getTagged()`           | `string $tag`                                                            | `list<object>`                             | Resolves all services tagged with the given label.                 |
 | `boot()`                | `boot()`                | –                                                                        | `ServiceContainer`                         | Bootstraps all registered service providers.                       |
+| `extend()`              | `extend()`              | `string $id`  `callable $decorator`                                      | `ServiceContainer`                         | Decorates an already-resolved service at runtime.                  |
 | `for()`                 | `for()`                 | `string $target`                                                         | `ContextualBindingBuilder`                 | Starts a contextual binding chain for a specific class.            |
 | `instance()`            | *N/A*                   | –                                                                        | `ServiceContainer`                         | Returns the current container instance, or creates one.            |
 | `interceptors()`        | `getInterceptors()`     | –                                                                        | `list<class-string<InterceptorInterface>>` | Lists all registered interceptors.                                 |
 | `invoke()`              | `invoke()`              | `object\|string $target`, `?string $method`, `array $params = []`        | `mixed`                                    | Calls a method or closure with auto-injected dependencies.         |
 | `isResolvable()`        | `isResolvable()`        | `string $id`                                                             | `bool`                                     | Checks if a service can be resolved, even if not explicitly bound. |
-| `extend()`              | `extend()`              | `string $id`  `callable $decorator`                                      | `ServiceContainer`                         | Decorates an already-resolved service at runtime.                  |
 | `optional()`            | `optional()`            | `string $id`                                                             | `object`                                   | Resolves a service or returns a NullServiceProxy if not found.     |
 
 ---
