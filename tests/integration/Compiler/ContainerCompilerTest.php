@@ -5,17 +5,26 @@ declare(strict_types=1);
 namespace Tests\Integration\Compiler;
 
 use Maduser\Argon\Container\Compiler\ContainerCompiler;
+use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
+use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
+use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\ParameterRegistry;
+use Maduser\Argon\Container\ReflectionCache;
 use Maduser\Argon\Container\ServiceContainer;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use ReflectionException;
 use stdClass;
+use Tests\Integration\Compiler\Mocks\ClassWithParamWithoutDefault;
+use Tests\Integration\Compiler\Mocks\DefaultValueService;
 use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
 use Tests\Mocks\DummyProvider;
+use Tests\Unit\Container\Mocks\NonInstantiableClass;
 
 class ContainerCompilerTest extends TestCase
 {
@@ -28,7 +37,7 @@ class ContainerCompilerTest extends TestCase
             unlink($file);
         }
 
-        $compiler = new \Maduser\Argon\Container\Compiler\ContainerCompiler($container);
+        $compiler = new ContainerCompiler($container);
         $compiler->compile($file, $className, $namespace);
 
         require_once $file;
@@ -207,5 +216,100 @@ class ContainerCompilerTest extends TestCase
         // Ensure the service registered by the provider is present
         $this->assertTrue($compiled->has('dummy.service'));
         $this->assertInstanceOf(stdClass::class, $compiled->get('dummy.service'));
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testCompileHandlesNonInstantiableClassesGracefully(): void
+    {
+        $serviceId = NonInstantiableClass::class;
+        $outputFile = sys_get_temp_dir() . '/compiled_container.php';
+
+        $descriptor = $this->createMock(ServiceDescriptorInterface::class);
+        $descriptor->method('getConcrete')->willReturn(NonInstantiableClass::class);
+        $descriptor->method('isSingleton')->willReturn(true);
+
+        $containerMock = $this->createMock(ServiceContainer::class);
+        $containerMock->method('getBindings')->willReturn([$serviceId => $descriptor]);
+        $containerMock->method('getParameters')->willReturn(new ParameterRegistry());
+        $containerMock->method('getTags')->willReturn([]);
+        $containerMock->method('getInterceptors')->willReturn([]);
+
+        $reflectionMock = $this->createMock(\ReflectionClass::class);
+        $reflectionMock->method('isInstantiable')->willReturn(false);
+
+        $reflectionCacheMock = $this->createMock(ReflectionCacheInterface::class);
+        $reflectionCacheMock->method('get')->willReturn($reflectionMock);
+
+        $compiler = new ContainerCompiler($containerMock);
+
+        $compiler->compile($outputFile);
+
+        $this->assertFileExists(
+            $outputFile,
+            'Compiled file should be created even if some classes are not instantiable.'
+        );
+
+        // Load the generated file content
+        $generatedCode = file_get_contents($outputFile);
+
+        // Make sure our non-instantiable class is NOT in the compiled services
+        $this->assertStringNotContainsString(
+            NonInstantiableClass::class,
+            $generatedCode,
+            'Non-instantiable class should not appear in compiled output.'
+        );
+
+        // Cleanup
+        @unlink($outputFile);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testCompileHandlesDefaultParameterValues(): void
+    {
+        $container = new ServiceContainer();
+        $container->bind(DefaultValueService::class);
+
+        $outputPath = __DIR__ . '/../../resources/cache/CachedContainerWithDefault.php';
+        $className = 'CachedContainerWithDefault';
+        $namespace = 'Tests\\Integration\\Compiler';
+
+        if (file_exists($outputPath)) {
+            unlink($outputPath);
+        }
+
+        $compiler = new ContainerCompiler($container);
+        $compiler->compile($outputPath, $className, $namespace);
+
+        $this->assertFileExists($outputPath);
+
+        $contents = file_get_contents($outputPath);
+        $this->assertStringContainsString("'default-val'", $contents);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testCompileHandlesConstructorParameterWithoutDefault(): void
+    {
+        // Setting up our charming container
+        $container = new ServiceContainer();
+
+        // Binding our class with a constructor parameter lacking a default value
+        $container->bind(ClassWithParamWithoutDefault::class);
+
+        // Let's compile and load our container
+        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerWithParamWithoutDefault');
+
+        // Now, let's resolve our class and see if it flirts back
+        $instance = $compiled->get(ClassWithParamWithoutDefault::class);
+
+        // Asserting that our instance is indeed of the expected class
+        $this->assertInstanceOf(ClassWithParamWithoutDefault::class, $instance);
     }
 }

@@ -21,7 +21,9 @@ use ReflectionException;
 use stdClass;
 use Tests\Unit\Container\Mocks\ExplodingConstructor;
 use Tests\Unit\Container\Mocks\FailsInConstructor;
+use Tests\Unit\Container\Mocks\NonInstantiableClass;
 use Tests\Unit\Container\Mocks\SampleInterface;
+use Tests\Unit\Container\Mocks\SomeClass;
 
 class ServiceResolverTest extends TestCase
 {
@@ -49,6 +51,18 @@ class ServiceResolverTest extends TestCase
             $this->interceptors,
             $this->parameterResolver
         );
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    protected function invokeMethod(object $object, string $methodName, array $parameters = []): object
+    {
+        $reflection = new ReflectionClass($object);
+        $method = $reflection->getMethod($methodName);
+        $method->setAccessible(true);
+
+        return $method->invokeArgs($object, $parameters);
     }
 
     /**
@@ -159,7 +173,7 @@ class ServiceResolverTest extends TestCase
         );
 
         // Fake a recursive resolution by manually pushing to the "resolving" stack
-        $reflection = new \ReflectionClass($resolver);
+        $reflection = new ReflectionClass($resolver);
         $resolvingProp = $reflection->getProperty('resolving');
         $resolvingProp->setAccessible(true);
         $resolvingProp->setValue($resolver, ['ServiceA' => true]);
@@ -205,7 +219,7 @@ class ServiceResolverTest extends TestCase
 
         $this->binder->method('getDescriptor')->willReturn($descriptor);
         $this->reflectionCache->method('get')
-            ->willReturn(new \ReflectionClass(SampleInterface::class));
+            ->willReturn(new ReflectionClass(SampleInterface::class));
 
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessage('Cannot instantiate interface');
@@ -224,7 +238,7 @@ class ServiceResolverTest extends TestCase
         );
 
         $this->binder->method('getDescriptor')->willReturn(null);
-        $this->reflectionCache->method('get')->willReturn(new \ReflectionClass(FailsInConstructor::class));
+        $this->reflectionCache->method('get')->willReturn(new ReflectionClass(FailsInConstructor::class));
 
         $this->resolver->resolve(FailsInConstructor::class);
     }
@@ -275,6 +289,10 @@ class ServiceResolverTest extends TestCase
         $this->assertSame($expectedInstance, $result);
     }
 
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testResolvesServiceDefinedAsClosure(): void
     {
         $id = 'ClosureService';
@@ -364,5 +382,86 @@ class ServiceResolverTest extends TestCase
         $this->expectExceptionMessage("is not instantiable");
 
         $this->resolver->resolve($abstractClass);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testResolveClassExecutesClosure(): void
+    {
+        $className = 'SomeClass';
+        $expectedInstance = new stdClass();
+
+        $descriptor = $this->createMock(ServiceDescriptorInterface::class);
+        $descriptor->method('getConcrete')->willReturn(fn() => $expectedInstance);
+
+        $this->binder->method('getDescriptor')->with($className)->willReturn($descriptor);
+
+        $result = $this->invokeMethod($this->resolver, 'resolveClass', [$className]);
+
+        $this->assertSame($expectedInstance, $result);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testResolveClassRecursivelyFollowsAlias(): void
+    {
+        $abstractAlias = 'AliasClass';
+        $concreteClass = SomeClass::class;
+
+        $descriptor = $this->createMock(ServiceDescriptorInterface::class);
+        $descriptor->method('getConcrete')->willReturn($concreteClass);
+        $descriptor->method('getArguments')->willReturn([]);
+
+        // First call returns descriptor for the alias
+        // Second call returns null to fall through to class reflection
+        $this->binder->expects($this->exactly(2))
+            ->method('getDescriptor')
+            ->withConsecutive([$abstractAlias], [$concreteClass])
+            ->willReturnOnConsecutiveCalls($descriptor, null);
+
+        $this->reflectionCache->expects($this->once())
+            ->method('get')
+            ->with($concreteClass)
+            ->willReturn(new ReflectionClass($concreteClass));
+
+        // Skip interceptors, just assert we got an instance
+        $instance = $this->invokeMethod($this->resolver, 'resolveClass', [$abstractAlias]);
+
+        $this->assertInstanceOf(SomeClass::class, $instance);
+    }
+
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testResolveClassThrowsForNonInstantiable(): void
+    {
+        $className = NonInstantiableClass::class;
+
+        $this->binder->method('getDescriptor')->with($className)->willReturn(null);
+        $this->reflectionCache->method('get')->with($className)->willReturn(new ReflectionClass($className));
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage("Class '$className' (requested as '$className') is not instantiable.");
+
+        $this->invokeMethod($this->resolver, 'resolveClass', [$className]);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testResolveClassCatchesInstantiationFailure(): void
+    {
+        $className = FailsInConstructor::class;
+
+        $this->binder->method('getDescriptor')->with($className)->willReturn(null);
+        $this->reflectionCache->method('get')->with($className)->willReturn(new ReflectionClass($className));
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage("Failed to instantiate '$className' with resolved dependencies.");
+
+        $this->invokeMethod($this->resolver, 'resolveClass', [$className]);
     }
 }
