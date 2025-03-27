@@ -6,6 +6,7 @@ namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
@@ -247,5 +248,121 @@ class ServiceResolverTest extends TestCase
         );
 
         $this->resolver->resolve($className);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testPreResolutionInterceptorIsApplied(): void
+    {
+        $id = 'SomeService';
+        $parameters = ['param' => 'value'];
+        $expectedInstance = new stdClass();
+
+        $preInterceptor = $this->createMock(PreResolutionInterceptorInterface::class);
+        $preInterceptor->expects($this->once())
+            ->method('intercept')
+            ->with($id, $parameters)
+            ->willReturn($expectedInstance);
+
+        $this->interceptors->method('matchPre')
+            ->with($id, $parameters)
+            ->willReturn($preInterceptor);
+
+        $result = $this->resolver->resolve($id, $parameters);
+
+        $this->assertSame($expectedInstance, $result);
+    }
+
+    public function testResolvesServiceDefinedAsClosure(): void
+    {
+        $id = 'ClosureService';
+        $expectedInstance = new stdClass();
+
+        $descriptor = $this->createMock(ServiceDescriptorInterface::class);
+        $descriptor->method('getConcrete')
+            ->willReturn(fn() => $expectedInstance);
+        $descriptor->method('isSingleton')
+            ->willReturn(false);
+        $descriptor->method('getInstance')
+            ->willReturn(null);
+
+        $this->binder->method('getDescriptor')
+            ->with($id)
+            ->willReturn($descriptor);
+
+        $this->interceptors->method('matchPost')
+            ->willReturnArgument(0);
+
+        $result = $this->resolver->resolve($id);
+
+        $this->assertSame($expectedInstance, $result);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testResolvesAliasedService(): void
+    {
+        eval('class ConcreteService {}');
+        $abstractId = 'AbstractService';
+        $concreteClass = 'ConcreteService';
+
+        $descriptor = $this->createMock(ServiceDescriptorInterface::class);
+        $descriptor->method('getConcrete')
+            ->willReturn($concreteClass);
+        $descriptor->method('isSingleton')
+            ->willReturn(false);
+        $descriptor->method('getInstance')
+            ->willReturn(null);
+        $descriptor->method('getArguments')
+            ->willReturn([]);
+
+        $this->binder->method('getDescriptor')->willReturnCallback(
+            fn(string $id) => in_array($id, ['AbstractService', 'ConcreteService'], true) ? $descriptor : null
+        );
+
+        /** @psalm-suppress ArgumentTypeCoercion */
+        $instance = new ReflectionClass($concreteClass);
+
+        $this->reflectionCache->method('get')
+            ->with($concreteClass)
+            ->willReturn($instance);
+
+        $this->interceptors->method('matchPost')
+            ->willReturnArgument(0);
+
+        $result = $this->resolver->resolve($abstractId);
+
+        /** @psalm-suppress ArgumentTypeCoercion */
+        $this->assertInstanceOf($concreteClass, $result);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
+    public function testThrowsForAbstractClass(): void
+    {
+        $abstractClass = 'AbstractClass';
+        eval('abstract class AbstractClass {}');
+
+        $this->binder->method('getDescriptor')
+            ->willReturn(null);
+
+        /** @psalm-suppress ArgumentTypeCoercion */
+        $instance = new ReflectionClass($abstractClass);
+
+        $this->reflectionCache->method('get')
+            ->with($abstractClass)
+            ->willReturn($instance);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage("is not instantiable");
+
+        $this->resolver->resolve($abstractClass);
     }
 }

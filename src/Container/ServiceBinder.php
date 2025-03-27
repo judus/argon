@@ -59,8 +59,12 @@ final class ServiceBinder implements ServiceBinderInterface
      * @param array<string, mixed> $args
      * @throws ContainerException
      */
-    public function bind(string $id, Closure|string|null $concrete = null, bool $isSingleton = false, array $args = []): void
-    {
+    public function bind(
+        string $id,
+        Closure|string|null $concrete = null,
+        bool $isSingleton = false,
+        array $args = []
+    ): void {
         $concrete ??= $id;
 
         if (!$concrete instanceof Closure && !class_exists($concrete)) {

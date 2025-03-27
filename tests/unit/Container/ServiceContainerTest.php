@@ -25,6 +25,7 @@ use Tests\Mocks\TestServiceWithDependency;
 use Tests\Mocks\TestServiceWithMultipleParams;
 use Tests\Mocks\TestServiceWithNonExistentDependency;
 use Tests\Mocks\UninstantiableClass;
+use Tests\Unit\Container\Mocks\UserService;
 
 class ServiceContainerTest extends TestCase
 {
@@ -693,5 +694,15 @@ class ServiceContainerTest extends TestCase
         $this->assertInstanceOf(stdClass::class, $resolved);
         $this->assertSame($decoratedInstance, $resolved);
         $this->assertSame($original, $resolved->wrapped);
+    }
+
+    public function testResolvesNestedDependencies(): void
+    {
+        $container = new ServiceContainer();
+
+        // No bindings needed, just pure autowiring magic.
+        $instance = $container->get(UserService::class);
+
+        $this->assertInstanceOf(UserService::class, $instance);
     }
 }

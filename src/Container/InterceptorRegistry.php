@@ -20,27 +20,45 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
     /** @var array<class-string<PreResolutionInterceptorInterface>> */
     private array $pre = [];
 
+    /**
+     * @throws ContainerException
+     */
     public function registerPost(string $interceptor): void
     {
         if (!class_exists($interceptor)) {
-            throw ContainerException::fromInterceptor($interceptor, "Interceptor class '$interceptor' does not exist.");
+            throw ContainerException::fromInterceptor(
+                $interceptor,
+                "Interceptor class '$interceptor' does not exist."
+            );
         }
 
         if (!is_subclass_of($interceptor, PostResolutionInterceptorInterface::class)) {
-            throw ContainerException::fromInterceptor($interceptor, "Interceptor '$interceptor' must implement PostResolutionInterceptorInterface.");
+            throw ContainerException::fromInterceptor(
+                $interceptor,
+                "Interceptor '$interceptor' must implement PostResolutionInterceptorInterface."
+            );
         }
 
         $this->post[] = $interceptor;
     }
 
+    /**
+     * @throws ContainerException
+     */
     public function registerPre(string $interceptor): void
     {
         if (!class_exists($interceptor)) {
-            throw ContainerException::fromInterceptor($interceptor, "Interceptor class '$interceptor' does not exist.");
+            throw ContainerException::fromInterceptor(
+                $interceptor,
+                "Interceptor class '$interceptor' does not exist."
+            );
         }
 
         if (!is_subclass_of($interceptor, PreResolutionInterceptorInterface::class)) {
-            throw ContainerException::fromInterceptor($interceptor, "Interceptor '$interceptor' must implement PreResolutionInterceptorInterface.");
+            throw ContainerException::fromInterceptor(
+                $interceptor,
+                "Interceptor '$interceptor' must implement PreResolutionInterceptorInterface."
+            );
         }
 
         $this->pre[] = $interceptor;

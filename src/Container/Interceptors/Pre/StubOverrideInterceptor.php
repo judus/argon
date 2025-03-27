@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Maduser\Argon\Container\Interceptors\Pre;
 
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
@@ -25,7 +27,8 @@ class StubOverrideInterceptor implements PreResolutionInterceptorInterface
     public function intercept(string $id, array &$parameters): ?object
     {
         return new class implements PaymentGateway {
-            public function charge(int $amount): bool {
+            public function charge(int $amount): bool
+            {
                 return true; // no-op
             }
         };

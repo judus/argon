@@ -4,61 +4,102 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Container;
 
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
+use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\InterceptorRegistry;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 use Tests\Unit\Container\Stubs\NonMatchingInterceptor;
 use Tests\Unit\Container\Stubs\StubInterceptor;
+use Tests\Unit\Container\Stubs\StubPreInterceptor;
 
 class InterceptorRegistryTest extends TestCase
 {
-    public function testAllReturnsEmptyArrayInitially(): void
+    public function testAllPostReturnsEmptyArrayInitially(): void
     {
         $registry = new InterceptorRegistry();
-
         $this->assertSame([], $registry->allPost());
+    }
+
+    public function testAllPreReturnsEmptyArrayInitially(): void
+    {
+        $registry = new InterceptorRegistry();
+        $this->assertSame([], $registry->allPre());
     }
 
     /**
      * @throws ContainerException
      */
-    public function testRegisterAddsValidInterceptor(): void
+    public function testRegisterPostAddsValidInterceptor(): void
     {
         $registry = new InterceptorRegistry();
-
         $registry->registerPost(StubInterceptor::class);
 
         $this->assertContains(StubInterceptor::class, $registry->allPost());
     }
 
     /**
-     * @psalm-suppress ArgumentTypeCoercion
-     * @psalm-suppress UndefinedClass
+     * @throws ContainerException
      */
-    public function testRegisterThrowsIfClassDoesNotExist(): void
+    public function testRegisterPreAddsValidInterceptor(): void
+    {
+        $registry = new InterceptorRegistry();
+        $registry->registerPre(StubPreInterceptor::class);
+
+        $this->assertContains(StubPreInterceptor::class, $registry->allPre());
+    }
+
+    public function testRegisterPostThrowsIfClassDoesNotExist(): void
     {
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessage("Interceptor class 'NonExistentClass' does not exist.");
 
         $registry = new InterceptorRegistry();
-        $registry->registerPost('NonExistentClass');
+        /** @var class-string<PostResolutionInterceptorInterface> $invalid */
+        $invalid = 'NonExistentClass';
+        $registry->registerPost($invalid);
     }
 
-    public function testRegisterThrowsIfClassDoesNotImplementInterface(): void
+    public function testRegisterPreThrowsIfClassDoesNotExist(): void
     {
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage("[stdClass] Interceptor 'stdClass' must implement PostResolutionInterceptorInterface.");
+        $this->expectExceptionMessage("Interceptor class 'NonExistentClass' does not exist.");
 
         $registry = new InterceptorRegistry();
-        /** @psalm-suppress InvalidArgument intended */
+        /** @var class-string<PreResolutionInterceptorInterface> $invalid */
+        $invalid = 'NonExistentClass';
+        $registry->registerPre($invalid);
+    }
+
+    public function testRegisterPostThrowsIfClassDoesNotImplementInterface(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage(
+            "[stdClass] Interceptor 'stdClass' must implement PostResolutionInterceptorInterface."
+        );
+
+        $registry = new InterceptorRegistry();
+        /** @psalm-suppress InvalidArgument */
         $registry->registerPost(stdClass::class);
+    }
+
+    public function testRegisterPreThrowsIfClassDoesNotImplementInterface(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage(
+            "[stdClass] Interceptor 'stdClass' must implement PreResolutionInterceptorInterface."
+        );
+
+        $registry = new InterceptorRegistry();
+        /** @psalm-suppress InvalidArgument */
+        $registry->registerPre(stdClass::class);
     }
 
     /**
      * @throws ContainerException
      */
-    public function testApplyRunsInterceptorIfSupported(): void
+    public function testMatchPostRunsInterceptorIfSupported(): void
     {
         $registry = new InterceptorRegistry();
         $registry->registerPost(StubInterceptor::class);
@@ -74,7 +115,7 @@ class InterceptorRegistryTest extends TestCase
     /**
      * @throws ContainerException
      */
-    public function testApplySkipsInterceptorIfNotSupported(): void
+    public function testMatchPostSkipsInterceptorIfNotSupported(): void
     {
         $registry = new InterceptorRegistry();
         $registry->registerPost(NonMatchingInterceptor::class);
@@ -83,5 +124,31 @@ class InterceptorRegistryTest extends TestCase
         $result = $registry->matchPost($object);
 
         $this->assertObjectNotHasProperty('intercepted', $result);
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testMatchPreReturnsMatchingInterceptor(): void
+    {
+        $registry = new InterceptorRegistry();
+        $registry->registerPre(StubPreInterceptor::class);
+
+        $result = $registry->matchPre('StubMatch');
+
+        $this->assertInstanceOf(StubPreInterceptor::class, $result);
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testMatchPreReturnsNullIfNoInterceptorMatches(): void
+    {
+        $registry = new InterceptorRegistry();
+        $registry->registerPre(StubPreInterceptor::class);
+
+        $result = $registry->matchPre('UnmatchedService');
+
+        $this->assertNull($result);
     }
 }

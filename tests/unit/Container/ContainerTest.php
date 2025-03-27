@@ -8,16 +8,13 @@ use Maduser\Argon\Container\Container;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\InterceptorInterface;
 use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
-use Maduser\Argon\Container\ContextualBindingBuilder;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ServiceContainer;
-use Maduser\Argon\Container\ServiceDescriptor;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use stdClass;
-use Tests\Unit\Container\Mocks\SampleInterface;
 use Tests\Unit\Container\Mocks\SampleProvider;
 
 class ContainerTest extends TestCase
@@ -156,6 +153,10 @@ class ContainerTest extends TestCase
         Container::boot();
     }
 
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testExtendDelegatesToContainer(): void
     {
         $decorator = fn(object $obj): object => $obj;
@@ -167,6 +168,9 @@ class ContainerTest extends TestCase
         Container::extend('service', $decorator);
     }
 
+    /**
+     * @throws ContainerException
+     */
     public function testRegisterInterceptorDelegatesToContainer(): void
     {
         $this->mockContainer->expects($this->once())
@@ -185,6 +189,10 @@ class ContainerTest extends TestCase
         Container::tag('id', ['tag1']);
     }
 
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testTaggedDelegatesToContainer(): void
     {
         $expected = [new stdClass()];
