@@ -335,9 +335,9 @@ foreach ($loggers as $logger) {
 }
 ```
 
-### 9. Conditional Service Acces
+### 9. Conditional Service Access
 
-`if()` returns a proxy if the service is unavailable — safe for optional dependencies.
+`optional()` returns a proxy if the service is unavailable — safe for optional dependencies.
 
 ```php
 // Suppose SomeLogger is optional
