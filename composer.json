@@ -33,14 +33,20 @@
     }
   },
   "scripts": {
-    "test": "vendor/bin/phpunit",
+    "test": "vendor/bin/phpunit --coverage-clover=coverage.xml",
     "lint": "vendor/bin/phpcs --standard=phpcs.xml",
-    "analyze": "vendor/bin/psalm",
+    "analyze": "vendor/bin/psalm --output-format=github",
     "fix": [
-      "vendor/bin/psalm --alter --issues=InvalidReturnType,MissingReturnType,UnusedVariable,PossiblyUnusedMethod",
-      "vendor/bin/phpcbf --standard=phpcs.xml"
+      "vendor/bin/phpcbf --standard=phpcs.xml",
+      "vendor/bin/psalm --alter --issues=InvalidReturnType,MissingReturnType,UnusedVariable,PossiblyUnusedMethod"
     ],
+    "coverage": "vendor/bin/phpunit --coverage-html coverage-report && open coverage-report/index.html",
     "check": [
+      "@test",
+      "@analyze",
+      "@lint"
+    ],
+    "ci": [
       "@test",
       "@analyze",
       "@lint"
