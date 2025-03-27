@@ -14,11 +14,11 @@
     "nette/php-generator": "^4.1"
   },
   "require-dev": {
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
     "phpunit/phpunit": "^9.6",
-    "vimeo/psalm": "^5.26",
-    "squizlabs/php_codesniffer": "^3.8",
     "slevomat/coding-standard": "^8.16",
-    "dealerdirect/phpcodesniffer-composer-installer": "^1.0"
+    "squizlabs/php_codesniffer": "^3.8",
+    "vimeo/psalm": "^5.26"
   },
   "autoload": {
     "psr-4": {
@@ -27,20 +27,18 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "Tests\\App\\": "tests/app/",
       "Tests\\Mocks\\": "tests/resources/mocks/",
       "Tests\\Unit\\": "tests/unit/",
-      "Tests\\Integration\\": "tests/integration/",
-      "Tests\\Environment\\": "tests/environment/"
+      "Tests\\Integration\\": "tests/integration/"
     }
   },
   "scripts": {
     "test": "vendor/bin/phpunit",
-    "lint": "vendor/bin/phpcs",
+    "lint": "vendor/bin/phpcs --standard=phpcs.xml",
     "analyze": "vendor/bin/psalm",
     "fix": [
       "vendor/bin/psalm --alter --issues=InvalidReturnType,MissingReturnType,UnusedVariable,PossiblyUnusedMethod",
-      "vendor/bin/phpcbf"
+      "vendor/bin/phpcbf --standard=phpcs.xml"
     ],
     "check": [
       "@test",

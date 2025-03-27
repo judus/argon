@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "50a869ffbe8858872e0d449a1431d38b",
+    "content-hash": "957e4d72841f6c4eb4c2e992a5c2162e",
     "packages": [
         {
             "name": "nette/php-generator",
