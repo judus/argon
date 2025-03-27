@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler;
 
+use Maduser\Argon\Container\Compiler\ContainerCompiler;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ServiceContainer;
-use Maduser\Argon\Container\ContainerCompiler;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use stdClass;
@@ -19,31 +19,29 @@ use Tests\Mocks\DummyProvider;
 
 class ContainerCompilerTest extends TestCase
 {
-    private function compileAndLoadContainer(
-        ServiceContainer $container,
-        string $className,
-    ): object {
+    private function compileAndLoadContainer(ServiceContainer $container, string $className): object
+    {
         $namespace = 'Tests\\Integration\\Compiler';
+        $file = __DIR__ . "/../../resources/cache/{$className}.php";
 
-        $file = __DIR__ . "/../../resources/cache/$className.php";
         if (file_exists($file)) {
             unlink($file);
         }
 
-        $compiler = new ContainerCompiler($container);
-        $compiler->compileToFile($file, $className, $namespace);
+        $compiler = new \Maduser\Argon\Container\Compiler\ContainerCompiler($container);
+        $compiler->compile($file, $className, $namespace);
+
         require_once $file;
 
-        $fqcn = "$namespace\\$className";
-
-        // Add class existence check to help Psalm understand this is a valid class
+        $fqcn = "{$namespace}\\{$className}";
         if (!class_exists($fqcn)) {
             throw new \RuntimeException("Failed to load compiled container class: $fqcn");
         }
 
-        /** @var class-string $fqcn */
         return new $fqcn();
     }
+
+
 
     /**
      * @throws ContainerException
