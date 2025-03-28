@@ -5,41 +5,75 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container\Contracts;
 
 /**
- * @internal
- * Registry for named parameter sets scoped by identifier (e.g., class names).
+ * Stores parameter sets scoped by identifier (typically FQCN).
  */
 interface ParameterRegistryInterface
 {
     /**
-     * @param string $scope
-     * @param array<string, mixed> $params
-     * @return void
+     * @param array<string, array<string, mixed>> $parameters
      */
-    public function set(string $scope, array $params): void;
+    public function setParameters(array $parameters): void;
 
     /**
-     * @param string $scope
-     * @return array<string, mixed>
+     * @param string               $key
+     * @param mixed $value
      */
-    public function get(string $scope): array;
+    public function set(string $key, mixed $value): void;
 
     /**
-     * @param string $scope
-     * @param string $name
-     * @param mixed|null $default
+     * @param string $key
+     *
      * @return mixed
      */
-    public function getScoped(string $scope, string $name, mixed $default = null): mixed;
+    public function get(string $key): mixed;
+
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function has(string $key): bool;
 
     /**
      * @param string $scope
-     * @param string $name
+     * @param string $key
+     *
      * @return bool
      */
-    public function has(string $scope, string $name): bool;
+    public function scopeHas(string $scope, string $key): bool;
+
+    /**
+     * @param string $scope
+     * @param array $values
+     *
+     * @return void
+     */
+    public function setScope(string $scope, array $values): void;
+
+
+    /**
+     * @param string     $scope
+     * @param string $key
+     * @param mixed|null $default
+     *
+     * @return mixed
+     */
+    public function getScoped(string $scope, string $key, mixed $default = null): mixed;
+
+    /**
+     * @param string     $scope
+     *
+     * @return array<string, mixed>
+     */
+    public function getScope(string $scope): array;
 
     /**
      * @return array<string, array<string, mixed>>
      */
     public function all(): array;
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function allScopes(): array;
 }

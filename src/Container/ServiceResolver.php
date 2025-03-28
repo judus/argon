@@ -58,12 +58,11 @@ final class ServiceResolver implements ServiceResolverInterface
         $this->checkCircularDependency($id);
 
         // Pre resolution interceptors
-        if ($interceptor = $this->interceptors->matchPre($id, $parameters)) {
-            $result = $interceptor->intercept($id, $parameters);
-            if ($result !== null) {
-                $this->removeFromResolving($id);
-                return $result;
-            }
+        $result = $this->interceptors->matchPre($id, $parameters);
+        if ($result !== null) {
+            $this->removeFromResolving($id);
+
+            return $result;
         }
 
         // Registered service

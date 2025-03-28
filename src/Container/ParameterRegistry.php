@@ -12,13 +12,19 @@ use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
 final class ParameterRegistry implements ParameterRegistryInterface
 {
     /**
+     * @var array<string, mixed>
+     */
+    private array $parameters;
+
+    /**
      * @var array<string, array<string, mixed>>
      */
-    private array $parameters = [];
+    private array $arguments;
 
-    public function __construct(array $parameters = [])
+    public function __construct(array $parameters = [], array $arguments = [])
     {
         $this->parameters = $parameters;
+        $this->arguments = $arguments;
     }
 
     /**
@@ -30,41 +36,70 @@ final class ParameterRegistry implements ParameterRegistryInterface
     }
 
     /**
-     * @param string $scope
-     * @param array<string, mixed> $params
+     * @param string $key
+     * @param mixed $value
      */
-    public function set(string $scope, array $params): void
+    public function set(string $key, mixed $value): void
     {
-        $this->parameters[$scope] = $params;
+        $this->parameters[$key] = $value;
     }
 
     /**
-     * @param string $scope
-     * @return array<string, mixed>
-     */
-    public function get(string $scope): array
-    {
-        return $this->parameters[$scope] ?? [];
-    }
-
-    /**
-     * @param string $scope
-     * @param string $name
-     */
-    public function has(string $scope, string $name): bool
-    {
-        return isset($this->parameters[$scope][$name]);
-    }
-
-    /**
-     * @param string $scope
-     * @param string $name
-     * @param mixed|null $default
+     * @param string $key
+     *
      * @return mixed
      */
-    public function getScoped(string $scope, string $name, mixed $default = null): mixed
+    public function get(string $key): mixed
     {
-        return $this->parameters[$scope][$name] ?? $default;
+        return $this->parameters[$key] ?? null;
+    }
+
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function has(string $key): bool
+    {
+        return isset($this->parameters[$key]);
+    }
+
+    /**
+     * @param string $scope
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function scopeHas(string $scope, string $key): bool
+    {
+        return isset($this->arguments[$scope][$key]);
+    }
+
+    public function setScope(string $scope, array $values): void
+    {
+        $this->arguments[$scope] = $values;
+    }
+
+    /**
+     * @param string $scope
+     * @param string $key
+     * @param mixed|null $default
+     *
+     * @return mixed
+     */
+    public function getScoped(string $scope, string $key, mixed $default = null): mixed
+    {
+        return $this->arguments[$scope][$key] ?? $default;
+    }
+
+    /**
+     * @param string $scope
+     *
+     * @return array<string, mixed>
+     */
+    public function getScope(string $scope): array
+    {
+        return $this->arguments[$scope] ?? [];
     }
 
     /**
@@ -73,5 +108,13 @@ final class ParameterRegistry implements ParameterRegistryInterface
     public function all(): array
     {
         return $this->parameters;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function allScopes(): array
+    {
+        return $this->arguments;
     }
 }

@@ -99,14 +99,19 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
 
     /**
      * @param string $id
-     * @param array $parameters
-     * @return PreResolutionInterceptorInterface|null
+     * @param array &$parameters
+     *
+     * @return object|null
      */
-    public function matchPre(string $id, array $parameters = []): ?PreResolutionInterceptorInterface
+    public function matchPre(string $id, array &$parameters = []): ?object
     {
         foreach ($this->pre as $interceptorClass) {
             if ($interceptorClass::supports($id)) {
-                return new $interceptorClass();
+                $result = (new $interceptorClass())->intercept($id, $parameters);
+
+                if ($result !== null) {
+                    return $result;
+                }
             }
         }
 

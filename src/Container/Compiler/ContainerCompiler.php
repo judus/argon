@@ -140,6 +140,7 @@ class ContainerCompiler
             ->addComment('@throws NotFoundException')
             ->setReturnType('object');
         $get->addParameter('id')->setType('string');
+        $get->addParameter('args')->setType('array')->setDefaultValue(null);
         $get->setBody("return match (\$id) {\n" .
             implode("\n", array_map(fn($id) => "    '$id' => \$this->" . self::methodNameFromClass($id) .
                 "(),", array_keys($services))) . "\n" .
