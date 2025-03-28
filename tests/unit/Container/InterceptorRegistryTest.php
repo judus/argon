@@ -136,7 +136,7 @@ class InterceptorRegistryTest extends TestCase
 
         $result = $registry->matchPre('StubMatch');
 
-        $this->assertInstanceOf(StubPreInterceptor::class, $result);
+        $this->assertInstanceOf(stdClass::class, $result);
     }
 
     /**

@@ -41,5 +41,5 @@ interface InterceptorRegistryInterface
     /**
      * Match and return a pre-resolution interceptor (or null).
      */
-    public function matchPre(string $id, array $parameters = []): ?PreResolutionInterceptorInterface;
+    public function matchPre(string $id, array &$parameters = []): ?object;
 }

@@ -274,15 +274,9 @@ class ServiceResolverTest extends TestCase
         $parameters = ['param' => 'value'];
         $expectedInstance = new stdClass();
 
-        $preInterceptor = $this->createMock(PreResolutionInterceptorInterface::class);
-        $preInterceptor->expects($this->once())
-            ->method('intercept')
-            ->with($id, $parameters)
-            ->willReturn($expectedInstance);
-
         $this->interceptors->method('matchPre')
             ->with($id, $parameters)
-            ->willReturn($preInterceptor);
+            ->willReturn($expectedInstance);
 
         $result = $this->resolver->resolve($id, $parameters);
 

@@ -94,8 +94,8 @@ class TagManagerTest extends TestCase
         $this->container->expects($this->exactly(2))
             ->method('get')
             ->willReturnMap([
-                ['id1', $service1],
-                ['id2', $service2],
+                ['id1', [], $service1],
+                ['id2', [], $service2],
             ]);
 
         $resolved = $manager->getTagged('tagged');

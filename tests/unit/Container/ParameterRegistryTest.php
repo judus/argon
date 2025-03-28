@@ -11,13 +11,18 @@ class ParameterRegistryTest extends TestCase
 {
     public function testConstructorInitializesParameters(): void
     {
-        $initial = [
+        $initialA = [
             'Test\ClassA' => ['param1' => 'value1']
         ];
 
-        $registry = new ParameterRegistry($initial);
+        $initialB = [
+            'Test\ClassB' => ['param2' => 'value2']
+        ];
 
-        $this->assertSame($initial, $registry->all());
+        $registry = new ParameterRegistry($initialA, $initialB);
+
+        $this->assertSame($initialA, $registry->all());
+        $this->assertSame($initialB, $registry->allScopes());
     }
 
     public function testSetParametersOverwritesAll(): void
@@ -48,33 +53,37 @@ class ParameterRegistryTest extends TestCase
     {
         $registry = new ParameterRegistry();
 
-        $this->assertSame([], $registry->get('Unknown\Scope'));
+        $this->assertSame([], $registry->getScope('Unknown\Scope'));
     }
 
     public function testHasReturnsTrueWhenParameterExists(): void
     {
-        $registry = new ParameterRegistry([
-            'Scope\One' => ['foo' => 'bar']
-        ]);
+        $registry = new ParameterRegistry(
+            ['foo' => 'bar'],
+            ['Scope\One' => ['foo' => 'bar']]
+        );
 
-        $this->assertTrue($registry->has('Scope\One', 'foo'));
+        $this->assertTrue($registry->has('foo'));
+        $this->assertTrue($registry->scopeHas('Scope\One', 'foo'));
     }
 
     public function testHasReturnsFalseWhenParameterMissing(): void
     {
-        $registry = new ParameterRegistry([
-            'Scope\One' => ['foo' => 'bar']
-        ]);
+        $registry = new ParameterRegistry(
+            ['foo' => 'bar'],
+            ['Scope\One' => ['foo' => 'bar']]
+        );
 
-        $this->assertFalse($registry->has('Scope\One', 'missing'));
-        $this->assertFalse($registry->has('Missing\Scope', 'foo'));
+        $this->assertFalse($registry->scopeHas('Scope\One', 'missing'));
+        $this->assertFalse($registry->scopeHas('Missing\Scope', 'foo'));
     }
 
     public function testGetScopedReturnsValue(): void
     {
-        $registry = new ParameterRegistry([
-            'Scope\Two' => ['key' => 'value']
-        ]);
+        $registry = new ParameterRegistry(
+            ['foo' => 'bar'],
+            ['Scope\Two' => ['key' => 'value']]
+        );
 
         $this->assertSame('value', $registry->getScoped('Scope\Two', 'key'));
     }
@@ -100,13 +109,14 @@ class ParameterRegistryTest extends TestCase
 
     public function testSetOverwritesPreviousScope(): void
     {
-        $registry = new ParameterRegistry([
-            'ScopeX' => ['old' => 'val']
-        ]);
+        $registry = new ParameterRegistry(
+            ['foo' => 'bar'],
+            ['Scope\Two' => ['key' => 'value']]
+        );
 
         $registry->set('ScopeX', ['new' => 'val2']);
 
         $this->assertSame(['new' => 'val2'], $registry->get('ScopeX'));
-        $this->assertFalse($registry->has('ScopeX', 'old'));
+        $this->assertFalse($registry->scopeHas('ScopeX', 'old'));
     }
 }

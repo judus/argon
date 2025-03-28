@@ -131,7 +131,7 @@ class ServiceContainerTest extends TestCase
 
         // Mock the override for the 'dependency' parameter in TestService
         $parameters->expects($this->once())
-            ->method('get')
+            ->method('getScope')
             ->with(TestService::class)
             ->willReturn(['dependency' => 'overriddenValue']);
 
@@ -201,7 +201,7 @@ class ServiceContainerTest extends TestCase
     public function testMissingParameterOverrideThrowsException(): void
     {
         $parameters = $this->createMock(ParameterRegistryInterface::class);
-        $parameters->method('get')->willReturn([]);
+        $parameters->method('getScoped')->willReturn([]);
 
         $container = new ServiceContainer($parameters);
 
@@ -313,7 +313,7 @@ class ServiceContainerTest extends TestCase
     public function testMultipleParameterOverrides(): void
     {
         $parameters = $this->createMock(ParameterRegistryInterface::class);
-        $parameters->method('get')
+        $parameters->method('getScope')
             ->willReturn(['param1' => 'override1', 'param2' => 'override2']);
 
         $container = new ServiceContainer($parameters);
@@ -581,7 +581,7 @@ class ServiceContainerTest extends TestCase
     public function testAutowiringWithMultipleDependencies(): void
     {
         $parameters = $this->createMock(ParameterRegistryInterface::class);
-        $parameters->method('get')
+        $parameters->method('getScope')
             ->willReturn([
                 'param1' => 'stringValue', // Override for string param
                 'param2' => 123            // Override for int param
@@ -623,7 +623,7 @@ class ServiceContainerTest extends TestCase
     public function testPrimitiveParameterResolutionWithOverrides(): void
     {
         $parameters = $this->createMock(ParameterRegistryInterface::class);
-        $parameters->method('get')
+        $parameters->method('getScope')
             ->willReturn(['param1' => 'override1', 'param2' => 123]);
 
         $container = new ServiceContainer($parameters);
@@ -731,6 +731,10 @@ class ServiceContainerTest extends TestCase
         $this->assertSame($original, $resolved->wrapped);
     }
 
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testResolvesNestedDependencies(): void
     {
         $container = new ServiceContainer();

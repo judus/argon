@@ -92,9 +92,9 @@ class ServiceContainer implements ContainerInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function get(string $id): object
+    public function get(string $id, array $args = []): object
     {
-        return $this->serviceResolver->resolve($id);
+        return $this->serviceResolver->resolve($id, $args);
     }
 
     public function has(string $id): bool
@@ -105,8 +105,17 @@ class ServiceContainer implements ContainerInterface
     /**
      * @throws ContainerException
      */
-    public function bind(string $id, Closure|string|null $concrete = null, bool $isSingleton = false): ServiceContainer
-    {
+    public function bind(
+        string $id,
+        Closure|string|null $concrete = null,
+        bool $isSingleton = false,
+        ?array $args = null
+    ): ServiceContainer {
+
+        if ($args !== null) {
+            $this->parameters->setScope($id, $args);
+        }
+
         $this->binder->bind($id, $concrete, $isSingleton);
 
         return $this;
@@ -115,8 +124,12 @@ class ServiceContainer implements ContainerInterface
     /**
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null): ServiceContainer
+    public function singleton(string $id, Closure|string|null $concrete = null, ?array $args = null): ServiceContainer
     {
+        if ($args !== null) {
+            $this->parameters->setScope($id, $args);
+        }
+
         $this->binder->singleton($id, $concrete);
 
         return $this;
