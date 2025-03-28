@@ -6,7 +6,9 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
-use Maduser\Argon\Container\Contracts\InterceptorInterface;
+use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
+use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
@@ -215,11 +217,21 @@ class Container
     /**
      * Returns a list of all registered interceptors.
      *
-     * @return array<class-string<InterceptorInterface>>
+     * @return array<class-string<PreResolutionInterceptorInterface>>
      */
-    public static function interceptors(): array
+    public static function preInterceptors(): array
     {
-        return self::instance()->getInterceptors();
+        return self::instance()->getPreInterceptors();
+    }
+
+    /**
+     * Returns a list of all registered interceptors.
+     *
+     * @return array<class-string<PostResolutionInterceptorInterface>>
+     */
+    public static function postInterceptors(): array
+    {
+        return self::instance()->getPostInterceptors();
     }
 
     /**
@@ -233,9 +245,9 @@ class Container
     }
 
     /**
-     * Gets access to the global parameter registry.
+     * Gets access to the parameter store.
      */
-    public static function parameters(): Contracts\ParameterRegistryInterface
+    public static function parameters(): ParameterStoreInterface
     {
         return self::instance()->getParameters();
     }

@@ -19,7 +19,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
 {
     public function __construct(
         private ServiceContainer $container,
-        private ContextualBindingsInterface $registry
+        private ContextualBindingsInterface $bindings
     ) {
     }
 
@@ -31,7 +31,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
      */
     public function for(string $target): ContextualBindingBuilderInterface
     {
-        return new ContextualBindingBuilder($this->registry, $target);
+        return new ContextualBindingBuilder($this->bindings, $target);
     }
 
     /**
@@ -46,7 +46,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
      */
     public function resolve(string $consumer, string $dependency): object
     {
-        $override = $this->registry->get($consumer, $dependency);
+        $override = $this->bindings->get($consumer, $dependency);
 
         if ($override === null) {
             throw new NotFoundException("No contextual binding found for '$dependency' in '$consumer'");
@@ -68,6 +68,6 @@ final readonly class ContextualResolver implements ContextualResolverInterface
      */
     public function has(string $consumer, string $dependency): bool
     {
-        return $this->registry->has($consumer, $dependency);
+        return $this->bindings->has($consumer, $dependency);
     }
 }

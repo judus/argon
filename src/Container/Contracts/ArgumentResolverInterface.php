@@ -11,7 +11,7 @@ use ReflectionParameter;
 /**
  * Resolves constructor and method parameters with contextual or container-based resolution.
  */
-interface ParameterResolverInterface
+interface ArgumentResolverInterface
 {
     public function setServiceResolver(ServiceResolverInterface $resolver): void;
 

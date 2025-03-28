@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
+use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
-use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
-use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
@@ -21,13 +21,13 @@ use RuntimeException;
 /**
  * Resolves constructor and method parameters with contextual or container-based resolution.
  */
-final class ParameterResolver implements ParameterResolverInterface
+final class ArgumentResolver implements ArgumentResolverInterface
 {
     private ?ServiceResolverInterface $serviceResolver = null;
 
     public function __construct(
         private readonly ContextualResolverInterface $contextualResolver,
-        private readonly ParameterRegistryInterface $registry,
+        private readonly ArgumentMapInterface $arguments,
         private readonly ContextualBindingsInterface $contextualBindings
     ) {
     }
@@ -51,7 +51,7 @@ final class ParameterResolver implements ParameterResolverInterface
         $className = $param->getDeclaringClass()?->getName() ?? 'unknown class';
         $paramName = $param->getName();
 
-        $merged = array_merge($this->registry->getScope($className), $overrides);
+        $merged = array_merge($this->arguments->get($className), $overrides);
 
         if (array_key_exists($paramName, $merged)) {
             return $merged[$paramName];
@@ -117,29 +117,51 @@ final class ParameterResolver implements ParameterResolverInterface
      */
     private function resolveUnionType(ReflectionUnionType $type, string $className, string $paramName): mixed
     {
-        $resolvableTypes = [];
+        // TODO: I won't support this BS (yet), user shall make up his mind, ain't a sushi bar...
+        // class MyClass {
+        //     public function __construct(public StringableObject|string $string) {}
+        // }
+
+        $userDefined = [];
+        $fromAutoResolution = [];
 
         foreach ($type->getTypes() as $unionType) {
             if ($unionType instanceof ReflectionNamedType && !$unionType->isBuiltin()) {
                 $typeName = $unionType->getName();
 
                 if ($this->contextualBindings->has($className, $typeName)) {
-                    $resolvableTypes[] = fn(): object => $this->contextualResolver->resolve($className, $typeName);
-                } elseif (class_exists($typeName)) {
-                    $resolvableTypes[] = fn(): object => $this->resolveTypeName($typeName, $className);
+                    $userDefined[] = fn(): object => $this->contextualResolver->resolve($className, $typeName);
                 }
+
+                // See note below. This part of the BF. Don't do it! Not again! :)
+                // If we have union type, meaning we have multiple classes, we'll always have an ambiguous situation
+                // In a mixed situation, userDefined and fromAutoResolution, userDefined takes precedence anyway.
+                // Try to unit test that, LMAO!
+                // elseif (class_exists($typeName)) {
+                //     $fromAutoResolution[] = fn(): object => $this->resolveTypeName($typeName, $className);
+                // }
             }
         }
 
-        if (count($resolvableTypes) === 1) {
-            return $resolvableTypes[0]();
+        // Prioritize contextual bindings
+        if (count($userDefined) === 1) {
+            return $userDefined[0]();
         }
 
+        // Unless PHP allows type hinting non-existing classes, nothing gets executed.
+        // Leave this note here, so I remember next time before I spent hours on this BF.
+        //
+        // If no $userDefined, fall back to auto resolution (<-- nope! Union type means greater than 1!)
+        // if (count($userDefined) === 0 && count($fromAutoResolution) === 1) {
+        //     return $fromAutoResolution[0]();
+        // }
+
         $typeList = implode(', ', array_map(
-            function (ReflectionType $t): string {
-                return $t instanceof ReflectionNamedType ? $t->getName() : 'unknown';
-            },
-            $type->getTypes()
+            fn(ReflectionNamedType $t): string => $t->getName(),
+            array_filter(
+                $type->getTypes(),
+                fn(ReflectionType $t): bool => $t instanceof ReflectionNamedType
+            )
         ));
 
         throw ContainerException::fromServiceId(

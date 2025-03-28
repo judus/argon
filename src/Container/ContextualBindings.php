@@ -18,6 +18,14 @@ final class ContextualBindings implements ContextualBindingsInterface
     private array $bindings = [];
 
     /**
+     * @return array
+     */
+    public function getBindings(): array
+    {
+        return $this->bindings;
+    }
+
+    /**
      * @param string $consumer
      * @param string $dependency
      * @param string|Closure $concrete
