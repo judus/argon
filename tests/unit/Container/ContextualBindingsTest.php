@@ -19,6 +19,24 @@ class ContextualBindingsTest extends TestCase
         $this->assertSame('ConcreteService', $bindings->get('ConsumerA', 'DependencyX'));
     }
 
+    public function testGetBindingsReturnsAllSetBindingsBecauseItsNotAsObviousAsYouThink(): void
+    {
+        $bindings = new ContextualBindings();
+
+        $bindings->set('ConsumerA', 'DepA', 'ConcreteA');
+        $bindings->set('ConsumerA', 'DepB', 'ConcreteB');
+        $bindings->set('ConsumerB', 'DepC', fn() => 'ClosureResult');
+
+        $result = $bindings->getBindings();
+
+        $this->assertCount(2, $result);
+        $this->assertArrayHasKey('ConsumerA', $result);
+        $this->assertArrayHasKey('ConsumerB', $result);
+        $this->assertSame('ConcreteA', $result['ConsumerA']['DepA']);
+        $this->assertSame('ConcreteB', $result['ConsumerA']['DepB']);
+        $this->assertInstanceOf(Closure::class, $result['ConsumerB']['DepC']);
+    }
+
     public function testSetAndGetReturnsClosureBinding(): void
     {
         $bindings = new ContextualBindings();

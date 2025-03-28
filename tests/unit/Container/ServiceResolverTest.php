@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
-use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
@@ -34,7 +34,7 @@ class ServiceResolverTest extends TestCase
     /** @psalm-suppress PropertyNotSetInConstructor */
     private InterceptorRegistryInterface&MockObject $interceptors;
     /** @psalm-suppress PropertyNotSetInConstructor */
-    private ParameterResolverInterface&MockObject $parameterResolver;
+    private ArgumentResolverInterface&MockObject $parameterResolver;
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ServiceResolverInterface $resolver;
 
@@ -43,7 +43,7 @@ class ServiceResolverTest extends TestCase
         $this->binder = $this->createMock(ServiceBinderInterface::class);
         $this->reflectionCache = $this->createMock(ReflectionCacheInterface::class);
         $this->interceptors = $this->createMock(InterceptorRegistryInterface::class);
-        $this->parameterResolver = $this->createMock(ParameterResolverInterface::class);
+        $this->parameterResolver = $this->createMock(ArgumentResolverInterface::class);
 
         $this->resolver = new ServiceResolver(
             $this->binder,

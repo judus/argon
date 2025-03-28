@@ -7,10 +7,12 @@ namespace Tests\Unit\Container;
 use Maduser\Argon\Container\Container;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\InterceptorInterface;
-use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
+use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
+use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\ParameterStore;
 use Maduser\Argon\Container\ServiceContainer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -227,13 +229,21 @@ class ContainerTest extends TestCase
         $this->assertSame($bindings, Container::bindings());
     }
 
-    public function testInterceptorsDelegatesToContainer(): void
+    public function testPreInterceptorsDelegatesToContainer(): void
     {
         $this->mockContainer->expects($this->once())
-            ->method('getInterceptors')
+            ->method('getPreInterceptors')
             ->willReturn(['SomeInterceptor']);
 
-        $this->assertSame(['SomeInterceptor'], Container::interceptors());
+        $this->assertSame(['SomeInterceptor'], Container::preInterceptors());
+    }
+    public function testPostInterceptorsDelegatesToContainer(): void
+    {
+        $this->mockContainer->expects($this->once())
+            ->method('getPostInterceptors')
+            ->willReturn(['SomeInterceptor']);
+
+        $this->assertSame(['SomeInterceptor'], Container::postInterceptors());
     }
 
     public function testTagsDelegatesToContainer(): void
@@ -246,13 +256,13 @@ class ContainerTest extends TestCase
         $this->assertSame($tags, Container::tags());
     }
 
-    public function testParametersReturnsRegistry(): void
+    public function testParametersReturnsStore(): void
     {
-        $mockRegistry = $this->createMock(ParameterRegistryInterface::class);
+        $parameters = $this->createMock(ParameterStoreInterface::class);
         $this->mockContainer->expects($this->once())
             ->method('getParameters')
-            ->willReturn($mockRegistry);
+            ->willReturn($parameters);
 
-        $this->assertSame($mockRegistry, Container::parameters());
+        $this->assertSame($parameters, Container::parameters());
     }
 }

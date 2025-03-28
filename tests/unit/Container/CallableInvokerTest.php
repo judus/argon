@@ -7,7 +7,7 @@ namespace Tests\Unit\Container;
 use Closure;
 use Maduser\Argon\Container\CallableInvoker;
 use Maduser\Argon\Container\Contracts\CallableWrapperInterface;
-use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
@@ -21,14 +21,14 @@ class CallableInvokerTest extends TestCase
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ServiceResolverInterface&MockObject $resolver;
     /** @psalm-suppress PropertyNotSetInConstructor */
-    private ParameterResolverInterface&MockObject $parameterResolver;
+    private ArgumentResolverInterface&MockObject $parameterResolver;
     /** @psalm-suppress PropertyNotSetInConstructor */
     private CallableInvoker $invoker;
 
     protected function setUp(): void
     {
         $this->resolver = $this->createMock(ServiceResolverInterface::class);
-        $this->parameterResolver = $this->createMock(ParameterResolverInterface::class);
+        $this->parameterResolver = $this->createMock(ArgumentResolverInterface::class);
         $this->invoker = new CallableInvoker($this->resolver, $this->parameterResolver);
     }
 
