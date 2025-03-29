@@ -41,16 +41,16 @@ class ArgonContainer implements ContainerInterface
     private readonly ContextualResolverInterface $contextual;
     private readonly ServiceProviderRegistryInterface $providers;
     private readonly ServiceResolverInterface $serviceResolver;
-    private readonly ArgumentResolverInterface $argumentResolver;
     private readonly ServiceBinderInterface $binder;
     private readonly ArgumentMapInterface $arguments;
     private readonly ParameterStoreInterface $parameterStore;
+    private readonly InterceptorRegistryInterface $interceptors;
 
     public function __construct(
         ?ArgumentMapInterface $arguments = null,
         ?ParameterStoreInterface $parameters = null,
-        private readonly ReflectionCacheInterface $reflectionCache = new ReflectionCache(),
-        private readonly InterceptorRegistryInterface $interceptors = new InterceptorRegistry(),
+        ?ReflectionCacheInterface $reflectionCache = null,
+        ?InterceptorRegistryInterface $interceptors = null,
         ?TagManagerInterface $tags = null,
         ?CallableInvoker $invoker = null,
         ?ContextualBindingsInterface $contextualRegistry = null,
@@ -62,13 +62,16 @@ class ArgonContainer implements ContainerInterface
     ) {
         $this->arguments = $arguments ?? new ArgumentMap();
         $this->parameterStore = $parameters ?? new ParameterStore();
+        $this->interceptors = $interceptors ?? new InterceptorRegistry();
         $this->contextualBindings = $contextualRegistry ?? new ContextualBindings();
         $this->contextual = $contextual ?? new ContextualResolver($this, $this->contextualBindings);
         $this->tags = $tags ?? new TagManager($this);
         $this->providers = $providers ?? new ServiceProviderRegistry($this);
         $this->binder = $binder ?? new ServiceBinder();
 
-        $this->argumentResolver = $argumentResolver ?? new ArgumentResolver(
+        $reflectionCache = $reflectionCache ?? new ReflectionCache();
+
+        $argumentResolver = $argumentResolver ?? new ArgumentResolver(
             $this->contextual,
             $this->arguments,
             $this->contextualBindings
@@ -76,16 +79,16 @@ class ArgonContainer implements ContainerInterface
 
         $this->serviceResolver = $serviceResolver ?? new ServiceResolver(
             $this->binder,
-            $this->reflectionCache,
+            $reflectionCache,
             $this->interceptors,
-            $this->argumentResolver
+            $argumentResolver
         );
 
-        $this->argumentResolver->setServiceResolver($this->serviceResolver);
+        $argumentResolver->setServiceResolver($this->serviceResolver);
 
         $this->invoker = $invoker ?? new CallableInvoker(
             $this->serviceResolver,
-            $this->argumentResolver
+            $argumentResolver
         );
     }
 
@@ -101,7 +104,9 @@ class ArgonContainer implements ContainerInterface
 
     /**
      * @template TGet of object
-     * @psalm-param class-string<TGet>|string $id
+     * @param class-string<TGet>|string $id
+     * @param array<array-key, mixed> $args
+     * @return object
      * @psalm-return ($id is class-string<TGet> ? TGet : object)
      * @throws ContainerException
      * @throws NotFoundException
@@ -117,6 +122,11 @@ class ArgonContainer implements ContainerInterface
     }
 
     /**
+     * @param string $id
+     * @param Closure|string|null $concrete
+     * @param bool $isSingleton
+     * @param array<array-key, mixed>|null $args
+     * @return $this
      * @throws ContainerException
      */
     public function bind(
@@ -135,7 +145,12 @@ class ArgonContainer implements ContainerInterface
         return $this;
     }
 
+
     /**
+     * @param string $id
+     * @param Closure|string|null $concrete
+     * @param array|null $args
+     * @return $this
      * @throws ContainerException
      */
     public function singleton(string $id, Closure|string|null $concrete = null, ?array $args = null): ArgonContainer
@@ -162,6 +177,12 @@ class ArgonContainer implements ContainerInterface
         return $this->parameterStore;
     }
 
+    /**
+     * @param string $id
+     * @param callable(): mixed $factory
+     * @param bool $isSingleton
+     * @return $this
+     */
     public function registerFactory(string $id, callable $factory, bool $isSingleton = true): ArgonContainer
     {
         $this->binder->registerFactory($id, $factory, $isSingleton);

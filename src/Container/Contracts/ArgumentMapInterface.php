@@ -18,7 +18,7 @@ interface ArgumentMapInterface
 
     /**
      * @param string $serviceId
-     * @param array $arguments
+     * @param array<array-key, mixed> $arguments
      *
      * @return void
      */
@@ -37,12 +37,12 @@ interface ArgumentMapInterface
     /**
      * @param string     $serviceId
      *
-     * @return array<string, mixed>
+     * @return array<array-key, mixed>
      */
     public function get(string $serviceId): array;
 
     /**
-     * @return array<string, array<string, mixed>>
+     * @return array<array-key, array<array-key, mixed>>
      */
     public function all(): array;
 }

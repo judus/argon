@@ -17,12 +17,12 @@ interface ServiceResolverInterface
      *
      * @template T of object
      * @param class-string<T>|string $id
-     * @param array<string, mixed> $parameters
+     * @param array<array-key, mixed> $args
      * @return object
      * @psalm-return ($id is class-string<T> ? T : object)
      *
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function resolve(string $id, array $parameters = []): object;
+    public function resolve(string $id, array $args = []): object;
 }

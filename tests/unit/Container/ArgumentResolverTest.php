@@ -4,26 +4,24 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Container;
 
+use Maduser\Argon\Container\ArgumentResolver;
 use Maduser\Argon\Container\ContextualBindings;
+use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
-use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ArgumentResolver;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionNamedType;
 use ReflectionParameter;
-use ReflectionUnionType;
 use RuntimeException;
 use stdClass;
 use Tests\Unit\Container\Mocks\AppThing;
 use Tests\Unit\Container\Mocks\Logger;
-use Tests\Unit\Container\Mocks\Mailer;
 use Tests\Unit\Container\Mocks\MyConsumer;
 use Tests\Unit\Container\Mocks\ServiceConsumer;
 use Tests\Unit\Container\Mocks\ServiceX;
@@ -214,6 +212,7 @@ class ArgumentResolverTest extends TestCase
 
     /**
      * @psalm-param class-string $declaringClass
+     * @psalm-param 42|null $defaultValue
      *
      * @throws ReflectionException
      */
@@ -223,7 +222,7 @@ class ArgumentResolverTest extends TestCase
         string $declaringClass,
         bool $isBuiltin = false,
         bool $isOptional = false,
-        mixed $defaultValue = null
+        int|null $defaultValue = null
     ): ReflectionParameter {
         $typeMock = null;
 
@@ -270,7 +269,7 @@ class ArgumentResolverTest extends TestCase
 
         $resolver = new ArgumentResolver($contextualResolver, $dummyMap, $contextualBindings);
 
-        if ($constructor = (new \ReflectionClass(UnionExample::class))->getConstructor()) {
+        if ($constructor = (new ReflectionClass(UnionExample::class))->getConstructor()) {
             $result = $resolver->resolve($constructor->getParameters()[0]);
         } else {
             $result = null;

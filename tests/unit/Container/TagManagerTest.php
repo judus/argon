@@ -71,7 +71,6 @@ class TagManagerTest extends TestCase
         // Inject empty tag manually
         $reflection = new ReflectionClass($manager);
         $tags = $reflection->getProperty('tags');
-        $tags->setAccessible(true);
         $tags->setValue($manager, ['ghost' => []]);
 
         $this->assertFalse($manager->has('ghost'));

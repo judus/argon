@@ -8,7 +8,6 @@ use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
 
 final class ParameterStore implements ParameterStoreInterface
 {
-    /** @var array<string, mixed> */
     private array $store = [];
 
     public function setStore(array $store): void
@@ -21,7 +20,13 @@ final class ParameterStore implements ParameterStoreInterface
         $this->store[$key] = $value;
     }
 
-    public function get(string $key, mixed $default = null): mixed
+    /**
+     * @param string $key
+     * @param string|int|null $default
+     *
+     * @return mixed
+     */
+    public function get(string $key, string|int|null $default = null): mixed
     {
         return $this->store[$key] ?? $default;
     }
@@ -31,7 +36,6 @@ final class ParameterStore implements ParameterStoreInterface
         return array_key_exists($key, $this->store);
     }
 
-    /** @return array<string, mixed> */
     public function all(): array
     {
         return $this->store;

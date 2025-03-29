@@ -11,7 +11,6 @@ use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use ReflectionException;
 use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionType;
@@ -39,7 +38,7 @@ final class ArgumentResolver implements ArgumentResolverInterface
 
     /**
      * @param ReflectionParameter  $param
-     * @param array<string, mixed> $overrides
+     * @param array<array-key, mixed> $overrides
      *
      * @return mixed
      *
@@ -115,7 +114,7 @@ final class ArgumentResolver implements ArgumentResolverInterface
     /**
      * @throws ContainerException
      */
-    private function resolveUnionType(ReflectionUnionType $type, string $className, string $paramName): mixed
+    private function resolveUnionType(ReflectionUnionType $type, string $className, string $paramName): object
     {
         // TODO: I won't support this BS (yet), user shall make up his mind, ain't a sushi bar...
         // class MyClass {
@@ -123,7 +122,6 @@ final class ArgumentResolver implements ArgumentResolverInterface
         // }
 
         $userDefined = [];
-        $fromAutoResolution = [];
 
         foreach ($type->getTypes() as $unionType) {
             if ($unionType instanceof ReflectionNamedType && !$unionType->isBuiltin()) {
@@ -176,6 +174,10 @@ final class ArgumentResolver implements ArgumentResolverInterface
     }
 
     /**
+     * @template TGet of object
+     * @param string $typeName
+     * @param class-string<TGet>|string $className
+     * @return object
      * @throws ContainerException
      * @throws NotFoundException
      */

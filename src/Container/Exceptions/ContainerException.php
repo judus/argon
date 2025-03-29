@@ -13,50 +13,42 @@ use Throwable;
  */
 final class ContainerException extends Exception implements ContainerExceptionInterface
 {
-    public function __construct(
-        string $message,
-        ?string $serviceId = null,
-        int $code = 0,
-        ?Throwable $previous = null
-    ) {
-        parent::__construct($message);
-    }
-
     public static function fromServiceId(string $id, string $message): self
     {
-        return new self("Error with service '$id': $message", $id);
+        return new self("Error with service '$id': $message");
     }
 
     public static function forNonInstantiableClass(string $serviceId, string $className): self
     {
         return new self(
-            "Class '$className' (requested as '$serviceId') is not instantiable.",
-            $serviceId
+            "Class '$className' (requested as '$serviceId') is not instantiable."
         );
     }
 
     public static function forUnresolvedPrimitive(string $className, string $paramName): self
     {
         return new self(
-            "Cannot resolve primitive parameter '$paramName' in service '$className'.",
-            $className
+            "Cannot resolve primitive parameter '$paramName' in service '$className'."
         );
     }
 
+    /**
+     * @param string $serviceId
+     * @param array<array-key, string> $dependencyChain
+     * @return self
+     */
     public static function forCircularDependency(string $serviceId, array $dependencyChain): self
     {
         $chain = implode(' -> ', $dependencyChain);
         return new self(
-            "Circular dependency detected for service '$serviceId'. Chain: $chain",
-            $serviceId
+            "Circular dependency detected for service '$serviceId'. Chain: $chain"
         );
     }
 
     public static function forUnresolvableDependency(string $className, string $paramName): self
     {
         return new self(
-            "Unresolvable dependency '$paramName' in service '$className'.",
-            $className
+            "Unresolvable dependency '$paramName' in service '$className'."
         );
     }
 
@@ -64,7 +56,6 @@ final class ContainerException extends Exception implements ContainerExceptionIn
     {
         return new self(
             "Failed to instantiate '$className' with resolved dependencies.",
-            $className,
             0,
             $previous
         );

@@ -1,9 +1,15 @@
 <?xml version="1.0"?>
 <psalm
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        errorLevel="1"
+        resolveFromConfigFile="true"
         totallyTyped="true"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xmlns="https://getpsalm.org/schema/config"
         xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+        xsi:noNamespaceSchemaLocation="vendor/vimeo/psalm/config.xsd"
+
+        findUnusedBaselineEntry="true"
+        findUnusedCode="true"
 >
     <!-- Project files and directories -->
     <projectFiles>
@@ -17,8 +23,30 @@
 
     <!-- Issue handlers -->
     <issueHandlers>
-        <DeprecatedMethod errorLevel="info"/>
-        <DeprecatedClass errorLevel="info"/>
+        <DeprecatedMethod errorLevel="error"/>
+        <DeprecatedClass errorLevel="error"/>
+        <PossiblyUnusedMethod errorLevel="info">
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+                <!-- Method setStore is only used in the compiled container -->
+                <file name="src/Container/Contracts/ParameterStoreInterface.php"/>
+            </errorLevel>
+        </PossiblyUnusedMethod>
+        <UnusedBaselineEntry>
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+            </errorLevel>
+        </UnusedBaselineEntry>
+        <UnusedClass>
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+            </errorLevel>
+        </UnusedClass>
+        <UnusedMethod>
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+            </errorLevel>
+        </UnusedMethod>
         <UndefinedClass>
             <errorLevel type="suppress">
                 <directory name="tests"/>
@@ -39,5 +67,45 @@
                 <directory name="tests"/>
             </errorLevel>
         </InternalMethod>
+        <MixedArgument>
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+            </errorLevel>
+        </MixedArgument>
+        <MixedAssignment>
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+            </errorLevel>
+        </MixedAssignment>
+        <MixedMethodCall>
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+            </errorLevel>
+        </MixedMethodCall>
+        <PossiblyUnusedProperty>
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+            </errorLevel>
+        </PossiblyUnusedProperty>
+        <PossiblyUnusedParam>
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+            </errorLevel>
+        </PossiblyUnusedParam>
+        <PossiblyUnusedReturnValue>
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+            </errorLevel>
+        </PossiblyUnusedReturnValue>
+        <MixedArrayAccess>
+            <errorLevel type="suppress">
+                <directory name="tests"/>
+            </errorLevel>
+        </MixedArrayAccess>
+        <UnusedParam>
+            <errorLevel type="suppress">
+                <directory name="tests/integration/Mocks"/>
+            </errorLevel>
+        </UnusedParam>
     </issueHandlers>
 </psalm>

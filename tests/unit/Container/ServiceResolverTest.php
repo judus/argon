@@ -6,7 +6,6 @@ namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
-use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
@@ -56,11 +55,10 @@ class ServiceResolverTest extends TestCase
     /**
      * @throws ReflectionException
      */
-    protected function invokeMethod(object $object, string $methodName, array $parameters = []): object
+    protected function invokeMethod(object $object, string $methodName, array $parameters = []): mixed
     {
         $reflection = new ReflectionClass($object);
         $method = $reflection->getMethod($methodName);
-        $method->setAccessible(true);
 
         return $method->invokeArgs($object, $parameters);
     }
@@ -175,7 +173,6 @@ class ServiceResolverTest extends TestCase
         // Fake a recursive resolution by manually pushing to the "resolving" stack
         $reflection = new ReflectionClass($resolver);
         $resolvingProp = $reflection->getProperty('resolving');
-        $resolvingProp->setAccessible(true);
         $resolvingProp->setValue($resolver, ['ServiceA' => true]);
 
         $this->expectException(ContainerException::class);
@@ -410,10 +407,20 @@ class ServiceResolverTest extends TestCase
 
         // First call returns descriptor for the alias
         // Second call returns null to fall through to class reflection
-        $this->binder->expects($this->exactly(2))
-            ->method('getDescriptor')
-            ->withConsecutive([$abstractAlias], [$concreteClass])
-            ->willReturnOnConsecutiveCalls($descriptor, null);
+        $expected = [$abstractAlias, $concreteClass];
+        $callCount = 0;
+
+        $this->binder->method('getDescriptor')
+            ->willReturnCallback(function (string $id) use (&$callCount, $expected, $descriptor) {
+                if (!isset($expected[$callCount])) {
+                    throw new \RuntimeException("Unexpected call #$callCount to getDescriptor('$id')");
+                }
+
+                TestCase::assertSame($expected[$callCount], $id);
+                $callCount++;
+
+                return $callCount === 1 ? $descriptor : null;
+            });
 
         $this->reflectionCache->expects($this->once())
             ->method('get')

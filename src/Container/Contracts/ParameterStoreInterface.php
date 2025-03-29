@@ -6,12 +6,17 @@ namespace Maduser\Argon\Container\Contracts;
 
 interface ParameterStoreInterface
 {
-    public function set(string $key, mixed $value): void;
+    public function setStore(array $store): void;
 
-    public function get(string $key, mixed $default = null): mixed;
+    /**
+     * @param string $key
+     * @param int|string $value
+     */
+    public function set(string $key, int|string $value): void;
+
+    public function get(string $key, string|null $default = null): mixed;
 
     public function has(string $key): bool;
 
-    /** @return array<string, mixed> */
     public function all(): array;
 }

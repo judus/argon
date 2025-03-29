@@ -213,7 +213,7 @@ class ContainerCompilerTest extends TestCase
 
         $container->registerInterceptor(PreArgOverride::class);
 
-        $compiled = $this->compileAndLoadContainer($container, 'testPreInterceptorModifiesParameters');
+        $this->compileAndLoadContainer($container, 'testPreInterceptorModifiesParameters');
 
         $instance = $container->get(SimpleService::class);
 
