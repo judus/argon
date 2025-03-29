@@ -6,9 +6,13 @@
 
 # Argon Service Container
 
-A high-performance, PSR-11 compliant dependency injection container for modern PHP applications.
+A compilable, PSR-11 compliant dependency injection container.
 
-Argon focuses on ease of use without compromising features, performance, or flexibility. It combines intuitive service binding with blazing-fast compiled resolution, and supports powerful service lifecycle extensions via customizable type interceptors.
+Argon focuses on ease of use without compromising features, performance, or flexibility.
+
+It provides a human-friendly API and compiles your service graph into native PHP code. No reflection overhead, no service guessing, and no performance surprises. 
+
+It favors **a single, consistent way** of doing things — no YAML vs. XML debates, no annotation magic, no framework coupling. Just clear, explicit, testable PHP.
 
 ---
 
@@ -19,11 +23,11 @@ Argon focuses on ease of use without compromising features, performance, or flex
 - **🧠 Autowiring**: Automatically resolve dependencies using constructor signatures.
 - **♻️ Singleton & Transient Services**: Use shared or separate instances per request.
 - **🧩 Parameter Overrides**: Inject primitives and custom values into your services.
-- **🔁 Contextual Bindings**: Different dependencies per consumer class.
+- **🔁 Contextual Bindings**: Different interface implementations per consumer class.
 - **🧰 Service Providers**: Group and encapsulate service registrations.
 - **🛠 Interceptors**: Add pre- or post-resolution behavior to specific services.
 - **🧱 Runtime Service Extension**: Override, decorate etc. services at runtime.
-- **❓ Conditional Resolution**: Call methods on missing services safely via `optional()` (no-op proxy).
+- **❓ Conditional Resolution**: Call methods on missing services safely via `optional()` no-op proxy.
 - **⏱ Lazy Loading**: Services are only instantiated when first accessed.
 - **🚨 Circular Dependency Detection**: Detects and protects against infinite resolution loops.
 
@@ -32,24 +36,22 @@ Argon focuses on ease of use without compromising features, performance, or flex
 ## Installation
 
 ```bash
-composer require maduser/argon
+$ composer require maduser/argon
 ```
 
 Requires PHP 8.2+
 
-### Tests
+### Tests & QA
 
 ```bash
-vendor/bin/phpunit
+$ composer install
+$ vendor/bin/phpunit
+$ vendor/bin/psalm
+$ vendor/bin/phpcs
+
+# or all checks combined
+$ composer check
 ```
-
----
-
-### Philosophy: Why Argon?
-
-The Argon Service Container provides a human-friendly API and compiles your service graph into native PHP code. There’s no reflection overhead, no service guessing, and no performance surprises. It favors **a single, consistent way** of doing things — no YAML vs. XML debates, no annotation magic, no framework coupling. Just clear, explicit, testable PHP.
-
-Argon gives you modern, enterprise-grade dependency injection with the simplicity and control of raw PHP.
 
 ---
 
