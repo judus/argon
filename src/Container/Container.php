@@ -7,6 +7,9 @@ namespace Maduser\Argon\Container;
 use Closure;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\InterceptorInterface;
+use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
+use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
@@ -20,12 +23,12 @@ use Maduser\Argon\Container\Support\NullServiceProxy;
  */
 class Container
 {
-    private static ?ServiceContainer $instance = null;
+    private static ?ArgonContainer $instance = null;
 
     /**
      * Sets the current container instance to use statically.
      */
-    public static function set(ServiceContainer $container): void
+    public static function set(ArgonContainer $container): void
     {
         self::$instance = $container;
     }
@@ -33,9 +36,9 @@ class Container
     /**
      * Gets the current container instance, or creates one if none is set.
      */
-    public static function instance(): ServiceContainer
+    public static function instance(): ArgonContainer
     {
-        return self::$instance ??= new ServiceContainer();
+        return self::$instance ??= new ArgonContainer();
     }
 
     /**
@@ -160,7 +163,7 @@ class Container
      *
      * Interceptors can modify resolved services that match specific criteria.
      *
-     * @param class-string<InterceptorInterface> $class
+     * @param class-string $class
      * @throws ContainerException
      */
     public static function registerInterceptor(string $class): void
@@ -215,11 +218,21 @@ class Container
     /**
      * Returns a list of all registered interceptors.
      *
-     * @return array<class-string<InterceptorInterface>>
+     * @return array<class-string<PreResolutionInterceptorInterface>>
      */
-    public static function interceptors(): array
+    public static function preInterceptors(): array
     {
-        return self::instance()->getInterceptors();
+        return self::instance()->getPreInterceptors();
+    }
+
+    /**
+     * Returns a list of all registered interceptors.
+     *
+     * @return array<class-string<PostResolutionInterceptorInterface>>
+     */
+    public static function postInterceptors(): array
+    {
+        return self::instance()->getPostInterceptors();
     }
 
     /**
@@ -233,9 +246,9 @@ class Container
     }
 
     /**
-     * Gets access to the global parameter registry.
+     * Gets access to the parameter store.
      */
-    public static function parameters(): Contracts\ParameterRegistryInterface
+    public static function parameters(): ParameterStoreInterface
     {
         return self::instance()->getParameters();
     }

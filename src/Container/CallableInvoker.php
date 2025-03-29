@@ -6,7 +6,7 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 use Maduser\Argon\Container\Contracts\CallableWrapperInterface;
-use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
@@ -20,7 +20,7 @@ readonly class CallableInvoker
 {
     public function __construct(
         private ServiceResolverInterface $serviceResolver,
-        private ParameterResolverInterface $parameterResolver
+        private ArgumentResolverInterface $parameterResolver
     ) {
     }
 

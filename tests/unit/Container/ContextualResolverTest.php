@@ -9,7 +9,7 @@ use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\ContextualBindingBuilder;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use stdClass;
@@ -17,7 +17,7 @@ use stdClass;
 class ContextualResolverTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
-    private ServiceContainer&MockObject $container;
+    private ArgonContainer&MockObject $container;
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ContextualBindingsInterface&MockObject $registry;
     /** @psalm-suppress PropertyNotSetInConstructor */
@@ -27,7 +27,7 @@ class ContextualResolverTest extends TestCase
     {
         parent::setUp();
 
-        $this->container = $this->createMock(ServiceContainer::class);
+        $this->container = $this->createMock(ArgonContainer::class);
         $this->registry = $this->createMock(ContextualBindingsInterface::class);
         $this->resolver = new ContextualResolver($this->container, $this->registry);
     }

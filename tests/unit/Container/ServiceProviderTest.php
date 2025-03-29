@@ -7,7 +7,7 @@ namespace Tests\Unit\Container;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use stdClass;
@@ -22,7 +22,7 @@ class ServiceProviderTest extends TestCase
      */
     public function testServiceProviderIsRegisteredAndTagged(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->registerProvider(DummyProvider::class);
 
         // The provider should be registered as a service
@@ -47,7 +47,7 @@ class ServiceProviderTest extends TestCase
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessage("must implement ServiceProviderInterface");
 
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->registerProvider(MyService::class);
     }
 
@@ -57,7 +57,7 @@ class ServiceProviderTest extends TestCase
      */
     public function testBootServiceProvidersCallsBootMethod(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         DummyProvider::$booted = false;
 

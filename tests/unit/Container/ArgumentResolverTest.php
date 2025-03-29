@@ -4,53 +4,67 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Container;
 
+use Maduser\Argon\Container\ContextualBindings;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
-use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
+use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ParameterResolver;
+use Maduser\Argon\Container\ArgumentResolver;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionNamedType;
 use ReflectionParameter;
+use ReflectionUnionType;
 use RuntimeException;
 use stdClass;
 use Tests\Unit\Container\Mocks\AppThing;
+use Tests\Unit\Container\Mocks\Logger;
+use Tests\Unit\Container\Mocks\Mailer;
 use Tests\Unit\Container\Mocks\MyConsumer;
 use Tests\Unit\Container\Mocks\ServiceConsumer;
 use Tests\Unit\Container\Mocks\ServiceX;
 use Tests\Unit\Container\Mocks\SomeClass;
+use Tests\Unit\Container\Mocks\UnionExample;
 
-class ParameterResolverTest extends TestCase
+class ArgumentResolverTest extends TestCase
 {
-    private ParameterRegistryInterface&MockObject $registry;
+    /** @psalm-suppress PropertyNotSetInConstructor */
+    private ArgumentMapInterface&MockObject $arguments;
+    /** @psalm-suppress PropertyNotSetInConstructor */
     private ContextualResolverInterface&MockObject $contextual;
+    /** @psalm-suppress PropertyNotSetInConstructor */
     private ContextualBindingsInterface&MockObject $contextualBindings;
-    private ParameterResolver $resolver;
+    /** @psalm-suppress PropertyNotSetInConstructor */
+    private ArgumentResolver $resolver;
 
     protected function setUp(): void
     {
-        $this->registry = $this->createMock(ParameterRegistryInterface::class);
+        $this->arguments = $this->createMock(ArgumentMapInterface::class);
         $this->contextual = $this->createMock(ContextualResolverInterface::class);
         $this->contextualBindings = $this->createMock(ContextualBindingsInterface::class);
 
-        $this->resolver = new ParameterResolver(
+        $this->resolver = new ArgumentResolver(
             $this->contextual,
-            $this->registry,
+            $this->arguments,
             $this->contextualBindings
         );
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testResolveReturnsOverride(): void
     {
         $param = $this->mockParam('param1', null, SomeClass::class);
 
-        $this->registry->expects($this->once())
-            ->method('getScope')
+        $this->arguments->expects($this->once())
+            ->method('get')
             ->with(SomeClass::class)
             ->willReturn(['param1' => 'value-from-registry']);
 
@@ -59,11 +73,16 @@ class ParameterResolverTest extends TestCase
         $this->assertSame('override-value', $result);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testResolveReturnsRegistryValue(): void
     {
         $param = $this->mockParam('param2', null, SomeClass::class);
 
-        $this->registry->method('getScope')
+        $this->arguments->method('get')
             ->willReturn(['param2' => 'value-from-registry']);
 
         $result = $this->resolver->resolve($param);
@@ -71,16 +90,20 @@ class ParameterResolverTest extends TestCase
         $this->assertSame('value-from-registry', $result);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testResolveReturnsContextualBinding(): void
     {
         $param = $this->mockParam(
             name: 'dependency',
             type: stdClass::class,
             declaringClass: MyConsumer::class,
-            isBuiltin: false
         );
 
-        $this->registry->method('getScope')->willReturn([]);
+        $this->arguments->method('get')->willReturn([]);
 
         $this->contextualBindings->method('has')
             ->with(MyConsumer::class, stdClass::class)
@@ -100,11 +123,16 @@ class ParameterResolverTest extends TestCase
         $this->assertInstanceOf(stdClass::class, $result);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testResolveFallsBackToServiceResolver(): void
     {
-        $param = $this->mockParam('service', stdClass::class, ServiceConsumer::class, isBuiltin: false);
+        $param = $this->mockParam('service', stdClass::class, ServiceConsumer::class);
 
-        $this->registry->method('getScope')->willReturn([]);
+        $this->arguments->method('get')->willReturn([]);
         $this->contextualBindings->method('has')->willReturn(false);
 
         $serviceResolver = $this->createMock(ServiceResolverInterface::class);
@@ -120,11 +148,16 @@ class ParameterResolverTest extends TestCase
         $this->assertInstanceOf(stdClass::class, $result);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testThrowsWhenTryingToResolveClassWithoutInjectedServiceResolver(): void
     {
-        $param = $this->mockParam('missingResolver', stdClass::class, AppThing::class, isBuiltin: false);
+        $param = $this->mockParam('missingResolver', stdClass::class, AppThing::class);
 
-        $this->registry->method('getScope')->willReturn([]);
+        $this->arguments->method('get')->willReturn([]);
         $this->contextualBindings->method('has')->willReturn(false);
 
         $this->expectException(RuntimeException::class);
@@ -133,6 +166,11 @@ class ParameterResolverTest extends TestCase
         $this->resolver->resolve($param);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testResolveReturnsDefaultForOptionalPrimitive(): void
     {
         $param = $this->mockParam(
@@ -144,13 +182,17 @@ class ParameterResolverTest extends TestCase
             defaultValue: 42
         );
 
-        $this->registry->method('getScoped')->willReturn([]);
+        $this->arguments->method('getArgument')->willReturn([]);
 
         $result = $this->resolver->resolve($param);
 
         $this->assertSame(42, $result);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
     public function testResolveThrowsForRequiredPrimitiveWithoutDefault(): void
     {
         $param = $this->mockParam(
@@ -158,10 +200,9 @@ class ParameterResolverTest extends TestCase
             'string',
             ServiceX::class,
             isBuiltin: true,
-            isOptional: false
         );
 
-        $this->registry->method('getScoped')->willReturn([]);
+        $this->arguments->method('getArgument')->willReturn([]);
 
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessage(
@@ -206,5 +247,35 @@ class ParameterResolverTest extends TestCase
         }
 
         return $param;
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testUnionTypeWithSingleContextualBindingResolvesSuccessfully(): void
+    {
+        $contextualResolver = $this->createMock(ContextualResolverInterface::class);
+        $contextualBindings = new ContextualBindings();
+        $dummyMap = $this->createStub(ArgumentMapInterface::class);
+
+        // Real contextual binding setup
+        $contextualBindings->set(UnionExample::class, Logger::class, Logger::class);
+
+        // Expect contextual resolver to be used
+        $contextualResolver->expects($this->once())
+            ->method('resolve')
+            ->with(UnionExample::class, Logger::class)
+            ->willReturn(new Logger());
+
+        $resolver = new ArgumentResolver($contextualResolver, $dummyMap, $contextualBindings);
+
+        if ($constructor = (new \ReflectionClass(UnionExample::class))->getConstructor()) {
+            $result = $resolver->resolve($constructor->getParameters()[0]);
+        } else {
+            $result = null;
+        }
+
+        $this->assertInstanceOf(Logger::class, $result);
     }
 }

@@ -16,12 +16,12 @@ abstract class AbstractServiceProvider implements ServiceProviderInterface
     /**
      * Register services in the container.
      */
-    abstract public function register(ServiceContainer $container): void;
+    abstract public function register(ArgonContainer $container): void;
 
     /**
      * Optionally bootstrap services after registration.
      */
-    public function boot(ServiceContainer $container): void
+    public function boot(ArgonContainer $container): void
     {
         // Optional, override if needed
     }

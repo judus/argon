@@ -6,7 +6,7 @@ namespace Tests\Integration;
 
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use Tests\Integration\Mocks\A;
 use Tests\Integration\Mocks\Bar;
@@ -28,7 +28,7 @@ final class AutowiringTest extends TestCase
 {
     public function testAutowiresSingleClassDependency(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $instance = $container->get(UsesLogger::class);
 
@@ -38,7 +38,7 @@ final class AutowiringTest extends TestCase
 
     public function testAutowiresDeepDependencyTree(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $instance = $container->get(DeepGraph::class);
 
@@ -52,7 +52,7 @@ final class AutowiringTest extends TestCase
      */
     public function testThrowsForMissingDependency(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $this->expectException(NotFoundException::class);
         $container->get(NeedsUnknown::class);
@@ -60,7 +60,7 @@ final class AutowiringTest extends TestCase
 
     public function testThrowsForCircularDependency(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessageMatches('/circular dependency/i');
@@ -73,7 +73,7 @@ final class AutowiringTest extends TestCase
      */
     public function testThrowsForUnresolvableScalarParameter(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessageMatches('/primitive parameter/');
@@ -87,7 +87,7 @@ final class AutowiringTest extends TestCase
      */
     public function testNullableDependencyGetsResolvedIfResolvable(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $instance = $container->get(NeedsNullable::class);
 
         $this->assertInstanceOf(Logger::class, $instance->logger);
@@ -99,7 +99,7 @@ final class AutowiringTest extends TestCase
      */
     public function testDefaultsAreAppliedToOptionalConstructorArguments(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $instance = $container->get(WithDefaults::class);
 
         $this->assertInstanceOf(WithDefaults::class, $instance);
@@ -111,7 +111,7 @@ final class AutowiringTest extends TestCase
      */
     public function testThrowsOnUnresolvableMixedParameter(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessageMatches('/mixed/i');
@@ -125,7 +125,7 @@ final class AutowiringTest extends TestCase
      */
     public function testResolvesMixedParameterWithDefaultValue(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $instance = $container->get(MixedParamWithDefault::class);
 
@@ -139,7 +139,7 @@ final class AutowiringTest extends TestCase
      */
     public function testResolvesMixedParameterWithNullAllowed(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $instance = $container->get(NullableMixedParam::class);
 
@@ -153,7 +153,7 @@ final class AutowiringTest extends TestCase
      */
     public function testThrowsOnAmbiguousResolvableUnionTypes(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Both Logger and Bar are resolvable => ambiguous
         $container->bind(Logger::class);

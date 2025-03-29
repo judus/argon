@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler;
 
+use Maduser\Argon\Container\ArgumentMap;
 use Maduser\Argon\Container\Compiler\ContainerCompiler;
-use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ParameterRegistry;
-use Maduser\Argon\Container\ReflectionCache;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
 use ReflectionException;
 use stdClass;
 use Tests\Integration\Compiler\Mocks\ClassWithParamWithoutDefault;
@@ -23,12 +20,21 @@ use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
+use Tests\Integration\Mocks\CustomLogger;
+use Tests\Integration\Mocks\LoggerInterface;
+use Tests\Integration\Mocks\NeedsLogger;
+use Tests\Integration\Mocks\PreArgOverride;
+use Tests\Integration\Mocks\SimpleService;
 use Tests\Mocks\DummyProvider;
 use Tests\Unit\Container\Mocks\NonInstantiableClass;
 
 class ContainerCompilerTest extends TestCase
 {
-    private function compileAndLoadContainer(ServiceContainer $container, string $className): object
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     */
+    private function compileAndLoadContainer(ArgonContainer $container, string $className): object
     {
         $namespace = 'Tests\\Integration\\Compiler';
         $file = __DIR__ . "/../../resources/cache/{$className}.php";
@@ -56,14 +62,16 @@ class ContainerCompilerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testCompiledContainerResolvesClosures(): void
+    public function testCompiledContainerDoesNotResolveClosures(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
+
+        $this->expectException(ContainerException::class);
 
         $container->singleton(Logger::class, fn() => new Logger());
         $container->singleton(Mailer::class, fn() => new Mailer($container->get(Logger::class)));
 
-        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerA');
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesClosures');
 
         $mailer = $compiled->get(Mailer::class);
 
@@ -76,12 +84,12 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerResolvesSingletons(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->singleton(Logger::class);
         $container->singleton(Mailer::class);
 
-        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerB');
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesSingletons');
 
         $mailer = $compiled->get(Mailer::class);
         $mailer2 = $compiled->get(Mailer::class);
@@ -104,12 +112,12 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerResolvesTransients(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->bind(Logger::class);
         $container->bind(Mailer::class);
 
-        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerC');
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesTransients');
 
         $mailer = $compiled->get(Mailer::class);
 
@@ -124,10 +132,10 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerResolvesWithPrimitiveOverrides(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Set primitive parameter overrides before compiling
-        $container->getParameters()->set(TestServiceWithMultipleParams::class, [
+        $container->getArgumentMap()->set(TestServiceWithMultipleParams::class, [
             'param1' => 'compiled-override',
             'param2' => 99,
         ]);
@@ -136,7 +144,7 @@ class ContainerCompilerTest extends TestCase
         $container->bind(TestServiceWithMultipleParams::class);
 
         // Compile and load container
-        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerD');
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesWithPrimitiveOverrides');
 
         // Resolve and assert
         /** @var TestServiceWithMultipleParams $service */
@@ -153,7 +161,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerPreservesTags(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->singleton(Logger::class);
         $container->singleton(Mailer::class);
@@ -163,7 +171,7 @@ class ContainerCompilerTest extends TestCase
         $container->tag(Mailer::class, ['mailers', 'loggers']);
 
         // Compile
-        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerE');
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerPreservesTags');
 
         // Check tagged services
         $loggers = $compiled->getTagged('loggers');
@@ -180,13 +188,13 @@ class ContainerCompilerTest extends TestCase
     /**
      * @throws ContainerException
      */
-    public function testCompiledContainerAppliesInterceptor(): void
+    public function testCompiledContainerAppliesPostInterceptor(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->singleton(Logger::class);
         $container->registerInterceptor(LoggerInterceptor::class);
 
-        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerF');
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerAppliesPostInterceptor');
 
         /** @var Logger $logger */
         $logger = $compiled->get(Logger::class);
@@ -198,14 +206,31 @@ class ContainerCompilerTest extends TestCase
     /**
      * @throws ContainerException
      * @throws NotFoundException
+     */
+    public function testPreInterceptorModifiesParameters(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->registerInterceptor(PreArgOverride::class);
+
+        $compiled = $this->compileAndLoadContainer($container, 'testPreInterceptorModifiesParameters');
+
+        $instance = $container->get(SimpleService::class);
+
+        $this->assertSame('from-interceptor', $instance->value);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
      * @throws ReflectionException
      */
     public function testCompiledContainerIncludesServiceProviders(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->registerProvider(DummyProvider::class);
 
-        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerG');
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerIncludesServiceProviders');
 
         // Ensure service provider is still tagged
         $providers = $compiled->getTagged('service.provider');
@@ -221,20 +246,22 @@ class ContainerCompilerTest extends TestCase
     /**
      * @throws ReflectionException
      */
-    public function testCompileHandlesNonInstantiableClassesGracefully(): void
+    public function testCompileDoesNotHandleNonInstantiableClassesGracefully(): void
     {
+        $this->expectException(ContainerException::class);
+
         $serviceId = NonInstantiableClass::class;
-        $outputFile = sys_get_temp_dir() . '/compiled_container.php';
+        $outputFile = __DIR__ . '/../../resources/cache/testCompileDoesNotHandleNonInstantiableClassesGracefully.php';
 
         $descriptor = $this->createMock(ServiceDescriptorInterface::class);
         $descriptor->method('getConcrete')->willReturn(NonInstantiableClass::class);
         $descriptor->method('isSingleton')->willReturn(true);
 
-        $containerMock = $this->createMock(ServiceContainer::class);
+        $containerMock = $this->createMock(ArgonContainer::class);
         $containerMock->method('getBindings')->willReturn([$serviceId => $descriptor]);
-        $containerMock->method('getParameters')->willReturn(new ParameterRegistry());
+        $containerMock->method('getArgumentMap')->willReturn(new ArgumentMap());
         $containerMock->method('getTags')->willReturn([]);
-        $containerMock->method('getInterceptors')->willReturn([]);
+        $containerMock->method('getPostInterceptors')->willReturn([]);
 
         $reflectionMock = $this->createMock(\ReflectionClass::class);
         $reflectionMock->method('isInstantiable')->willReturn(false);
@@ -244,7 +271,7 @@ class ContainerCompilerTest extends TestCase
 
         $compiler = new ContainerCompiler($containerMock);
 
-        $compiler->compile($outputFile);
+        $compiler->compile($outputFile, 'testCompileHandlesNonInstantiableClassesGracefully');
 
         $this->assertFileExists(
             $outputFile,
@@ -271,11 +298,11 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompileHandlesDefaultParameterValues(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->bind(DefaultValueService::class);
 
-        $outputPath = __DIR__ . '/../../resources/cache/CachedContainerWithDefault.php';
-        $className = 'CachedContainerWithDefault';
+        $outputPath = __DIR__ . '/../../resources/cache/testCompileHandlesDefaultParameterValues.php';
+        $className = 'testCompileHandlesDefaultParameterValues';
         $namespace = 'Tests\\Integration\\Compiler';
 
         if (file_exists($outputPath)) {
@@ -292,24 +319,50 @@ class ContainerCompilerTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
      */
-    public function testCompileHandlesConstructorParameterWithoutDefault(): void
+    public function testContextualBindingIsHardcoded(): void
     {
-        // Setting up our charming container
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
-        // Binding our class with a constructor parameter lacking a default value
-        $container->bind(ClassWithParamWithoutDefault::class);
+        // Contextual binding: NeedsLogger gets CustomLogger instead of Logger
+        $container->singleton(NeedsLogger::class);
 
-        // Let's compile and load our container
-        $compiled = $this->compileAndLoadContainer($container, 'CachedContainerWithParamWithoutDefault');
+        $container->for(NeedsLogger::class)->set(LoggerInterface::class, CustomLogger::class);
 
-        // Now, let's resolve our class and see if it flirts back
-        $instance = $compiled->get(ClassWithParamWithoutDefault::class);
+        $compiled = $this->compileAndLoadContainer($container, 'CompiledContainerWithContextual');
 
-        // Asserting that our instance is indeed of the expected class
-        $this->assertInstanceOf(ClassWithParamWithoutDefault::class, $instance);
+        /** @var NeedsLogger $needsLogger */
+        $needsLogger = $compiled->get(NeedsLogger::class);
+
+        $this->assertInstanceOf(NeedsLogger::class, $needsLogger);
+        $this->assertInstanceOf(CustomLogger::class, $needsLogger->logger);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testCompiledContainerInjectsParameterStoreValues(): void
+    {
+        $container = new ArgonContainer();
+
+        // Set a parameter directly into the store
+        $container->getParameters()->set('config.value', 'compiled-store');
+
+        // Bind the service that depends on the parameter
+        $container->singleton(SimpleService::class);
+
+        // Compile and load the container
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerInjectsParameterStoreValues');
+
+        // Grab the instance from the compiled container
+        /** @var SimpleService $instance */
+        $instance = $compiled->get(SimpleService::class, [
+            'value' => $compiled->getParameters()->get('config.value')
+        ]);
+
+        $this->assertInstanceOf(SimpleService::class, $instance);
+        $this->assertSame('compiled-store', $instance->value, 'Parameter store value should be injected correctly.');
     }
 }

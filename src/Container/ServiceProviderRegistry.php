@@ -15,7 +15,7 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 final readonly class ServiceProviderRegistry implements ServiceProviderRegistryInterface
 {
     public function __construct(
-        private ServiceContainer $container
+        private ArgonContainer $container
     ) {
     }
 

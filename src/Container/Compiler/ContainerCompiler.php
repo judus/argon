@@ -4,207 +4,301 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container\Compiler;
 
-use Maduser\Argon\Container\Contracts\InterceptorInterface;
-use Maduser\Argon\Container\ServiceContainer;
-use Nette\PhpGenerator\ClassType;
+use Exception;
+use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
+use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
+use Maduser\Argon\Container\Exceptions\ContainerException;
+use Maduser\Argon\Container\ArgonContainer;
 use Nette\PhpGenerator\PhpFile;
-use Nette\PhpGenerator\PhpNamespace;
 use ReflectionClass;
+use ReflectionException;
 use ReflectionNamedType;
+use ReflectionParameter;
 
-class ContainerCompiler
+final class ContainerCompiler
 {
-    private ServiceContainer $container;
+    private ArgumentMapInterface $argumentMap;
+    private ContextualBindingsInterface $contextualBindings;
 
-    public function __construct(ServiceContainer $container)
-    {
-        $this->container = $container;
+    public function __construct(
+        private readonly ArgonContainer $container
+    ) {
+        $this->argumentMap = $container->getArgumentMap();
+        $this->contextualBindings = $container->getContextualBindings();
     }
 
     /**
-     * @throws \ReflectionException
+     * @throws ReflectionException
+     * @throws ContainerException
      */
-    public function compile(
-        string $outputFile,
-        string $className = 'CachedContainer',
-        string $namespace = ''
-    ): void {
-        $bindings     = $this->container->getBindings();
-        $parameters   = $this->container->getParameters()->all();
-        $tags         = $this->container->getTags();
-        $interceptors = $this->container->getInterceptors();
-
-        $services = [];
-
-        foreach ($bindings as $id => $descriptor) {
-            $concrete = $descriptor->getConcrete();
-            if ($concrete instanceof \Closure) {
-                continue;
-            }
-
-            $fqcn = $concrete;
-            $isSingleton = $descriptor->isSingleton();
-            $args = [];
-
-            $ref = new ReflectionClass($fqcn);
-            if (!$ref->isInstantiable()) {
-                continue;
-            }
-
-            $paramOverrides = $parameters[$fqcn] ?? [];
-
-            if ($constructor = $ref->getConstructor()) {
-                foreach ($constructor->getParameters() as $param) {
-                    $type = $param->getType();
-                    $name = $param->getName();
-
-                    if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
-                        $args[] = "\$this->get('{$type->getName()}')";
-                    } elseif (array_key_exists($name, $paramOverrides)) {
-                        $args[] = var_export($paramOverrides[$name], true);
-                    } elseif ($param->isDefaultValueAvailable()) {
-                        $args[] = var_export($param->getDefaultValue(), true);
-                    } else {
-                        $args[] = 'null';
-                    }
-                }
-            }
-
-            $services[$id] = [$fqcn, $args, $isSingleton];
-        }
-
-        $this->compileInternal($outputFile, $services, $tags, $parameters, $namespace, $className, $interceptors);
-    }
-
-    private function compileInternal(
-        string $outputFile,
-        array $services,
-        array $tags,
-        array $parameters,
-        string $namespace,
-        string $className,
-        array $interceptors
-    ): void {
+    public function compile(string $filePath, string $className, string $namespace = 'App\\Compiled'): void
+    {
         $file = new PhpFile();
         $file->setStrictTypes();
 
-        $ns = $namespace ? new PhpNamespace($namespace) : new PhpNamespace('');
-        $ns->addUse(ServiceContainer::class);
-        $ns->addUse('Maduser\Argon\Container\Exceptions\NotFoundException');
+        $namespaceGen = $file->addNamespace($namespace);
+        $namespaceGen->addUse(ArgonContainer::class);
+        $class = $namespaceGen->addClass($className);
+        $class->setExtends(ArgonContainer::class);
 
-        $class = $ns->addClass($className)->setExtends(ServiceContainer::class);
-        $class->addProperty('tags', $tags)->setProtected();
-        $class->addProperty('singletons', [])->setProtected();
-        $class->addProperty('compiledParameters', $parameters)->setProtected();
+        $constructor = $class->addMethod('__construct')
+            ->setPublic();
 
-        $class->addMethod('__construct')
-            ->setPublic()
-            ->setBody("parent::__construct();\n\$this->getParameters()->setParameters(\$this->compiledParameters);");
+        $constructor->addBody('parent::__construct();');
 
-        // Interceptors
-        $interceptMap = [];
-        foreach ($services as $id => [$fqcn, , ]) {
-            assert(is_string($fqcn));
-            foreach ($interceptors as $interceptorClass) {
-                if (
-                    is_string($interceptorClass) &&
-                    is_subclass_of($interceptorClass, InterceptorInterface::class) &&
-                    method_exists($interceptorClass, 'supports')
-                ) {
-                    if ($interceptorClass::supports($fqcn)) {
-                        $method = 'interceptWith' . str_replace(['\\', '/'], '', $interceptorClass);
-                        $interceptMap[$id] = [
-                            'fqcn' => $fqcn,
-                            'method' => $method,
-                            'interceptor' => $interceptorClass
-                        ];
+        // Only add parameter store if there are parameters to hydrate
+        $parameterStore = $this->container->getParameters()->all();
 
-                        if (!$class->hasMethod($method)) {
-                            $m = $class->addMethod($method)
-                                ->setPrivate()
-                                ->setReturnType($fqcn);
-                            $m->addParameter('instance')->setType($fqcn);
-                            $m->setBody(
-                                "\$interceptor = new \\{$interceptorClass}();\n" .
-                                "\$interceptor->intercept(\$instance);\nreturn \$instance;"
-                            );
+        if (!empty($parameterStore)) {
+            $formatted = var_export($parameterStore, true);
+            $constructor->addBody("\$this->getParameters()->setStore({$formatted});");
+        }
+
+        $serviceMap = [];
+        $tagMap = $this->container->getTags();
+
+        foreach ($this->container->getBindings() as $id => $descriptor) {
+            $methodName = $this->buildServiceMethodName($id);
+
+            $concrete = $descriptor->getConcrete();
+
+            if ($concrete instanceof \Closure) {
+                throw new ContainerException("Cannot compile a container with closures: [$id]");
+            }
+
+            $reflection = new ReflectionClass($concrete);
+
+            if (!$reflection->isInstantiable()) {
+                throw new ContainerException("Service [$id] points to non-instantiable class [$concrete]");
+            }
+
+            $fqcn = '\\' . ltrim($concrete, '\\');
+
+            $singletonProperty = "singleton_$methodName";
+
+            $typeHint = class_exists($id) ? '\\' . ltrim($id, '\\') : 'object';
+
+            $class->addProperty($singletonProperty)
+                ->setPrivate()
+                ->setType('?' . $typeHint)
+                ->setValue(null);
+
+
+            $args = $this->resolveConstructorArguments($concrete);
+            if ($args === null) {
+                continue;
+            }
+
+            $argString = implode(",\n", $args) . "\n\t\t";
+
+            $class->addMethod($methodName)
+                ->setPrivate()
+                ->setReturnType('object')
+                ->setBody(<<<PHP
+                    if (\$this->{$singletonProperty} === null) {
+                        \$this->{$singletonProperty} = \$this->applyPostInterceptors(
+                            new {$fqcn}({$argString})
+                        );
+                    }
+                    return \$this->{$singletonProperty};
+                PHP);
+
+            $serviceMap[$id] = $methodName;
+        }
+
+        // --- Service map ---
+        $class->addProperty('serviceMap')
+            ->setPrivate()
+            ->setType('array')
+            ->setValue($serviceMap)
+            ->addComment('@var array<string, string> Maps service IDs to method names.');
+
+        // --- Tag map ---
+        $class->addProperty('tagMap')
+            ->setPrivate()
+            ->setType('array')
+            ->setValue($tagMap)
+            ->addComment('@var array<string, list<string>> Maps tag names to service IDs.');
+
+        // --- Parameters ---
+        $class->addProperty('parameters')
+            ->setPrivate()
+            ->setType('array')
+            ->setValue($this->container->getParameters()->all())
+            ->addComment('@var array<string, mixed>');
+
+        // Pre-resolution interceptors
+        $class->addProperty('preInterceptors')
+            ->setPrivate()
+            ->setType('array')
+            ->setValue(array_map(fn($i) => '\\' . ltrim($i, '\\'), $this->container->getPreInterceptors()))
+            ->addComment('@var array<class-string> List of pre-resolution interceptors.');
+
+        $applyPre = $class->addMethod('applyPreInterceptors')
+            ->setPrivate()
+            ->setReturnNullable(true)
+            ->setReturnType('object')
+            ->setBody(<<<'PHP'
+                foreach ($this->preInterceptors as $interceptor) {
+                    if ($interceptor::supports($id)) {
+                        $result = (new $interceptor())->intercept($id, $args);
+                        if ($result !== null) {
+                            return $result;
                         }
                     }
                 }
-            }
-        }
+                return null;
+            PHP);
 
-        // get()
-        $get = $class->addMethod('get')
-            ->setPublic()
-            ->addComment('@throws NotFoundException')
-            ->setReturnType('object');
-        $get->addParameter('id')->setType('string');
-        $get->addParameter('args')->setType('array')->setDefaultValue(null);
-        $get->setBody("return match (\$id) {\n" .
-            implode("\n", array_map(fn($id) => "    '$id' => \$this->" . self::methodNameFromClass($id) .
-                "(),", array_keys($services))) . "\n" .
-            "    default => parent::get(\$id),\n};");
+        $applyPre->addParameter('id')
+            ->setType('string');
 
-        // has()
-        $has = $class->addMethod('has')
-            ->setPublic()
-            ->setReturnType('bool');
-        $has->addParameter('id')->setType('string');
-        $has->setBody('return in_array($id, [' . implode(', ', array_map(
-            fn($id) => "'$id'",
-            array_keys($services)
-        )) . '], true) || parent::has($id);');
+        $applyPre->addParameter('args')
+            ->setType('array')
+            ->setDefaultValue([])
+            ->setReference();
 
-        // getTagged()
-        $class->addMethod('getTagged')
-            ->setPublic()
+        // Post-resolution interceptors (same as before)
+        $class->addProperty('postInterceptors')
+            ->setPrivate()
+            ->setType('array')
+            ->setValue(array_map(fn($i) => '\\' . ltrim($i, '\\'), $this->container->getPostInterceptors()))
+            ->addComment('@var array<class-string> List of post-resolution interceptors.');
+
+        $applyPost = $class->addMethod('applyPostInterceptors')
+            ->setPrivate()
+            ->setReturnType('object')
             ->setBody(<<<'PHP'
-                $taggedServices = [];
-
-                if (isset($this->tags[$tag])) {
-                    foreach ($this->tags[$tag] as $serviceId) {
-                        $taggedServices[] = $this->get($serviceId);
+                foreach ($this->postInterceptors as $interceptor) {
+                    if ($interceptor::supports($instance)) {
+                        (new $interceptor())->intercept($instance);
                     }
                 }
+                return $instance;
+            PHP);
 
-                return $taggedServices;
-                PHP)
-            ->setReturnType('array')
-            ->addParameter('tag')->setType('string');
+        $applyPost->addParameter('instance')->setType('object');
 
-        // Per-service methods
-        foreach ($services as $id => [$fqcn, $args, $singleton]) {
-            $methodName = self::methodNameFromClass($id);
-            $method = $class->addMethod($methodName)
-                ->setPrivate()
-                ->setReturnType((string) $fqcn);
+        // (Service methods and map get injected here, as before...)
 
-            $argsList = implode(', ', $args);
-            $body = "\$instance = new \\{$fqcn}($argsList);";
+        // `get()` method includes pre-interceptor logic now
+        $getMethod = $class->addMethod('get')
+            ->setReturnType('object')
+            ->setBody(<<<'PHP'
+            $instance = $this->applyPreInterceptors($id, $args);
+            if ($instance !== null) {
+                return $instance;
+            }
+            
+            $instance = isset($this->serviceMap[$id])
+                ? $this->{$this->serviceMap[$id]}()
+                : parent::get($id, $args);
+                        
+            return $this->applyPostInterceptors($instance);
+            PHP);
 
-            if (isset($interceptMap[$id])) {
-                $body .= "\n\$instance = \$this->" . $interceptMap[$id]['method'] . "(\$instance);";
+        $getMethod->addParameter('id')->setType('string');
+        $getMethod->addParameter('args')->setType('array')->setDefaultValue([]);
+
+        // --- getTagged() override ---
+        $getTaggedMethod = $class->addMethod('getTagged');
+        $getTaggedMethod->addParameter('tag')->setType('string');
+        $getTaggedMethod->setReturnType('array');
+        $getTaggedMethod->addComment('@inheritDoc');
+        $getTaggedMethod->setBody(<<<'PHP'
+            if (!isset($this->tagMap[$tag])) {
+                return [];
             }
 
-            if ($singleton) {
-                $body = "if (isset(\$this->singletons['$id'])) return \$this->singletons['$id'];\n" .
-                    $body . "\n" .
-                    "\$this->singletons['$id'] = \$instance;\n" .
-                    "return \$instance;";
-            } else {
-                $body .= "\nreturn \$instance;";
+            $results = [];
+
+            foreach ($this->tagMap[$tag] as $id) {
+                $results[] = $this->get($id);
             }
 
-            $method->setBody($body);
+            return $results;
+        PHP);
+
+        $class->addMethod('has')
+            ->setReturnType('bool')
+            ->setBody(<<<'PHP'
+                return isset($this->serviceMap[$id]) || parent::has($id);
+            PHP)
+            ->addParameter('id')->setType('string');
+
+        // Final output
+        $compiled = (string) $file;
+        if (!file_exists($filePath) || md5_file($filePath) !== md5($compiled)) {
+            file_put_contents($filePath, $compiled);
         }
-
-        $file->addNamespace($ns);
-        file_put_contents($outputFile, (string) $file);
     }
 
-    private static function methodNameFromClass(string $fqcn): string
+    private function buildServiceMethodName(string $id): string
     {
-        return 'get_' . preg_replace('/[^A-Za-z0-9_]/', '_', $fqcn);
+        return 'get_' . preg_replace('/[^A-Za-z0-9_]/', '_', $id);
+    }
+
+    /**
+     * @psalm-param class-string $class
+     *
+     * @throws ReflectionException
+     * @throws Exception
+     */
+    private function resolveConstructorArguments(string $class): ?array
+    {
+        $reflectionClass = new ReflectionClass($class);
+        $constructor = $reflectionClass->getConstructor();
+
+        if (!$constructor) {
+            return [];
+        }
+
+        $resolved = [];
+
+        foreach ($constructor->getParameters() as $param) {
+            $value = $this->resolveParameter($param);
+            if ($value === null) {
+                // Skip it silently or log a warning, up to you.
+                return null; // bail out, don’t generate this service method
+            }
+            $resolved[] = $value;
+        }
+
+        return $resolved;
+    }
+
+    private function resolveParameter(ReflectionParameter $parameter): ?string
+    {
+        $name = $parameter->getName();
+        /** @var ReflectionNamedType $type */
+        $type = $parameter->getType();
+        $typeName = $type->getName();
+
+        $declaringClass = $parameter->getDeclaringClass();
+
+        if ($declaringClass !== null) {
+            $className = $declaringClass->getName();
+
+            if ($this->contextualBindings->has($className, $typeName)) {
+                $target = $this->contextualBindings->get($className, $typeName);
+                if (is_string($target)) {
+                    return "\$this->get('{$target}')";
+                }
+            }
+
+            if ($this->argumentMap->has($className, $name)) {
+                return var_export($this->argumentMap->getArgument($className, $name), true);
+            }
+
+            if ($parameter->isDefaultValueAvailable()) {
+                return var_export($parameter->getDefaultValue(), true);
+            }
+
+            if ($typeName && class_exists($typeName)) {
+                return "\n\t\t\t\$this->get('{$typeName}')";
+            }
+        }
+
+        return null;
     }
 }

@@ -7,7 +7,7 @@ namespace Tests\Integration\Container;
 use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
@@ -33,7 +33,7 @@ class ServiceContainerTest extends TestCase
         };
 
         // Register interceptor as FQCN (as expected now)
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->registerInterceptor(get_class($interceptor));
 
         // Bind a service (autowiring would also work)

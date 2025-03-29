@@ -6,7 +6,7 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
-use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
@@ -37,7 +37,7 @@ final class ServiceResolver implements ServiceResolverInterface
         private readonly ServiceBinderInterface $binder,
         private readonly ReflectionCacheInterface $reflectionCache,
         private readonly InterceptorRegistryInterface $interceptors,
-        private readonly ParameterResolverInterface $parameterResolver
+        private readonly ArgumentResolverInterface $parameterResolver
     ) {
     }
 

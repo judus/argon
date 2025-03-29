@@ -6,7 +6,7 @@ namespace Tests\Integration;
 
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use Tests\Integration\Mocks\ApiClient;
 use Tests\Integration\Mocks\EnvClient;
@@ -15,11 +15,11 @@ use Tests\Integration\Mocks\OptionalClient;
 
 final class ParameterInjectionTest extends TestCase
 {
-    private ServiceContainer $container;
+    private ArgonContainer $container;
 
     protected function setUp(): void
     {
-        $this->container = new ServiceContainer();
+        $this->container = new ArgonContainer();
     }
 
     /**

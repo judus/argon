@@ -7,7 +7,7 @@ namespace Tests\Integration\Interceptors;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Interceptors\Post\InitInterceptor;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use Tests\Integration\Interceptors\Mocks\NeedsInit;
 
@@ -19,7 +19,7 @@ class InitInterceptorTest extends TestCase
      */
     public function testInitMethodIsCalledOnResolvedInstance(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->singleton(NeedsInit::class);
         $container->registerInterceptor(InitInterceptor::class);

@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
-use Maduser\Argon\Container\Contracts\ParameterRegistryInterface;
-use Maduser\Argon\Container\Contracts\ParameterResolverInterface;
+use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
+use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
 use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
@@ -33,7 +34,7 @@ use Psr\Container\ContainerInterface;
  *
  * @template T of object
  */
-class ServiceContainer implements ContainerInterface
+class ArgonContainer implements ContainerInterface
 {
     private readonly TagManagerInterface $tags;
     private readonly CallableInvoker $invoker;
@@ -41,11 +42,14 @@ class ServiceContainer implements ContainerInterface
     private readonly ContextualResolverInterface $contextual;
     private readonly ServiceProviderRegistryInterface $providers;
     private readonly ServiceResolverInterface $serviceResolver;
-    private readonly ParameterResolverInterface $parameterResolver;
+    private readonly ArgumentResolverInterface $argumentResolver;
     private readonly ServiceBinderInterface $binder;
+    private readonly ArgumentMapInterface $arguments;
+    private readonly ParameterStoreInterface $parameterStore;
 
     public function __construct(
-        private readonly ParameterRegistryInterface $parameters = new ParameterRegistry(),
+        ?ArgumentMapInterface $arguments = null,
+        ?ParameterStoreInterface $parameters = null,
         private readonly ReflectionCacheInterface $reflectionCache = new ReflectionCache(),
         private readonly InterceptorRegistryInterface $interceptors = new InterceptorRegistry(),
         ?TagManagerInterface $tags = null,
@@ -54,18 +58,20 @@ class ServiceContainer implements ContainerInterface
         ?ContextualResolverInterface $contextual = null,
         ?ServiceProviderRegistryInterface $providers = null,
         ?ServiceResolverInterface $serviceResolver = null,
-        ?ParameterResolverInterface $parameterResolver = null,
+        ?ArgumentResolverInterface $argumentResolver = null,
         ?ServiceBinderInterface $binder = null,
     ) {
+        $this->arguments = $arguments ?? new ArgumentMap();
+        $this->parameterStore = $parameters ?? new ParameterStore();
         $this->contextualBindings = $contextualRegistry ?? new ContextualBindings();
         $this->contextual = $contextual ?? new ContextualResolver($this, $this->contextualBindings);
         $this->tags = $tags ?? new TagManager($this);
         $this->providers = $providers ?? new ServiceProviderRegistry($this);
         $this->binder = $binder ?? new ServiceBinder();
 
-        $this->parameterResolver = $parameterResolver ?? new ParameterResolver(
+        $this->argumentResolver = $argumentResolver ?? new ArgumentResolver(
             $this->contextual,
-            $this->parameters,
+            $this->arguments,
             $this->contextualBindings
         );
 
@@ -73,15 +79,25 @@ class ServiceContainer implements ContainerInterface
             $this->binder,
             $this->reflectionCache,
             $this->interceptors,
-            $this->parameterResolver
+            $this->argumentResolver
         );
 
-        $this->parameterResolver->setServiceResolver($this->serviceResolver);
+        $this->argumentResolver->setServiceResolver($this->serviceResolver);
 
         $this->invoker = $invoker ?? new CallableInvoker(
             $this->serviceResolver,
-            $this->parameterResolver
+            $this->argumentResolver
         );
+    }
+
+    public function getArgumentMap(): ArgumentMapInterface
+    {
+        return $this->arguments;
+    }
+
+    public function getContextualBindings(): ContextualBindingsInterface
+    {
+        return $this->contextualBindings;
     }
 
     /**
@@ -110,10 +126,10 @@ class ServiceContainer implements ContainerInterface
         Closure|string|null $concrete = null,
         bool $isSingleton = false,
         ?array $args = null
-    ): ServiceContainer {
+    ): ArgonContainer {
 
         if ($args !== null) {
-            $this->parameters->setScope($id, $args);
+            $this->arguments->set($id, $args);
         }
 
         $this->binder->bind($id, $concrete, $isSingleton);
@@ -124,10 +140,10 @@ class ServiceContainer implements ContainerInterface
     /**
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null, ?array $args = null): ServiceContainer
+    public function singleton(string $id, Closure|string|null $concrete = null, ?array $args = null): ArgonContainer
     {
         if ($args !== null) {
-            $this->parameters->setScope($id, $args);
+            $this->arguments->set($id, $args);
         }
 
         $this->binder->singleton($id, $concrete);
@@ -143,12 +159,12 @@ class ServiceContainer implements ContainerInterface
         return $this->binder->getDescriptors();
     }
 
-    public function getParameters(): ParameterRegistryInterface
+    public function getParameters(): ParameterStoreInterface
     {
-        return $this->parameters;
+        return $this->parameterStore;
     }
 
-    public function registerFactory(string $id, callable $factory, bool $isSingleton = true): ServiceContainer
+    public function registerFactory(string $id, callable $factory, bool $isSingleton = true): ArgonContainer
     {
         $this->binder->registerFactory($id, $factory, $isSingleton);
 
@@ -160,7 +176,7 @@ class ServiceContainer implements ContainerInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function registerProvider(string $className): ServiceContainer
+    public function registerProvider(string $className): ArgonContainer
     {
         $this->providers->register($className);
 
@@ -170,10 +186,10 @@ class ServiceContainer implements ContainerInterface
     /**
      * Registers an interceptor (pre- or post-resolution).
      *
-     * @param class-string<InterceptorInterface> $interceptorClass
+     * @param class-string $interceptorClass
      * @throws ContainerException
      */
-    public function registerInterceptor(string $interceptorClass): ServiceContainer
+    public function registerInterceptor(string $interceptorClass): ArgonContainer
     {
         if (!class_exists($interceptorClass)) {
             throw ContainerException::fromServiceId(
@@ -194,19 +210,27 @@ class ServiceContainer implements ContainerInterface
     }
 
     /**
-     * @return array<class-string<InterceptorInterface>>
+     * @return array<class-string<PostResolutionInterceptorInterface>>
      */
-    public function getInterceptors(): array
+    public function getPostInterceptors(): array
     {
         return $this->interceptors->allPost();
     }
 
     /**
+     * @return array<class-string<PreResolutionInterceptorInterface>>
+     */
+    public function getPreInterceptors(): array
+    {
+        return $this->interceptors->allPre();
+    }
+
+    /**
      * @param string $id
      * @param list<string> $tags
-     * @return ServiceContainer
+     * @return ArgonContainer
      */
-    public function tag(string $id, array $tags): ServiceContainer
+    public function tag(string $id, array $tags): ArgonContainer
     {
         $this->tags->tag($id, $tags);
 
@@ -237,7 +261,11 @@ class ServiceContainer implements ContainerInterface
         return $this->binder->has($id) || class_exists($id);
     }
 
-    public function boot(): ServiceContainer
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function boot(): ArgonContainer
     {
         $this->providers->boot();
 
@@ -252,11 +280,11 @@ class ServiceContainer implements ContainerInterface
      *
      * @param string $id
      * @param callable(object):object $decorator
-     * @return ServiceContainer
+     * @return ArgonContainer
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function extend(string $id, callable $decorator): ServiceContainer
+    public function extend(string $id, callable $decorator): ArgonContainer
     {
         $instance = $this->get($id);
         $decorated = $decorator($instance);

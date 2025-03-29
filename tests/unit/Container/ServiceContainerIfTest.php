@@ -6,7 +6,7 @@ namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use Tests\Mocks\MyService;
@@ -23,7 +23,7 @@ class ServiceContainerIfTest extends TestCase
     {
         $stub = new TestService('');
 
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->singleton(TestService::class, fn() => $stub);
 
         $container->optional(TestService::class)->callMe();
@@ -38,7 +38,7 @@ class ServiceContainerIfTest extends TestCase
      */
     public function testIfReturnsNoOpForNonExistingService(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $result = $container->optional('nonexistent')->callMe(); // returns void, no exception
 

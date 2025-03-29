@@ -32,4 +32,6 @@ interface ContextualBindingsInterface
      * @return bool
      */
     public function has(string $consumer, string $dependency): bool;
+
+    public function getBindings(): array;
 }
