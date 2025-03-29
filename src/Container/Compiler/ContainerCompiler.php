@@ -240,7 +240,7 @@ final class ContainerCompiler
 
     /**
      * @psalm-param class-string $class
-     *
+     * @return list<string>|null
      * @throws ReflectionException
      * @throws Exception
      */
@@ -258,8 +258,7 @@ final class ContainerCompiler
         foreach ($constructor->getParameters() as $param) {
             $value = $this->resolveParameter($param);
             if ($value === null) {
-                // Skip it silently or log a warning, up to you.
-                return null; // bail out, don’t generate this service method
+                return null;
             }
             $resolved[] = $value;
         }

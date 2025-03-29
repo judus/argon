@@ -17,7 +17,7 @@ interface ArgumentResolverInterface
 
     /**
      * @param ReflectionParameter $param
-     * @param array<string, mixed> $overrides
+     * @param array<array-key, mixed> $overrides
      * @return mixed
      *
      * @throws ContainerException

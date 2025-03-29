@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Container;
 
+use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
-use Maduser\Argon\Container\Contracts\InterceptorInterface;
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
@@ -13,8 +13,6 @@ use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ArgumentMap;
-use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
@@ -313,20 +311,22 @@ class ServiceContainerTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        // Get the ReflectionCache instance from the container
-        $reflectionCacheProperty = new ReflectionProperty($container, 'reflectionCache');
-        $reflectionCacheProperty->setAccessible(true);
-        $reflectionCache = $reflectionCacheProperty->getValue($container);
+        // Trick to pull the ServiceResolver out
+        $serviceResolverReflection = new ReflectionProperty($container, 'serviceResolver');
+        $serviceResolver = $serviceResolverReflection->getValue($container);
 
-        // Now reflect into the ReflectionCache's internal cache
+        // Now dig into the ServiceResolver for the ReflectionCache
+        $reflectionCacheReflection = new ReflectionProperty($serviceResolver, 'reflectionCache');
+        $reflectionCache = $reflectionCacheReflection->getValue($serviceResolver);
+
+        // Grab the internal cache array
         $internalCacheProperty = new ReflectionProperty($reflectionCache, 'reflectionCache');
-        $internalCacheProperty->setAccessible(true);
 
         // First time - cache should be empty
         $this->assertEmpty($internalCacheProperty->getValue($reflectionCache));
 
-        // Resolve a class (stdClass doesn't have dependencies)
-        $container->bind('service', stdClass::class);
+        // Trigger resolution
+        $container->bind('service', \stdClass::class);
         $container->get('service');
 
         // Now the reflection cache should contain one entry
@@ -748,7 +748,7 @@ class ServiceContainerTest extends TestCase
         };
 
         /** @psalm-suppress ArgumentTypeCoercion */
-        $container->extend(stdClass::class, fn(stdClass $original): object => $decoratedInstance);
+        $container->extend(stdClass::class, fn(): object => $decoratedInstance);
 
         // Re-resolve the service
         $resolved = $container->get(stdClass::class);

@@ -27,10 +27,9 @@ final class ReflectionCache implements ReflectionCacheInterface
     {
         if (!isset($this->reflectionCache[$className])) {
             if (!class_exists($className) && !interface_exists($className) && !trait_exists($className)) {
-                throw new ContainerException("Class, interface, or trait '$className' does not exist.", $className);
+                throw new ContainerException("Class, interface, or trait '$className' does not exist.");
             }
 
-            /** @var ReflectionClass<object> $reflection */
             $reflection = new ReflectionClass($className);
             $this->reflectionCache[$className] = $reflection;
         }

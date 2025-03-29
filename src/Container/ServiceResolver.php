@@ -13,19 +13,13 @@ use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use ReflectionParameter;
+use Throwable;
 
 /**
  * Resolves services, handling recursive instantiation and singleton caching.
  */
 final class ServiceResolver implements ServiceResolverInterface
 {
-    /**
-     * Map of service ID to descriptor (bindings).
-     *
-     * @var array<string, ServiceDescriptor>
-     */
-    private array $descriptors = [];
-
     /**
      * Currently resolving IDs (to detect circular dependencies).
      *
@@ -46,19 +40,23 @@ final class ServiceResolver implements ServiceResolverInterface
      *
      * @template T of object
      * @param class-string<T>|string $id
-     * @param array<string, mixed> $parameters
+     * @param array<array-key, mixed> $args
      * @return object
      * @psalm-return ($id is class-string<T> ? T : object)
      *
      * @throws ContainerException
      * @throws NotFoundException
+     *
+     * We're going to make one single exception here,
+     * IMAO this more likely PossiblyPsalmsProblem
+     * @psalm-suppress PossiblyUnusedReturnValue
      */
-    public function resolve(string $id, array $parameters = []): object
+    public function resolve(string $id, array $args = []): object
     {
         $this->checkCircularDependency($id);
 
         // Pre resolution interceptors
-        $result = $this->interceptors->matchPre($id, $parameters);
+        $result = $this->interceptors->matchPre($id, $args);
         if ($result !== null) {
             $this->removeFromResolving($id);
 
@@ -74,10 +72,10 @@ final class ServiceResolver implements ServiceResolverInterface
             }
 
             $concrete = $descriptor->getConcrete();
-            $args = array_merge($descriptor->getArguments(), $parameters);
+            $args = array_merge($descriptor->getArguments(), $args);
 
             $instance = $concrete instanceof Closure
-                ? $concrete()
+                ? (object) $concrete()
                 : $this->resolveClass($concrete, $args);
 
             $instance = $this->interceptors->matchPost($instance);
@@ -100,7 +98,7 @@ final class ServiceResolver implements ServiceResolverInterface
             throw ContainerException::forNonInstantiableClass($id, $reflection->getName());
         }
 
-        $instance = $this->resolveClass($id, $parameters);
+        $instance = $this->resolveClass($id, $args);
         $instance = $this->interceptors->matchPost($instance);
 
         $this->removeFromResolving($id);
@@ -110,25 +108,27 @@ final class ServiceResolver implements ServiceResolverInterface
     /**
      * Resolves a concrete class by analyzing its constructor dependencies.
      *
-     * @param class-string $className
-     * @param array<string, mixed> $parameters
+     * @template T of object
+     * @param class-string<T> $className
+     * @param array<array-key, mixed> $args
      * @return object
+     * @psalm-return ($className is class-string<T> ? T : object)
      *
      * @throws ContainerException
      * @throws NotFoundException
      */
-    private function resolveClass(string $className, array $parameters = []): object
+    private function resolveClass(string $className, array $args = []): mixed
     {
         if ($descriptor = $this->binder->getDescriptor($className)) {
             $concrete = $descriptor->getConcrete();
 
             if ($concrete instanceof Closure) {
-                return $concrete();
+                return (object) $concrete();
             }
 
             if ($concrete !== $className) {
-                $mergedArgs = array_merge($descriptor->getArguments(), $parameters);
-                return $this->resolveClass($concrete, $parameters);
+                $args = array_merge($descriptor->getArguments(), $args);
+                return $this->resolveClass($concrete, $args);
             }
         }
 
@@ -145,12 +145,12 @@ final class ServiceResolver implements ServiceResolverInterface
         $constructor = $reflection->getConstructor();
 
         $dependencies = $constructor
-            ? $this->resolveConstructorParameters($constructor->getParameters(), $parameters)
+            ? $this->resolveConstructorParameters($constructor->getParameters(), $args)
             : [];
 
         try {
             return $reflection->newInstanceArgs(array_values($dependencies));
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             throw ContainerException::forInstantiationFailure($className, $e);
         }
     }
@@ -159,7 +159,7 @@ final class ServiceResolver implements ServiceResolverInterface
      * Resolves constructor parameters using contextual/primitive logic.
      *
      * @param array<int, ReflectionParameter> $params
-     * @param array<string, mixed> $overrides
+     * @param array<array-key, mixed> $overrides
      * @return array<int, mixed>
      *
      * @throws ContainerException

@@ -13,7 +13,6 @@ class ContextualBindingBuilderTest extends TestCase
 {
     public function testSetDelegatesToRegistryWithString(): void
     {
-        /** @var MockObject&ContextualBindingsInterface $registry */
         $registry = $this->createMock(ContextualBindingsInterface::class);
 
         $registry->expects($this->once())
@@ -26,7 +25,6 @@ class ContextualBindingBuilderTest extends TestCase
 
     public function testSetDelegatesToRegistryWithClosure(): void
     {
-        /** @var MockObject&ContextualBindingsInterface $registry */
         $registry = $this->createMock(ContextualBindingsInterface::class);
 
         $closure = fn(): string => 'value';

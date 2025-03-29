@@ -15,6 +15,8 @@ use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionParameter;
+use Stringable;
+use Throwable;
 
 readonly class CallableInvoker
 {
@@ -76,7 +78,6 @@ readonly class CallableInvoker
                     is_object($target) ? $target::class : $target,
                     $method ?? 'closure'
                 ),
-                $target instanceof \Stringable ? (string) $target : null,
                 0,
                 $e
             );
@@ -108,7 +109,7 @@ readonly class CallableInvoker
                 $reflection instanceof ReflectionFunction => $reflection->invokeArgs($resolvedParams),
                 default => throw new ContainerException('Unhandled reflection type: ' . get_class($reflection)),
             };
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             throw ContainerException::forInstantiationFailure($reflection->getName(), $e);
         }
     }

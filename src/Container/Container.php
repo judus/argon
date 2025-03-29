@@ -85,6 +85,10 @@ class Container
      * Registers a factory function that builds the service instance.
      *
      * Optionally makes it a singleton.
+     *
+     * @param string $id
+     * @param callable(): mixed $factory
+     * @param bool $singleton
      */
     public static function registerFactory(string $id, callable $factory, bool $singleton = true): void
     {
@@ -118,7 +122,7 @@ class Container
      *
      * @param object|string $target  Object instance or class name
      * @param string|null $method    Method name if calling on a class/object
-     * @param array $parameters      Optional parameter overrides
+     * @param array<string, mixed> $parameters      Optional parameter overrides
      *
      * @throws NotFoundException|ContainerException
      */
@@ -153,6 +157,7 @@ class Container
     /**
      * Applies a decorator or wrapper to an existing service.
      *
+     * @param callable(object):object $decorator
      * @throws ContainerException|NotFoundException
      */
     public static function extend(string $id, callable $decorator): void
