@@ -6,18 +6,17 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
+use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
-use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
 use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
-use Maduser\Argon\Container\Contracts\InterceptorInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderRegistryInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Contracts\TagManagerInterface;
@@ -102,8 +101,7 @@ class ArgonContainer implements ContainerInterface
 
     /**
      * @template TGet of object
-     * @param class-string<TGet>|string $id
-     * @return object
+     * @psalm-param class-string<TGet>|string $id
      * @psalm-return ($id is class-string<TGet> ? TGet : object)
      * @throws ContainerException
      * @throws NotFoundException

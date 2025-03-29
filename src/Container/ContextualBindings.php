@@ -31,7 +31,7 @@ final class ContextualBindings implements ContextualBindingsInterface
      * @param string|Closure $concrete
      * @return void
      */
-    public function set(string $consumer, string $dependency, string|Closure $concrete): void
+    public function bind(string $consumer, string $dependency, string|Closure $concrete): void
     {
         $this->bindings[$consumer][$dependency] = $concrete;
     }

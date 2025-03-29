@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Container;
+use Maduser\Argon\Container\ContextualBindings;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
+use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\InterceptorInterface;
 use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
@@ -257,6 +259,16 @@ class ContainerTest extends TestCase
         $this->assertSame($tags, Container::tags());
     }
 
+    public function testArgumentsDelegatesToContainer(): void
+    {
+        $arguments = $this->createMock(ArgumentMapInterface::class);
+        $this->mockContainer->expects($this->once())
+            ->method('getArgumentMap')
+            ->willReturn($arguments);
+
+        $this->assertSame($arguments, Container::arguments());
+    }
+
     public function testParametersReturnsStore(): void
     {
         $parameters = $this->createMock(ParameterStoreInterface::class);
@@ -265,5 +277,15 @@ class ContainerTest extends TestCase
             ->willReturn($parameters);
 
         $this->assertSame($parameters, Container::parameters());
+    }
+
+    public function testContextualDelegatesToContainer(): void
+    {
+        $bindings = $this->createMock(ContextualBindingsInterface::class);
+        $this->mockContainer->expects($this->once())
+            ->method('getContextualBindings')
+            ->willReturn($bindings);
+
+        $this->assertSame($bindings, Container::contextualBindings());
     }
 }

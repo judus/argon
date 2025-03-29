@@ -328,7 +328,7 @@ class ContainerCompilerTest extends TestCase
         // Contextual binding: NeedsLogger gets CustomLogger instead of Logger
         $container->singleton(NeedsLogger::class);
 
-        $container->for(NeedsLogger::class)->set(LoggerInterface::class, CustomLogger::class);
+        $container->for(NeedsLogger::class)->bind(LoggerInterface::class, CustomLogger::class);
 
         $compiled = $this->compileAndLoadContainer($container, 'CompiledContainerWithContextual');
 

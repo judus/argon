@@ -17,11 +17,11 @@ class ContextualBindingBuilderTest extends TestCase
         $registry = $this->createMock(ContextualBindingsInterface::class);
 
         $registry->expects($this->once())
-            ->method('set')
+            ->method('bind')
             ->with('MyService', 'MyDependency', 'MyConcrete');
 
         $builder = new ContextualBindingBuilder($registry, 'MyService');
-        $builder->set('MyDependency', 'MyConcrete');
+        $builder->bind('MyDependency', 'MyConcrete');
     }
 
     public function testSetDelegatesToRegistryWithClosure(): void
@@ -32,10 +32,10 @@ class ContextualBindingBuilderTest extends TestCase
         $closure = fn(): string => 'value';
 
         $registry->expects($this->once())
-            ->method('set')
+            ->method('bind')
             ->with('TargetClass', 'SomeDep', $closure);
 
         $builder = new ContextualBindingBuilder($registry, 'TargetClass');
-        $builder->set('SomeDep', $closure);
+        $builder->bind('SomeDep', $closure);
     }
 }
