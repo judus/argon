@@ -6,7 +6,7 @@ namespace Tests\Integration\Container;
 
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use Tests\Mocks\DatabaseLogger;
 use Tests\Mocks\FileLogger;
@@ -22,7 +22,7 @@ class ContextualBindingTest extends TestCase
      */
     public function testContextualBindingWithClassString(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->bind(FileLogger::class);
         $container->bind(DatabaseLogger::class);
@@ -45,7 +45,7 @@ class ContextualBindingTest extends TestCase
      */
     public function testContextualBindingWithClosure(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->bind(ServiceA::class);
 

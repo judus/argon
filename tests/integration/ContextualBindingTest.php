@@ -6,7 +6,7 @@ namespace Tests\Integration;
 
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use Tests\Integration\Mocks\DatabaseLogger;
 use Tests\Integration\Mocks\FileLogger;
@@ -24,7 +24,7 @@ class ContextualBindingTest extends TestCase
      */
     public function testDifferentConsumersGetDifferentImplementations(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->for(ServiceA::class)->set(LoggerInterface::class, DatabaseLogger::class);
         $container->for(ServiceB::class)->set(LoggerInterface::class, FileLogger::class);
@@ -42,7 +42,7 @@ class ContextualBindingTest extends TestCase
      */
     public function testFallsBackToGlobalBindingWhenNoContextual(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->singleton(LoggerInterface::class, NullLogger::class);
 

@@ -34,7 +34,7 @@ use Psr\Container\ContainerInterface;
  *
  * @template T of object
  */
-class ServiceContainer implements ContainerInterface
+class ArgonContainer implements ContainerInterface
 {
     private readonly TagManagerInterface $tags;
     private readonly CallableInvoker $invoker;
@@ -126,7 +126,7 @@ class ServiceContainer implements ContainerInterface
         Closure|string|null $concrete = null,
         bool $isSingleton = false,
         ?array $args = null
-    ): ServiceContainer {
+    ): ArgonContainer {
 
         if ($args !== null) {
             $this->arguments->set($id, $args);
@@ -140,7 +140,7 @@ class ServiceContainer implements ContainerInterface
     /**
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null, ?array $args = null): ServiceContainer
+    public function singleton(string $id, Closure|string|null $concrete = null, ?array $args = null): ArgonContainer
     {
         if ($args !== null) {
             $this->arguments->set($id, $args);
@@ -164,7 +164,7 @@ class ServiceContainer implements ContainerInterface
         return $this->parameterStore;
     }
 
-    public function registerFactory(string $id, callable $factory, bool $isSingleton = true): ServiceContainer
+    public function registerFactory(string $id, callable $factory, bool $isSingleton = true): ArgonContainer
     {
         $this->binder->registerFactory($id, $factory, $isSingleton);
 
@@ -176,7 +176,7 @@ class ServiceContainer implements ContainerInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function registerProvider(string $className): ServiceContainer
+    public function registerProvider(string $className): ArgonContainer
     {
         $this->providers->register($className);
 
@@ -189,7 +189,7 @@ class ServiceContainer implements ContainerInterface
      * @param class-string $interceptorClass
      * @throws ContainerException
      */
-    public function registerInterceptor(string $interceptorClass): ServiceContainer
+    public function registerInterceptor(string $interceptorClass): ArgonContainer
     {
         if (!class_exists($interceptorClass)) {
             throw ContainerException::fromServiceId(
@@ -228,9 +228,9 @@ class ServiceContainer implements ContainerInterface
     /**
      * @param string $id
      * @param list<string> $tags
-     * @return ServiceContainer
+     * @return ArgonContainer
      */
-    public function tag(string $id, array $tags): ServiceContainer
+    public function tag(string $id, array $tags): ArgonContainer
     {
         $this->tags->tag($id, $tags);
 
@@ -265,7 +265,7 @@ class ServiceContainer implements ContainerInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function boot(): ServiceContainer
+    public function boot(): ArgonContainer
     {
         $this->providers->boot();
 
@@ -280,11 +280,11 @@ class ServiceContainer implements ContainerInterface
      *
      * @param string $id
      * @param callable(object):object $decorator
-     * @return ServiceContainer
+     * @return ArgonContainer
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function extend(string $id, callable $decorator): ServiceContainer
+    public function extend(string $id, callable $decorator): ArgonContainer
     {
         $instance = $this->get($id);
         $decorated = $decorator($instance);

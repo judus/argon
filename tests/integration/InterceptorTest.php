@@ -8,7 +8,7 @@ use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use Tests\Integration\Mocks\InterceptedClass;
 use Tests\Integration\Mocks\Post1;
@@ -28,7 +28,7 @@ final class InterceptorTest extends TestCase
      */
     public function testPostInterceptorIsInvoked(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->registerInterceptor(PostHook::class);
 
@@ -43,7 +43,7 @@ final class InterceptorTest extends TestCase
      */
     public function testPreInterceptorModifiesParameters(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->registerInterceptor(PreArgOverride::class);
 
@@ -58,7 +58,7 @@ final class InterceptorTest extends TestCase
      */
     public function testPreInterceptorCanShortCircuit(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->registerInterceptor(ShortCircuitInterceptor::class);
 
@@ -73,7 +73,7 @@ final class InterceptorTest extends TestCase
      */
     public function testChainedPreAndPostInterceptorsAreApplied(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->registerInterceptor(Pre1::class);
         $container->registerInterceptor(Pre2::class);

@@ -10,7 +10,7 @@ use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use stdClass;
@@ -34,7 +34,7 @@ class ContainerCompilerTest extends TestCase
      * @throws ContainerException
      * @throws ReflectionException
      */
-    private function compileAndLoadContainer(ServiceContainer $container, string $className): object
+    private function compileAndLoadContainer(ArgonContainer $container, string $className): object
     {
         $namespace = 'Tests\\Integration\\Compiler';
         $file = __DIR__ . "/../../resources/cache/{$className}.php";
@@ -64,7 +64,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerDoesNotResolveClosures(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $this->expectException(ContainerException::class);
 
@@ -84,7 +84,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerResolvesSingletons(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->singleton(Logger::class);
         $container->singleton(Mailer::class);
@@ -112,7 +112,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerResolvesTransients(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->bind(Logger::class);
         $container->bind(Mailer::class);
@@ -132,7 +132,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerResolvesWithPrimitiveOverrides(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Set primitive parameter overrides before compiling
         $container->getArgumentMap()->set(TestServiceWithMultipleParams::class, [
@@ -161,7 +161,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerPreservesTags(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->singleton(Logger::class);
         $container->singleton(Mailer::class);
@@ -190,7 +190,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerAppliesPostInterceptor(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->singleton(Logger::class);
         $container->registerInterceptor(LoggerInterceptor::class);
 
@@ -209,7 +209,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testPreInterceptorModifiesParameters(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->registerInterceptor(PreArgOverride::class);
 
@@ -227,7 +227,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerIncludesServiceProviders(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->registerProvider(DummyProvider::class);
 
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerIncludesServiceProviders');
@@ -257,7 +257,7 @@ class ContainerCompilerTest extends TestCase
         $descriptor->method('getConcrete')->willReturn(NonInstantiableClass::class);
         $descriptor->method('isSingleton')->willReturn(true);
 
-        $containerMock = $this->createMock(ServiceContainer::class);
+        $containerMock = $this->createMock(ArgonContainer::class);
         $containerMock->method('getBindings')->willReturn([$serviceId => $descriptor]);
         $containerMock->method('getArgumentMap')->willReturn(new ArgumentMap());
         $containerMock->method('getTags')->willReturn([]);
@@ -298,7 +298,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompileHandlesDefaultParameterValues(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->bind(DefaultValueService::class);
 
         $outputPath = __DIR__ . '/../../resources/cache/testCompileHandlesDefaultParameterValues.php';
@@ -323,7 +323,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testContextualBindingIsHardcoded(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Contextual binding: NeedsLogger gets CustomLogger instead of Logger
         $container->singleton(NeedsLogger::class);
@@ -345,7 +345,7 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledContainerInjectsParameterStoreValues(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Set a parameter directly into the store
         $container->getParameters()->set('config.value', 'compiled-store');

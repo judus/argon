@@ -14,7 +14,7 @@ use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Interceptors\Post\ValidationInterceptor;
 use Maduser\Argon\Container\ParameterStore;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use stdClass;
@@ -23,11 +23,11 @@ use Tests\Unit\Container\Mocks\SampleProvider;
 class ContainerTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
-    private ServiceContainer&MockObject $mockContainer;
+    private ArgonContainer&MockObject $mockContainer;
 
     protected function setUp(): void
     {
-        $this->mockContainer = $this->createMock(ServiceContainer::class);
+        $this->mockContainer = $this->createMock(ArgonContainer::class);
         Container::set($this->mockContainer);
     }
 

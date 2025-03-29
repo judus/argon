@@ -7,7 +7,7 @@ namespace Tests\Unit\Container;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\ServiceProviderRegistry;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -17,12 +17,12 @@ use Tests\Unit\Container\Mocks\SampleProvider;
 class ServiceProviderRegistryTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
-    private ServiceContainer&MockObject $container;
+    private ArgonContainer&MockObject $container;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->container = $this->createMock(ServiceContainer::class);
+        $this->container = $this->createMock(ArgonContainer::class);
     }
 
     /**

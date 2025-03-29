@@ -8,7 +8,7 @@ use InvalidArgumentException;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Interceptors\Post\ValidationInterceptor;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use Tests\Integration\Interceptors\Mocks\BlogPostRequest;
 use Tests\Integration\Interceptors\Mocks\InvalidRequest;
@@ -24,7 +24,7 @@ class ValidationInterceptorTest extends TestCase
     public function testValidationInterceptorCallsValidateMethod(): void
     {
         // Arrange
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->registerInterceptor(ValidationInterceptor::class);
 
         // Provide a valid request object
@@ -46,7 +46,7 @@ class ValidationInterceptorTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Title is required.');
 
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->bind(InvalidRequest::class);
 
         $container->registerInterceptor(ValidationInterceptor::class);
@@ -60,7 +60,7 @@ class ValidationInterceptorTest extends TestCase
      */
     public function testFormRequestValidatesAutomatically(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Simulate user input
         $container->singleton(Request::class, fn() => new Request([
@@ -84,7 +84,7 @@ class ValidationInterceptorTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('The title is required.');
 
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->registerInterceptor(ValidationInterceptor::class);
 

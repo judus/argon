@@ -6,7 +6,7 @@ namespace Tests\Mocks;
 
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use stdClass;
 
 class DummyProvider implements ServiceProviderInterface
@@ -16,12 +16,12 @@ class DummyProvider implements ServiceProviderInterface
     /**
      * @throws ContainerException
      */
-    public function register(ServiceContainer $container): void
+    public function register(ArgonContainer $container): void
     {
         $container->singleton('dummy.service', stdClass::class);
     }
 
-    public function boot(ServiceContainer $container): void
+    public function boot(ArgonContainer $container): void
     {
         self::$booted = true;
     }

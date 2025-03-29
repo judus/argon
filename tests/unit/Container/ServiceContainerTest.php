@@ -14,7 +14,7 @@ use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ArgumentMap;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
@@ -39,7 +39,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testSingletonServiceBinding(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->singleton('service', fn() => new stdClass());
 
         $instance1 = $container->get('service');
@@ -54,7 +54,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testTransientServiceBinding(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->bind('service', fn() => new stdClass());
 
         $instance1 = $container->get('service');
@@ -69,7 +69,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testRegisterFactorySingleton(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->registerFactory('factory', fn() => new stdClass());
 
         $instance1 = $container->get('factory');
@@ -88,7 +88,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testRegisterFactoryTransient(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->registerFactory('factory', fn() => new stdClass(), false);
 
         $instance1 = $container->get('factory');
@@ -107,7 +107,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testCircularDependencyDetection(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Bind services that cause a circular dependency
         $container->singleton('A', fn() => $container->get('B'));
@@ -139,7 +139,7 @@ class ServiceContainerTest extends TestCase
             ->willReturn(['dependency' => 'overriddenValue']);
 
         // Create the container with the mocked override registry
-        $container = new ServiceContainer($arguments);
+        $container = new ArgonContainer($arguments);
 
         // No need to bind TestService to itself. Just let autowiring resolve it.
         // Resolve the service and assert the override is applied
@@ -155,7 +155,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testTaggingAndRetrievingServices(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->singleton('service1', fn() => new stdClass());
         $container->singleton('service2', fn() => new stdClass());
 
@@ -176,7 +176,7 @@ class ServiceContainerTest extends TestCase
     {
         $this->expectException(NotFoundException::class);
 
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->get('nonExistentService');
     }
 
@@ -187,14 +187,14 @@ class ServiceContainerTest extends TestCase
     {
         $this->expectException(ContainerException::class);
 
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->get(UninstantiableClass::class);  // Abstract class, can't be instantiated
     }
 
     public function testBindThrowsExceptionForInvalidClass(): void
     {
         $this->expectException(ContainerException::class);
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $container->bind('invalidService', 'NonExistentClass');
     }
 
@@ -206,7 +206,7 @@ class ServiceContainerTest extends TestCase
         $parameters = $this->createMock(ArgumentMapInterface::class);
         $parameters->method('getArgument')->willReturn([]);
 
-        $container = new ServiceContainer($parameters);
+        $container = new ArgonContainer($parameters);
 
         $this->expectException(ContainerException::class);
         $container->get(TestService::class);
@@ -214,7 +214,7 @@ class ServiceContainerTest extends TestCase
 
     public function testRegisterInterceptorThrowsIfClassDoesNotExist(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessage("Interceptor class 'NotARealInterceptor' does not exist.");
@@ -230,7 +230,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testRegisterInterceptorRegistersPreInterceptor(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $class = new class implements PreResolutionInterceptorInterface {
             public static function supports(object|string $target): bool
@@ -258,7 +258,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testRegisterInterceptorRegistersPostInterceptor(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $interceptor = new class implements PostResolutionInterceptorInterface {
             public static function supports(object|string $target): bool
@@ -287,7 +287,7 @@ class ServiceContainerTest extends TestCase
             ->method('allPost')
             ->willReturn(['PostInterceptor']);
 
-        $container = new ServiceContainer(interceptors: $interceptors);
+        $container = new ArgonContainer(interceptors: $interceptors);
 
         $this->assertSame(['PostInterceptor'], $container->getPostInterceptors());
     }
@@ -299,7 +299,7 @@ class ServiceContainerTest extends TestCase
             ->method('allPre')
             ->willReturn(['PreInterceptor']);
 
-        $container = new ServiceContainer(interceptors: $interceptors);
+        $container = new ArgonContainer(interceptors: $interceptors);
 
         $this->assertSame(['PreInterceptor'], $container->getPreInterceptors());
     }
@@ -311,7 +311,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testReflectionCacheUsed(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Get the ReflectionCache instance from the container
         $reflectionCacheProperty = new ReflectionProperty($container, 'reflectionCache');
@@ -343,7 +343,7 @@ class ServiceContainerTest extends TestCase
         $arguments->method('get')
             ->willReturn(['param1' => 'override1', 'param2' => 'override2']);
 
-        $container = new ServiceContainer($arguments);
+        $container = new ArgonContainer($arguments);
 
         $resolvedService = $container->get(TestServiceWithMultipleParams::class);
 
@@ -357,7 +357,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testCallResolvesMethodDependencies(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Provide a default value for the constructor dependency
         $container->bind(TestService::class, fn() => new TestService('constructorDependency'));
@@ -376,7 +376,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testCallResolvesMethodWithOverride(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Bind the TestService with its constructor dependency
         $container->bind(TestService::class, fn() => new TestService('constructorDependency'));
@@ -396,7 +396,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testThrowsContainerExceptionForNonInstantiableClass(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Expect a ContainerException for non-instantiable classes like UninstantiableClass
         $this->expectException(ContainerException::class);
@@ -415,7 +415,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testThrowsContainerExceptionForCircularDependency(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Bind two services that cause a circular dependency
         $container->singleton('A', fn() => $container->get('B'));
@@ -440,7 +440,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testThrowsContainerExceptionForUnresolvedPrimitive(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Expect a ContainerException with the fully qualified class name
         $this->expectException(ContainerException::class);
@@ -457,7 +457,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testThrowsNotFoundExceptionForNonExistentDependency(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Expect a NotFoundException for the missing dependency class
         $this->expectException(NotFoundException::class);
@@ -473,7 +473,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testSingletonReturnsSameInstance(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Bind a singleton service
         $container->singleton('service', fn() => new stdClass());
@@ -492,7 +492,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testTransientReturnsDifferentInstances(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Bind a non-singleton service
         $container->bind('service', fn() => new stdClass());
@@ -511,7 +511,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testServiceReceivesDependencyThroughAutowiring(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Fetch the service
         $service = $container->get(TestServiceWithDependency::class);
@@ -526,7 +526,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testServiceReceivesDependencyWithoutAutowiring(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Manually bind the service with its dependency
         $container->bind(
@@ -547,7 +547,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testInterfaceToClassResolution(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Bind the interface to a concrete class
         $container->bind(TestInterface::class, TestConcreteClass::class);
@@ -564,7 +564,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testInterfaceResolutionThrowsExceptionIfNotBound(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Try to fetch an interface without binding
         $this->expectException(NotFoundException::class);
@@ -577,7 +577,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testConcreteClassIsResolved(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // No manual binding required, it should autowire
         $instance = $container->get(TestConcreteClass::class);
@@ -592,7 +592,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testBindingClassToItselfWorksFabulously(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         $container->bind(TestConcreteClass::class, TestConcreteClass::class);
 
@@ -614,7 +614,7 @@ class ServiceContainerTest extends TestCase
                 'param2' => 123            // Override for int param
             ]);
 
-        $container = new ServiceContainer($arguments);
+        $container = new ArgonContainer($arguments);
 
         // Test the service resolution with overrides
         $service = $container->get(TestServiceWithMultipleParams::class);
@@ -629,7 +629,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testRecursiveDependencyResolution(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Assuming TestServiceWithDependency depends on TestDependency
         $container->bind(
@@ -653,7 +653,7 @@ class ServiceContainerTest extends TestCase
         $arguments->method('get')
             ->willReturn(['param1' => 'override1', 'param2' => 123]);
 
-        $container = new ServiceContainer($arguments);
+        $container = new ArgonContainer($arguments);
 
         $service = $container->get(TestServiceWithMultipleParams::class);
 
@@ -667,7 +667,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testLazyLoadingOfServices(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Use a flag to track instantiation
         $isInstantiated = false;
@@ -695,7 +695,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testAutowiringWithEmptyConstructor(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $instance = $container->get(ClassWithEmptyConstructor::class);
 
         $this->assertInstanceOf(ClassWithEmptyConstructor::class, $instance);
@@ -707,7 +707,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testMultipleServicesResolution(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         for ($i = 0; $i < 1000; $i++) {
             $container->singleton("service$i", fn() => new stdClass());
@@ -721,7 +721,7 @@ class ServiceContainerTest extends TestCase
 
     public function testCanResolveReturnsTrueForExistingClass(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
         $this->assertTrue($container->isResolvable(stdClass::class));
         $this->assertFalse($container->isResolvable('NonExistentClass'));
     }
@@ -732,7 +732,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testExtendOverridesResolvedService(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // Original service
         $container->singleton(stdClass::class, fn() => new stdClass());
@@ -764,7 +764,7 @@ class ServiceContainerTest extends TestCase
      */
     public function testResolvesNestedDependencies(): void
     {
-        $container = new ServiceContainer();
+        $container = new ArgonContainer();
 
         // No bindings needed, just pure autowiring magic.
         $instance = $container->get(UserService::class);
@@ -792,7 +792,7 @@ class ServiceContainerTest extends TestCase
             ->method('singleton')
             ->with($id, $concrete);
 
-        $container = new ServiceContainer(
+        $container = new ArgonContainer(
             arguments: $arguments,
             binder: $binder
         );
@@ -813,7 +813,7 @@ class ServiceContainerTest extends TestCase
             ->method('getDescriptors')
             ->willReturn($bindings);
 
-        $container = new ServiceContainer(binder: $binder);
+        $container = new ArgonContainer(binder: $binder);
 
         $this->assertSame($bindings, $container->getBindings());
     }
@@ -825,7 +825,7 @@ class ServiceContainerTest extends TestCase
             ->method('all')
             ->willReturn(['group1' => ['serviceA', 'serviceB']]);
 
-        $container = new ServiceContainer(tags: $mockTags);
+        $container = new ArgonContainer(tags: $mockTags);
 
         $this->assertSame(['group1' => ['serviceA', 'serviceB']], $container->getTags());
     }

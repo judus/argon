@@ -23,12 +23,12 @@ use Maduser\Argon\Container\Support\NullServiceProxy;
  */
 class Container
 {
-    private static ?ServiceContainer $instance = null;
+    private static ?ArgonContainer $instance = null;
 
     /**
      * Sets the current container instance to use statically.
      */
-    public static function set(ServiceContainer $container): void
+    public static function set(ArgonContainer $container): void
     {
         self::$instance = $container;
     }
@@ -36,9 +36,9 @@ class Container
     /**
      * Gets the current container instance, or creates one if none is set.
      */
-    public static function instance(): ServiceContainer
+    public static function instance(): ArgonContainer
     {
-        return self::$instance ??= new ServiceContainer();
+        return self::$instance ??= new ArgonContainer();
     }
 
     /**

@@ -7,7 +7,7 @@ namespace Tests\Unit\Container;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\TagManager;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -16,11 +16,11 @@ use stdClass;
 class TagManagerTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
-    private ServiceContainer&MockObject $container;
+    private ArgonContainer&MockObject $container;
 
     protected function setUp(): void
     {
-        $this->container = $this->createMock(ServiceContainer::class);
+        $this->container = $this->createMock(ArgonContainer::class);
     }
 
     public function testTagAddsSingleAndMultipleTags(): void

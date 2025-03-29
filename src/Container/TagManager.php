@@ -20,7 +20,7 @@ final class TagManager implements TagManagerInterface
     private array $tags = [];
 
     public function __construct(
-        private readonly ServiceContainer $container
+        private readonly ArgonContainer $container
     ) {
     }
 

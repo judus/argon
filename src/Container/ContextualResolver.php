@@ -18,7 +18,7 @@ use ReflectionException;
 final readonly class ContextualResolver implements ContextualResolverInterface
 {
     public function __construct(
-        private ServiceContainer $container,
+        private ArgonContainer $container,
         private ContextualBindingsInterface $bindings
     ) {
     }

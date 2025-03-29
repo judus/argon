@@ -8,7 +8,7 @@ use Exception;
 use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
-use Maduser\Argon\Container\ServiceContainer;
+use Maduser\Argon\Container\ArgonContainer;
 use Nette\PhpGenerator\PhpFile;
 use ReflectionClass;
 use ReflectionException;
@@ -21,7 +21,7 @@ final class ContainerCompiler
     private ContextualBindingsInterface $contextualBindings;
 
     public function __construct(
-        private readonly ServiceContainer $container
+        private readonly ArgonContainer $container
     ) {
         $this->argumentMap = $container->getArgumentMap();
         $this->contextualBindings = $container->getContextualBindings();
@@ -37,9 +37,9 @@ final class ContainerCompiler
         $file->setStrictTypes();
 
         $namespaceGen = $file->addNamespace($namespace);
-        $namespaceGen->addUse(ServiceContainer::class);
+        $namespaceGen->addUse(ArgonContainer::class);
         $class = $namespaceGen->addClass($className);
-        $class->setExtends(ServiceContainer::class);
+        $class->setExtends(ArgonContainer::class);
 
         $constructor = $class->addMethod('__construct')
             ->setPublic();
