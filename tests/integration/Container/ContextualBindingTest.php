@@ -29,8 +29,8 @@ class ContextualBindingTest extends TestCase
         $container->bind(ServiceA::class);
         $container->bind(ServiceB::class);
 
-        $container->for(ServiceA::class)->set(LoggerInterface::class, FileLogger::class);
-        $container->for(ServiceB::class)->set(LoggerInterface::class, DatabaseLogger::class);
+        $container->for(ServiceA::class)->bind(LoggerInterface::class, FileLogger::class);
+        $container->for(ServiceB::class)->bind(LoggerInterface::class, DatabaseLogger::class);
 
         $a = $container->get(ServiceA::class);
         $b = $container->get(ServiceB::class);
@@ -49,7 +49,7 @@ class ContextualBindingTest extends TestCase
 
         $container->bind(ServiceA::class);
 
-        $container->for(ServiceA::class)->set(LoggerInterface::class, function (): LoggerInterface {
+        $container->for(ServiceA::class)->bind(LoggerInterface::class, function (): LoggerInterface {
             return new FileLogger();
         });
 

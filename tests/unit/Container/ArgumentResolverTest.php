@@ -260,7 +260,7 @@ class ArgumentResolverTest extends TestCase
         $dummyMap = $this->createStub(ArgumentMapInterface::class);
 
         // Real contextual binding setup
-        $contextualBindings->set(UnionExample::class, Logger::class, Logger::class);
+        $contextualBindings->bind(UnionExample::class, Logger::class, Logger::class);
 
         // Expect contextual resolver to be used
         $contextualResolver->expects($this->once())

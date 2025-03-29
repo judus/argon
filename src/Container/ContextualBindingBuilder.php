@@ -26,8 +26,8 @@ final readonly class ContextualBindingBuilder implements ContextualBindingBuilde
      * @param string|Closure $concrete The concrete implementation or a Closure factory.
      * @return void
      */
-    public function set(string $dependency, string|Closure $concrete): void
+    public function bind(string $dependency, string|Closure $concrete): void
     {
-        $this->registry->set($this->target, $dependency, $concrete);
+        $this->registry->bind($this->target, $dependency, $concrete);
     }
 }

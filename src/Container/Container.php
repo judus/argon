@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
-use Maduser\Argon\Container\Contracts\InterceptorInterface;
+use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
 use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\Support\NullServiceProxy;
 
 /**
  * Static proxy for the Argon service container.
@@ -142,6 +142,8 @@ class Container
 
     /**
      * Calls the `boot()` method on all registered service providers.
+     *
+     * @throws NotFoundException|ContainerException
      */
     public static function boot(): void
     {
@@ -251,5 +253,21 @@ class Container
     public static function parameters(): ParameterStoreInterface
     {
         return self::instance()->getParameters();
+    }
+
+    /**
+     * Gets access to the argument map.
+     */
+    public static function arguments(): ArgumentMapInterface
+    {
+        return self::instance()->getArgumentMap();
+    }
+
+    /**
+     * Gets access to the contextual binding registry.
+     */
+    public static function contextualBindings(): ContextualBindingsInterface
+    {
+        return self::instance()->getContextualBindings();
     }
 }

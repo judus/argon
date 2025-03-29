@@ -14,7 +14,7 @@ class ContextualBindingsTest extends TestCase
     {
         $bindings = new ContextualBindings();
 
-        $bindings->set('ConsumerA', 'DependencyX', 'ConcreteService');
+        $bindings->bind('ConsumerA', 'DependencyX', 'ConcreteService');
 
         $this->assertSame('ConcreteService', $bindings->get('ConsumerA', 'DependencyX'));
     }
@@ -23,9 +23,9 @@ class ContextualBindingsTest extends TestCase
     {
         $bindings = new ContextualBindings();
 
-        $bindings->set('ConsumerA', 'DepA', 'ConcreteA');
-        $bindings->set('ConsumerA', 'DepB', 'ConcreteB');
-        $bindings->set('ConsumerB', 'DepC', fn() => 'ClosureResult');
+        $bindings->bind('ConsumerA', 'DepA', 'ConcreteA');
+        $bindings->bind('ConsumerA', 'DepB', 'ConcreteB');
+        $bindings->bind('ConsumerB', 'DepC', fn() => 'ClosureResult');
 
         $result = $bindings->getBindings();
 
@@ -42,7 +42,7 @@ class ContextualBindingsTest extends TestCase
         $bindings = new ContextualBindings();
 
         $closure = fn(): string => 'resolved';
-        $bindings->set('ConsumerB', 'DependencyY', $closure);
+        $bindings->bind('ConsumerB', 'DependencyY', $closure);
 
         $this->assertSame($closure, $bindings->get('ConsumerB', 'DependencyY'));
     }
@@ -57,7 +57,7 @@ class ContextualBindingsTest extends TestCase
     public function testHasReturnsTrueWhenBindingExists(): void
     {
         $bindings = new ContextualBindings();
-        $bindings->set('ConsumerC', 'DependencyZ', 'ConcreteZ');
+        $bindings->bind('ConsumerC', 'DependencyZ', 'ConcreteZ');
 
         $this->assertTrue($bindings->has('ConsumerC', 'DependencyZ'));
     }
@@ -73,8 +73,8 @@ class ContextualBindingsTest extends TestCase
     {
         $bindings = new ContextualBindings();
 
-        $bindings->set('ConsumerA', 'DependencyX', 'FirstValue');
-        $bindings->set('ConsumerA', 'DependencyX', 'OverwrittenValue');
+        $bindings->bind('ConsumerA', 'DependencyX', 'FirstValue');
+        $bindings->bind('ConsumerA', 'DependencyX', 'OverwrittenValue');
 
         $this->assertSame('OverwrittenValue', $bindings->get('ConsumerA', 'DependencyX'));
     }
@@ -83,8 +83,8 @@ class ContextualBindingsTest extends TestCase
     {
         $bindings = new ContextualBindings();
 
-        $bindings->set('Consumer1', 'SharedDependency', 'Value1');
-        $bindings->set('Consumer2', 'SharedDependency', 'Value2');
+        $bindings->bind('Consumer1', 'SharedDependency', 'Value1');
+        $bindings->bind('Consumer2', 'SharedDependency', 'Value2');
 
         $this->assertSame('Value1', $bindings->get('Consumer1', 'SharedDependency'));
         $this->assertSame('Value2', $bindings->get('Consumer2', 'SharedDependency'));
@@ -94,7 +94,7 @@ class ContextualBindingsTest extends TestCase
     {
         $bindings = new ContextualBindings();
 
-        $bindings->set('ConsumerD', 'DependencyW', fn(): string => 'works');
+        $bindings->bind('ConsumerD', 'DependencyW', fn(): string => 'works');
 
         $closure = $bindings->get('ConsumerD', 'DependencyW');
 
@@ -106,8 +106,8 @@ class ContextualBindingsTest extends TestCase
     {
         $bindings = new ContextualBindings();
 
-        $bindings->set('ConsumerE', 'Dep1', 'A');
-        $bindings->set('ConsumerE', 'Dep2', 'B');
+        $bindings->bind('ConsumerE', 'Dep1', 'A');
+        $bindings->bind('ConsumerE', 'Dep2', 'B');
 
         $this->assertSame('A', $bindings->get('ConsumerE', 'Dep1'));
         $this->assertSame('B', $bindings->get('ConsumerE', 'Dep2'));
