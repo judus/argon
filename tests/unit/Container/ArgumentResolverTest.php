@@ -270,13 +270,12 @@ class ArgumentResolverTest extends TestCase
 
         $resolver = new ArgumentResolver($contextualResolver, $dummyMap, $contextualBindings);
 
-        $param = (new \ReflectionClass(UnionExample::class))
-            ->getConstructor()
-            ->getParameters()[0];
-
-        $result = $resolver->resolve($param);
+        if ($constructor = (new \ReflectionClass(UnionExample::class))->getConstructor()) {
+            $result = $resolver->resolve($constructor->getParameters()[0]);
+        } else {
+            $result = null;
+        }
 
         $this->assertInstanceOf(Logger::class, $result);
     }
-
 }

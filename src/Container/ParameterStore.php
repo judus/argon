@@ -11,6 +11,11 @@ final class ParameterStore implements ParameterStoreInterface
     /** @var array<string, mixed> */
     private array $store = [];
 
+    public function setStore(array $store): void
+    {
+        $this->store = $store;
+    }
+
     public function set(string $key, mixed $value): void
     {
         $this->store[$key] = $value;

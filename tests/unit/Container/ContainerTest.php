@@ -12,6 +12,7 @@ use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Interceptors\Post\ValidationInterceptor;
 use Maduser\Argon\Container\ParameterStore;
 use Maduser\Argon\Container\ServiceContainer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -177,9 +178,9 @@ class ContainerTest extends TestCase
     {
         $this->mockContainer->expects($this->once())
             ->method('registerInterceptor')
-            ->with(InterceptorInterface::class);
+            ->with(ValidationInterceptor::class);
 
-        Container::registerInterceptor(InterceptorInterface::class);
+        Container::registerInterceptor(ValidationInterceptor::class);
     }
 
     public function testTagDelegatesToContainer(): void

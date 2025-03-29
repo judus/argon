@@ -6,6 +6,7 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
+use Maduser\Argon\Container\Contracts\InterceptorInterface;
 use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
 use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
@@ -162,7 +163,7 @@ class Container
      *
      * Interceptors can modify resolved services that match specific criteria.
      *
-     * @param class-string<InterceptorInterface> $class
+     * @param class-string $class
      * @throws ContainerException
      */
     public static function registerInterceptor(string $class): void

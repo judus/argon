@@ -45,24 +45,24 @@ class ServiceContainer implements ContainerInterface
     private readonly ArgumentResolverInterface $argumentResolver;
     private readonly ServiceBinderInterface $binder;
     private readonly ArgumentMapInterface $arguments;
-    private readonly ParameterStoreInterface $parameters;
+    private readonly ParameterStoreInterface $parameterStore;
 
     public function __construct(
-        ?ArgumentMapInterface                         $arguments = null,
-        ?ParameterStoreInterface                      $parameters = null,
-        private readonly ReflectionCacheInterface     $reflectionCache = new ReflectionCache(),
+        ?ArgumentMapInterface $arguments = null,
+        ?ParameterStoreInterface $parameters = null,
+        private readonly ReflectionCacheInterface $reflectionCache = new ReflectionCache(),
         private readonly InterceptorRegistryInterface $interceptors = new InterceptorRegistry(),
-        ?TagManagerInterface                          $tags = null,
-        ?CallableInvoker                              $invoker = null,
-        ?ContextualBindingsInterface                  $contextualRegistry = null,
-        ?ContextualResolverInterface                  $contextual = null,
-        ?ServiceProviderRegistryInterface             $providers = null,
-        ?ServiceResolverInterface                     $serviceResolver = null,
-        ?ArgumentResolverInterface                    $argumentResolver = null,
-        ?ServiceBinderInterface                       $binder = null,
+        ?TagManagerInterface $tags = null,
+        ?CallableInvoker $invoker = null,
+        ?ContextualBindingsInterface $contextualRegistry = null,
+        ?ContextualResolverInterface $contextual = null,
+        ?ServiceProviderRegistryInterface $providers = null,
+        ?ServiceResolverInterface $serviceResolver = null,
+        ?ArgumentResolverInterface $argumentResolver = null,
+        ?ServiceBinderInterface $binder = null,
     ) {
         $this->arguments = $arguments ?? new ArgumentMap();
-        $this->parameters = $parameters ?? new ParameterStore();
+        $this->parameterStore = $parameters ?? new ParameterStore();
         $this->contextualBindings = $contextualRegistry ?? new ContextualBindings();
         $this->contextual = $contextual ?? new ContextualResolver($this, $this->contextualBindings);
         $this->tags = $tags ?? new TagManager($this);
@@ -88,6 +88,16 @@ class ServiceContainer implements ContainerInterface
             $this->serviceResolver,
             $this->argumentResolver
         );
+    }
+
+    public function getArgumentMap(): ArgumentMapInterface
+    {
+        return $this->arguments;
+    }
+
+    public function getContextualBindings(): ContextualBindingsInterface
+    {
+        return $this->contextualBindings;
     }
 
     /**
@@ -151,7 +161,7 @@ class ServiceContainer implements ContainerInterface
 
     public function getParameters(): ParameterStoreInterface
     {
-        return $this->parameters;
+        return $this->parameterStore;
     }
 
     public function registerFactory(string $id, callable $factory, bool $isSingleton = true): ServiceContainer
@@ -176,7 +186,7 @@ class ServiceContainer implements ContainerInterface
     /**
      * Registers an interceptor (pre- or post-resolution).
      *
-     * @param class-string<InterceptorInterface> $interceptorClass
+     * @param class-string $interceptorClass
      * @throws ContainerException
      */
     public function registerInterceptor(string $interceptorClass): ServiceContainer
