@@ -7,6 +7,7 @@ namespace Maduser\Argon\Container;
 use Closure;
 use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
+use Maduser\Argon\Container\Contracts\BindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
@@ -67,7 +68,7 @@ class ArgonContainer implements ContainerInterface
         $this->contextual = $contextual ?? new ContextualResolver($this, $this->contextualBindings);
         $this->tags = $tags ?? new TagManager($this);
         $this->providers = $providers ?? new ServiceProviderRegistry($this);
-        $this->binder = $binder ?? new ServiceBinder();
+        $this->binder = $binder ?? new ServiceBinder($this->tags);
 
         $reflectionCache = $reflectionCache ?? new ReflectionCache();
 
@@ -126,7 +127,7 @@ class ArgonContainer implements ContainerInterface
      * @param Closure|string|null $concrete
      * @param bool $isSingleton
      * @param array<array-key, mixed>|null $args
-     * @return $this
+     * @return BindingBuilderInterface
      * @throws ContainerException
      */
     public function bind(
@@ -134,7 +135,8 @@ class ArgonContainer implements ContainerInterface
         Closure|string|null $concrete = null,
         bool $isSingleton = false,
         ?array $args = null
-    ): BindingBuilder {
+    ): BindingBuilderInterface
+    {
 
         if ($args !== null) {
             $this->arguments->set($id, $args);
@@ -148,10 +150,10 @@ class ArgonContainer implements ContainerInterface
      * @param string $id
      * @param Closure|string|null $concrete
      * @param array|null $args
-     * @return BindingBuilder
+     * @return BindingBuilderInterface
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null, ?array $args = null): BindingBuilder
+    public function singleton(string $id, Closure|string|null $concrete = null, ?array $args = null): BindingBuilderInterface
     {
         if ($args !== null) {
             $this->arguments->set($id, $args);

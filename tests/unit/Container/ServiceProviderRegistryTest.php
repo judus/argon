@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
+use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ArgonContainer;
@@ -32,7 +33,10 @@ class ServiceProviderRegistryTest extends TestCase
      */
     public function testRegisterValidProvider(): void
     {
-        $binder = new ServiceBinder();
+        $binder = new ServiceBinder(
+            $this->createMock(TagManagerInterface::class)
+        );
+
         $this->container = $this->getMockBuilder(ArgonContainer::class)
             ->onlyMethods(['singleton', 'tag', 'get'])
             ->setConstructorArgs([ 'binder' => $binder ])

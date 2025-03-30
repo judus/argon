@@ -19,6 +19,7 @@ use Tests\Integration\Mocks\Pre2;
 use Tests\Integration\Mocks\PreArgOverride;
 use Tests\Integration\Mocks\ShortCircuitInterceptor;
 use Tests\Integration\Mocks\SimpleService;
+use Tests\Integration\Mocks\SingletonPostInterceptor;
 
 final class InterceptorTest extends TestCase
 {
@@ -86,4 +87,25 @@ final class InterceptorTest extends TestCase
         $this->assertTrue($instance->post1, 'Post1 should have marked the instance');
         $this->assertTrue($instance->post2, 'Post2 should have marked the instance');
     }
+
+    /**
+     * @throws NotFoundException
+     * @throws ContainerException
+     */
+    public function testPostInterceptorRunsOnlyOnceForSingleton(): void
+    {
+        InterceptedClass::reset();
+
+        $container = new ArgonContainer();
+
+        $container->registerInterceptor(PostHook::class);
+        $container->singleton(InterceptedClass::class);
+
+        $a = $container->get(InterceptedClass::class);
+        $b = $container->get(InterceptedClass::class);
+
+        $this->assertSame($a, $b);
+        $this->assertSame(1, InterceptedClass::$validatedCalls);
+    }
+
 }

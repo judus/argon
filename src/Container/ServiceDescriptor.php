@@ -14,6 +14,8 @@ use Maduser\Argon\Container\Exceptions\ContainerException;
  */
 final class ServiceDescriptor implements ServiceDescriptorInterface
 {
+    private string $id;
+
     /**
      * @var class-string|Closure
      */
@@ -39,15 +41,22 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
     private ?string $factoryMethod = null;
 
     /**
+     * @param string $id
      * @param class-string|Closure $concrete
      * @param bool $isSingleton
      * @param array<string, mixed> $arguments
      */
-    public function __construct(string|Closure $concrete, bool $isSingleton, array $arguments = [])
+    public function __construct(string $id, string|Closure $concrete, bool $isSingleton, array $arguments = [])
     {
+        $this->id = $id;
         $this->concrete = $concrete;
         $this->isSingleton = $isSingleton;
         $this->arguments = $arguments;
+    }
+
+    public function getId(): string
+    {
+        return $this->id;
     }
 
     public function isSingleton(): bool
@@ -83,14 +92,27 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
         return $this->arguments;
     }
 
+    /**
+     * @param class-string $class
+     * @param string|null $method
+     * @throws ContainerException
+     */
     public function setFactory(string $class, ?string $method = null): void
     {
-        if (!method_exists($class, $method ?? '__invoke')) {
-            throw new \InvalidArgumentException(sprintf(
-                'Factory method "%s" not found on class "%s".',
-                $method ?? '__invoke',
-                $class
-            ));
+        if (!class_exists($class)) {
+            throw new ContainerException(
+                sprintf('Factory class "%s" does not exist.', $class)
+            );
+        }
+
+        if ($method === null) {
+            $method = '__invoke';
+        }
+
+        if (!method_exists($class, $method)) {
+            throw new ContainerException(
+                sprintf('Factory method "%s" not found on class "%s".', $method, $class)
+            );
         }
 
         $this->factoryClass = $class;
@@ -102,15 +124,8 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
         return $this->factoryClass !== null;
     }
 
-    /**
-     * @throws ContainerException
-     */
-    public function getFactoryClass(): string
+    public function getFactoryClass(): ?string
     {
-        if ($this->factoryClass === null) {
-            throw new ContainerException('Factory class is not set.');
-        }
-
         return $this->factoryClass;
     }
 

@@ -12,6 +12,7 @@ use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
+use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Interceptors\Post\ValidationInterceptor;
@@ -63,7 +64,10 @@ class ContainerTest extends TestCase
      */
     public function testBindDelegatesToContainer(): void
     {
-        $binder = new ServiceBinder();
+        $binder = new ServiceBinder(
+            $this->createMock(TagManagerInterface::class)
+        );
+
         $builder = $binder->singleton(SomeClass::class);
 
         $this->mockContainer
@@ -83,7 +87,10 @@ class ContainerTest extends TestCase
      */
     public function testSingletonDelegatesToContainer(): void
     {
-        $binder = new ServiceBinder();
+        $binder = new ServiceBinder(
+            $this->createMock(TagManagerInterface::class)
+        );
+
         $container = new ArgonContainer(binder: $binder);
 
         Container::set($container);

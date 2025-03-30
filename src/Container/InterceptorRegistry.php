@@ -21,6 +21,17 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
     private array $pre = [];
 
     /**
+     * @var PostResolutionInterceptorInterface[]
+     */
+    private array $postInstances = [];
+
+    /**
+     * @var PreResolutionInterceptorInterface[]
+     */
+    private array $preInstances = [];
+
+
+    /**
      * @throws ContainerException
      */
     public function registerPost(string $interceptor): void
@@ -89,8 +100,14 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
     public function matchPost(object $instance): object
     {
         foreach ($this->post as $interceptorClass) {
+            if (!isset($this->postInstances[$interceptorClass])) {
+                $this->postInstances[$interceptorClass] = new $interceptorClass();
+            }
+
+            $interceptor = $this->postInstances[$interceptorClass];
+
             if ($interceptorClass::supports($instance)) {
-                (new $interceptorClass())->intercept($instance);
+                $interceptor->intercept($instance);
             }
         }
 
@@ -106,11 +123,15 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
     public function matchPre(string $id, array &$parameters = []): ?object
     {
         foreach ($this->pre as $interceptorClass) {
-            if ($interceptorClass::supports($id)) {
-                $result = (new $interceptorClass())->intercept($id, $parameters);
+            if (!isset($this->preInstances[$interceptorClass])) {
+                $this->preInstances[$interceptorClass] = new $interceptorClass();
+            }
 
-                if ($result !== null) {
-                    return $result;
+            if ($interceptorClass::supports($id)) {
+                $instance = $this->preInstances[$interceptorClass]->intercept($id, $parameters);
+
+                if ($instance !== null) {
+                    return $instance;
                 }
             }
         }

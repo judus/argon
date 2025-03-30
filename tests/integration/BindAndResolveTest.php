@@ -8,13 +8,17 @@ use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
+use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Mocks\Bar;
 use Tests\Integration\Mocks\Concrete;
 use Tests\Integration\Mocks\Foo;
+use Tests\Integration\Mocks\FooFactory;
+use Tests\Integration\Mocks\InvokableFactory;
 use Tests\Integration\Mocks\MyInterface;
 use Tests\Integration\Mocks\NeedsSomethingUnresolvable;
 use Tests\Integration\Mocks\OtherConcrete;
 use Tests\Integration\Mocks\Silent;
+use Tests\Integration\Mocks\UsesLogger;
 
 final class BindAndResolveTest extends TestCase
 {
@@ -261,4 +265,26 @@ final class BindAndResolveTest extends TestCase
         $container->bind('InvalidInterface', 'Fake\Concrete\Missing');
         $container->get('InvalidInterface');
     }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testCanTagServiceDuringBindFluently(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->bind(Logger::class)->tag(['loggers', 'debug']);
+        $container->bind('foo', Foo::class)
+            ->tag('loggers')
+            ->useFactory(InvokableFactory::class)
+            ->tag('some-other-tag');
+
+        $tagged = $container->getTagged('loggers');
+
+        $this->assertCount(2, $tagged);
+        $this->assertInstanceOf(Logger::class, $tagged[0]);
+        $this->assertInstanceOf(Foo::class, $tagged[1]);
+    }
+
 }

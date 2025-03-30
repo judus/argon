@@ -6,6 +6,7 @@ namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\AbstractServiceProvider;
 use Maduser\Argon\Container\ArgonContainer;
+use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\ServiceBinder;
 use PHPUnit\Framework\TestCase;
@@ -35,7 +36,9 @@ class AbstractServiceProviderTest extends TestCase
      */
     public function testCanBeExtendedWithRegister(): void
     {
-        $binder = new ServiceBinder();
+        $binder = new ServiceBinder(
+            $this->createMock(TagManagerInterface::class)
+        );
 
         $container = $this->getMockBuilder(ArgonContainer::class)
             ->onlyMethods(['singleton'])

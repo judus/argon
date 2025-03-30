@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
+use Maduser\Argon\Container\Contracts\BindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
+use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 
 /**
@@ -18,6 +20,11 @@ final class ServiceBinder implements ServiceBinderInterface
      * @var array<string, ServiceDescriptor>
      */
     private array $descriptors = [];
+
+    public function __construct(
+        private readonly TagManagerInterface $tagManager
+    ) {
+    }
 
     /**
      * @return array<string, ServiceDescriptor>
@@ -43,10 +50,10 @@ final class ServiceBinder implements ServiceBinderInterface
      * @param string $id
      * @param Closure|string|null $concrete
      * @param array<string, mixed> $args
-     * @return BindingBuilder
+     * @return BindingBuilderInterface
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null, array $args = []): BindingBuilder
+    public function singleton(string $id, Closure|string|null $concrete = null, array $args = []): BindingBuilderInterface
     {
         return $this->bind($id, $concrete, true, $args);
     }
@@ -58,7 +65,7 @@ final class ServiceBinder implements ServiceBinderInterface
      * @param Closure|string|null $concrete
      * @param bool $isSingleton
      * @param array<string, mixed> $args
-     * @return BindingBuilder
+     * @return BindingBuilderInterface
      * @throws ContainerException
      */
     public function bind(
@@ -66,17 +73,17 @@ final class ServiceBinder implements ServiceBinderInterface
         Closure|string|null $concrete = null,
         bool $isSingleton = false,
         array $args = []
-    ): BindingBuilder {
+    ): BindingBuilderInterface {
         $concrete ??= $id;
 
         if (!$concrete instanceof Closure && !class_exists($concrete)) {
             throw ContainerException::fromServiceId($id, "Class '$concrete' does not exist.");
         }
 
-        $descriptor = new ServiceDescriptor($concrete, $isSingleton, $args);
+        $descriptor = new ServiceDescriptor($id, $concrete, $isSingleton, $args);
         $this->descriptors[$id] = $descriptor;
 
-        return new BindingBuilder($descriptor);
+        return new BindingBuilder($descriptor, $this->tagManager);
     }
 
     /**
@@ -89,6 +96,7 @@ final class ServiceBinder implements ServiceBinderInterface
     public function registerFactory(string $id, callable $factory, bool $singleton = true): void
     {
         $this->descriptors[$id] = new ServiceDescriptor(
+            $id,
             static fn(): mixed => $factory(),
             $singleton
         );
