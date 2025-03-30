@@ -22,4 +22,13 @@ interface ServiceDescriptorInterface
     public function getArguments(): array;
 
     public function storeInstance(object $instance): void;
+
+    public function hasFactory(): bool;
+
+    /**
+     * @return class-string
+     */
+    public function getFactoryClass(): string;
+
+    public function getFactoryMethod(): string;
 }

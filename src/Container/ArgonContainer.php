@@ -134,15 +134,13 @@ class ArgonContainer implements ContainerInterface
         Closure|string|null $concrete = null,
         bool $isSingleton = false,
         ?array $args = null
-    ): ArgonContainer {
+    ): BindingBuilder {
 
         if ($args !== null) {
             $this->arguments->set($id, $args);
         }
 
-        $this->binder->bind($id, $concrete, $isSingleton);
-
-        return $this;
+        return $this->binder->bind($id, $concrete, $isSingleton);
     }
 
 
@@ -150,18 +148,16 @@ class ArgonContainer implements ContainerInterface
      * @param string $id
      * @param Closure|string|null $concrete
      * @param array|null $args
-     * @return $this
+     * @return BindingBuilder
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null, ?array $args = null): ArgonContainer
+    public function singleton(string $id, Closure|string|null $concrete = null, ?array $args = null): BindingBuilder
     {
         if ($args !== null) {
             $this->arguments->set($id, $args);
         }
 
-        $this->binder->singleton($id, $concrete);
-
-        return $this;
+        return $this->binder->singleton($id, $concrete);
     }
 
     /**

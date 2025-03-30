@@ -6,10 +6,11 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
+use Maduser\Argon\Container\Exceptions\ContainerException;
 
 /**
  * Holds metadata about a service: its concrete implementation, singleton status,
- * and optional constructor arguments.
+ * optional constructor arguments, and optionally a factory.
  */
 final class ServiceDescriptor implements ServiceDescriptorInterface
 {
@@ -26,6 +27,16 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
      * @var array<string, mixed>
      */
     private array $arguments;
+
+    /**
+     * @var class-string|null
+     */
+    private ?string $factoryClass = null;
+
+    /**
+     * @var string|null
+     */
+    private ?string $factoryMethod = null;
 
     /**
      * @param class-string|Closure $concrete
@@ -70,5 +81,41 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
     public function getArguments(): array
     {
         return $this->arguments;
+    }
+
+    public function setFactory(string $class, ?string $method = null): void
+    {
+        if (!method_exists($class, $method ?? '__invoke')) {
+            throw new \InvalidArgumentException(sprintf(
+                'Factory method "%s" not found on class "%s".',
+                $method ?? '__invoke',
+                $class
+            ));
+        }
+
+        $this->factoryClass = $class;
+        $this->factoryMethod = $method;
+    }
+
+    public function hasFactory(): bool
+    {
+        return $this->factoryClass !== null;
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function getFactoryClass(): string
+    {
+        if ($this->factoryClass === null) {
+            throw new ContainerException('Factory class is not set.');
+        }
+
+        return $this->factoryClass;
+    }
+
+    public function getFactoryMethod(): string
+    {
+        return $this->factoryMethod ?? '__invoke';
     }
 }

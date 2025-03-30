@@ -64,9 +64,9 @@ class Container
      *
      * @throws ContainerException
      */
-    public static function bind(string $id, Closure|string|null $concrete = null, bool $singleton = false): void
+    public static function bind(string $id, Closure|string|null $concrete = null, bool $singleton = false): BindingBuilder
     {
-        self::instance()->bind($id, $concrete, $singleton);
+        return self::instance()->bind($id, $concrete, $singleton);
     }
 
     /**
@@ -76,9 +76,9 @@ class Container
      *
      * @throws ContainerException
      */
-    public static function singleton(string $id, Closure|string|null $concrete = null): void
+    public static function singleton(string $id, Closure|string|null $concrete = null): BindingBuilder
     {
-        self::instance()->singleton($id, $concrete);
+        return self::instance()->singleton($id, $concrete);
     }
 
     /**

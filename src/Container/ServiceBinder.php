@@ -43,11 +43,12 @@ final class ServiceBinder implements ServiceBinderInterface
      * @param string $id
      * @param Closure|string|null $concrete
      * @param array<string, mixed> $args
+     * @return BindingBuilder
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null, array $args = []): void
+    public function singleton(string $id, Closure|string|null $concrete = null, array $args = []): BindingBuilder
     {
-        $this->bind($id, $concrete, true, $args);
+        return $this->bind($id, $concrete, true, $args);
     }
 
     /**
@@ -57,6 +58,7 @@ final class ServiceBinder implements ServiceBinderInterface
      * @param Closure|string|null $concrete
      * @param bool $isSingleton
      * @param array<string, mixed> $args
+     * @return BindingBuilder
      * @throws ContainerException
      */
     public function bind(
@@ -64,14 +66,17 @@ final class ServiceBinder implements ServiceBinderInterface
         Closure|string|null $concrete = null,
         bool $isSingleton = false,
         array $args = []
-    ): void {
+    ): BindingBuilder {
         $concrete ??= $id;
 
         if (!$concrete instanceof Closure && !class_exists($concrete)) {
             throw ContainerException::fromServiceId($id, "Class '$concrete' does not exist.");
         }
 
-        $this->descriptors[$id] = new ServiceDescriptor($concrete, $isSingleton, $args);
+        $descriptor = new ServiceDescriptor($concrete, $isSingleton, $args);
+        $this->descriptors[$id] = $descriptor;
+
+        return new BindingBuilder($descriptor);
     }
 
     /**

@@ -71,6 +71,41 @@ final class ServiceResolver implements ServiceResolverInterface
                 return $instance;
             }
 
+            if ($descriptor->hasFactory()) {
+                $factoryClass = $descriptor->getFactoryClass();
+                $method = $descriptor->getFactoryMethod();
+
+                // Validate method existence early
+                if (!method_exists($factoryClass, $method)) {
+                    throw ContainerException::fromServiceId($id, sprintf(
+                        'Factory method "%s" not found on class "%s".',
+                        $method,
+                        $factoryClass
+                    ));
+                }
+
+                $reflectionMethod = new \ReflectionMethod($factoryClass, $method);
+
+                if ($reflectionMethod->isStatic()) {
+                    /** @var object $instance */
+                    $instance = call_user_func_array([$factoryClass, $method], $args);
+
+                } else {
+                    $factoryInstance = $this->resolveClass($factoryClass);
+                    /** @var object $instance */
+                    $instance = call_user_func_array([$factoryInstance, $method], $args);
+                }
+
+                $instance = $this->interceptors->matchPost($instance);
+
+                if ($descriptor->isSingleton()) {
+                    $descriptor->storeInstance($instance);
+                }
+
+                $this->removeFromResolving($id);
+                return $instance;
+            }
+
             $concrete = $descriptor->getConcrete();
             $args = array_merge($descriptor->getArguments(), $args);
 
