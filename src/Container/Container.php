@@ -65,8 +65,11 @@ class Container
      *
      * @throws ContainerException
      */
-    public static function bind(string $id, Closure|string|null $concrete = null, bool $singleton = false): BindingBuilderInterface
-    {
+    public static function bind(
+        string $id,
+        Closure|string|null $concrete = null,
+        bool $singleton = false
+    ): BindingBuilderInterface {
         return self::instance()->bind($id, $concrete, $singleton);
     }
 

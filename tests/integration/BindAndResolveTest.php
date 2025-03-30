@@ -286,5 +286,4 @@ final class BindAndResolveTest extends TestCase
         $this->assertInstanceOf(Logger::class, $tagged[0]);
         $this->assertInstanceOf(Foo::class, $tagged[1]);
     }
-
 }

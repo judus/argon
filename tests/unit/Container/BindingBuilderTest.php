@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\ArgonContainer;
@@ -43,6 +45,4 @@ class BindingBuilderTest extends TestCase
         $this->assertInstanceOf(ServiceDescriptor::class, $descriptor);
         $this->assertSame(Foo::class, $descriptor->getConcrete());
     }
-
-
 }

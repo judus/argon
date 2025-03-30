@@ -29,4 +29,3 @@ final class InterceptedClass implements Validatable
         self::$validatedCalls = 0;
     }
 }
-

@@ -53,8 +53,11 @@ final class ServiceBinder implements ServiceBinderInterface
      * @return BindingBuilderInterface
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null, array $args = []): BindingBuilderInterface
-    {
+    public function singleton(
+        string $id,
+        Closure|string|null $concrete = null,
+        array $args = []
+    ): BindingBuilderInterface {
         return $this->bind($id, $concrete, true, $args);
     }
 

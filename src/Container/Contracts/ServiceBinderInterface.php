@@ -40,7 +40,11 @@ interface ServiceBinderInterface
      * @param bool $isSingleton
      * @throws ContainerException
      */
-    public function bind(string $id, Closure|string|null $concrete = null, bool $isSingleton = false): BindingBuilderInterface;
+    public function bind(
+        string $id,
+        Closure|string|null $concrete = null,
+        bool $isSingleton = false
+    ): BindingBuilderInterface;
 
     /**
      * Registers a runtime-only closure-based factory.

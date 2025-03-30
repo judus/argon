@@ -193,6 +193,4 @@ class ServiceDescriptorTest extends TestCase
 
         $method->invoke($resolver, Foo::class, $descriptor, []);
     }
-
-
 }

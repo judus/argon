@@ -107,5 +107,4 @@ final class InterceptorTest extends TestCase
         $this->assertSame($a, $b);
         $this->assertSame(1, InterceptedClass::$validatedCalls);
     }
-
 }
