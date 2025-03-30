@@ -6,6 +6,7 @@ namespace Maduser\Argon\Container;
 
 use Closure;
 use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
+use Maduser\Argon\Container\Contracts\BindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
@@ -64,9 +65,12 @@ class Container
      *
      * @throws ContainerException
      */
-    public static function bind(string $id, Closure|string|null $concrete = null, bool $singleton = false): void
-    {
-        self::instance()->bind($id, $concrete, $singleton);
+    public static function bind(
+        string $id,
+        Closure|string|null $concrete = null,
+        bool $singleton = false
+    ): BindingBuilderInterface {
+        return self::instance()->bind($id, $concrete, $singleton);
     }
 
     /**
@@ -76,9 +80,9 @@ class Container
      *
      * @throws ContainerException
      */
-    public static function singleton(string $id, Closure|string|null $concrete = null): void
+    public static function singleton(string $id, Closure|string|null $concrete = null): BindingBuilderInterface
     {
-        self::instance()->singleton($id, $concrete);
+        return self::instance()->singleton($id, $concrete);
     }
 
     /**

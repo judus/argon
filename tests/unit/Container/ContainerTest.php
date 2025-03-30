@@ -4,23 +4,24 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Container;
 
+use Maduser\Argon\Container\ArgonContainer;
+use Maduser\Argon\Container\BindingBuilder;
 use Maduser\Argon\Container\Container;
-use Maduser\Argon\Container\ContextualBindings;
+use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
-use Maduser\Argon\Container\Contracts\InterceptorInterface;
-use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ParameterStoreInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
+use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Interceptors\Post\ValidationInterceptor;
-use Maduser\Argon\Container\ParameterStore;
-use Maduser\Argon\Container\ArgonContainer;
+use Maduser\Argon\Container\ServiceBinder;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 use Tests\Unit\Container\Mocks\SampleProvider;
+use Tests\Unit\Container\Mocks\SomeClass;
 
 class ContainerTest extends TestCase
 {
@@ -63,23 +64,43 @@ class ContainerTest extends TestCase
      */
     public function testBindDelegatesToContainer(): void
     {
-        $this->mockContainer->expects($this->once())
-            ->method('bind')
-            ->with('foo', null, false);
+        $binder = new ServiceBinder(
+            $this->createMock(TagManagerInterface::class)
+        );
 
-        Container::bind('foo');
+        $builder = $binder->singleton(SomeClass::class);
+
+        $this->mockContainer
+            ->expects($this->once())
+            ->method('bind')
+            ->with(SomeClass::class)
+            ->willReturn($builder);
+
+        $result = Container::bind(SomeClass::class);
+
+        $this->assertInstanceOf(BindingBuilder::class, $result);
     }
 
     /**
      * @throws ContainerException
+     * @throws NotFoundException
      */
     public function testSingletonDelegatesToContainer(): void
     {
-        $this->mockContainer->expects($this->once())
-            ->method('singleton')
-            ->with('bar');
+        $binder = new ServiceBinder(
+            $this->createMock(TagManagerInterface::class)
+        );
 
-        Container::singleton('bar');
+        $container = new ArgonContainer(binder: $binder);
+
+        Container::set($container);
+
+        $result = Container::singleton(SomeClass::class);
+
+        $this->assertInstanceOf(BindingBuilder::class, $result);
+
+        $resolved = Container::get(SomeClass::class);
+        $this->assertInstanceOf(SomeClass::class, $resolved);
     }
 
     public function testRegisterFactoryDelegatesToContainer(): void
@@ -151,6 +172,10 @@ class ContainerTest extends TestCase
         Container::registerProvider(SampleProvider::class);
     }
 
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testBootDelegatesToContainer(): void
     {
         $this->mockContainer->expects($this->once())->method('boot');

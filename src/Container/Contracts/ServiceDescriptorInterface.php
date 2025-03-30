@@ -11,6 +11,8 @@ use Closure;
  */
 interface ServiceDescriptorInterface
 {
+    public function getId(): string;
+
     public function isSingleton(): bool;
 
     /**
@@ -22,4 +24,18 @@ interface ServiceDescriptorInterface
     public function getArguments(): array;
 
     public function storeInstance(object $instance): void;
+
+    /**
+     * @param class-string $class
+     */
+    public function setFactory(string $class, ?string $method = null): void;
+
+    public function hasFactory(): bool;
+
+    /**
+     * @return class-string|null
+     */
+    public function getFactoryClass(): ?string;
+
+    public function getFactoryMethod(): string;
 }

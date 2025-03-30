@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
+use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ArgonContainer;
+use Maduser\Argon\Container\ServiceBinder;
 use Maduser\Argon\Container\ServiceProviderRegistry;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -31,17 +33,40 @@ class ServiceProviderRegistryTest extends TestCase
      */
     public function testRegisterValidProvider(): void
     {
-        $registry = new ServiceProviderRegistry($this->container);
+        $binder = new ServiceBinder(
+            $this->createMock(TagManagerInterface::class)
+        );
+
+        $this->container = $this->getMockBuilder(ArgonContainer::class)
+            ->onlyMethods(['singleton', 'tag', 'get'])
+            ->setConstructorArgs([ 'binder' => $binder ])
+            ->getMock();
 
         $providerClass = SampleProvider::class;
         $providerMock = $this->createMock(SampleProvider::class);
 
-        $this->container->expects($this->once())->method('singleton')->with($providerClass);
-        $this->container->expects($this->once())->method('tag')->with($providerClass, ['service.provider']);
-        $this->container->expects($this->once())->method('get')->with($providerClass)->willReturn($providerMock);
+        // Return real binding builder (safe even though it's final)
+        $bindingBuilder = $binder->singleton($providerClass);
 
-        $providerMock->expects($this->once())->method('register')->with($this->container);
+        $this->container->expects($this->once())
+            ->method('singleton')
+            ->with($providerClass)
+            ->willReturn($bindingBuilder);
 
+        $this->container->expects($this->once())
+            ->method('tag')
+            ->with($providerClass, ['service.provider']);
+
+        $this->container->expects($this->once())
+            ->method('get')
+            ->with($providerClass)
+            ->willReturn($providerMock);
+
+        $providerMock->expects($this->once())
+            ->method('register')
+            ->with($this->container);
+
+        $registry = new ServiceProviderRegistry($this->container);
         $registry->register($providerClass);
     }
 

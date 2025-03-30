@@ -13,6 +13,8 @@ use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\ServiceBinder;
+use Maduser\Argon\Container\ServiceDescriptor;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
@@ -27,6 +29,7 @@ use Tests\Mocks\TestServiceWithDependency;
 use Tests\Mocks\TestServiceWithMultipleParams;
 use Tests\Mocks\TestServiceWithNonExistentDependency;
 use Tests\Mocks\UninstantiableClass;
+use Tests\Unit\Container\Mocks\FooBarService;
 use Tests\Unit\Container\Mocks\UserService;
 
 class ServiceContainerTest extends TestCase
@@ -774,32 +777,24 @@ class ServiceContainerTest extends TestCase
 
     /**
      * @throws ContainerException
+     * @throws NotFoundException
      */
-    public function testSingletonRegistersServiceWithArguments(): void
+    public function testSingletonServiceReceivesArguments(): void
     {
-        $id = 'MyService';
-        $concrete = fn(): object => new stdClass();
-        $args = ['foo' => 'bar'];
+        $container = new ArgonContainer();
 
-        $arguments = $this->createMock(ArgumentMapInterface::class);
-        $binder = $this->createMock(ServiceBinderInterface::class);
+        $container->singleton(FooBarService::class, args: [
+            'foo' => 'hello',
+            'bar' => 42,
+        ]);
 
-        $arguments->expects($this->once())
-            ->method('set')
-            ->with($id, $args);
+        $service = $container->get(FooBarService::class);
 
-        $binder->expects($this->once())
-            ->method('singleton')
-            ->with($id, $concrete);
+        $this->assertSame('hello', $service->foo);
+        $this->assertSame(42, $service->bar);
 
-        $container = new ArgonContainer(
-            arguments: $arguments,
-            binder: $binder
-        );
-
-        $result = $container->singleton($id, $concrete, $args);
-
-        $this->assertSame($container, $result);
+        // Confirm singleton behavior
+        $this->assertSame($service, $container->get(FooBarService::class));
     }
 
     public function testGetBindingsDelegatesToBinder(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container\Contracts;
 
 use Closure;
+use Maduser\Argon\Container\BindingBuilder;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\ServiceDescriptor;
 
@@ -29,7 +30,7 @@ interface ServiceBinderInterface
      * @param Closure|string|null $concrete
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null): void;
+    public function singleton(string $id, Closure|string|null $concrete = null): BindingBuilderInterface;
 
     /**
      * Registers a service (transient or singleton).
@@ -39,10 +40,15 @@ interface ServiceBinderInterface
      * @param bool $isSingleton
      * @throws ContainerException
      */
-    public function bind(string $id, Closure|string|null $concrete = null, bool $isSingleton = false): void;
+    public function bind(
+        string $id,
+        Closure|string|null $concrete = null,
+        bool $isSingleton = false
+    ): BindingBuilderInterface;
 
     /**
-     * Registers a factory service.
+     * Registers a runtime-only closure-based factory.
+     * Not compatible with container compilation.
      *
      * @param string $id
      * @param callable(): mixed $factory

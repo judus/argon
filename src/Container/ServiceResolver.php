@@ -9,6 +9,7 @@ use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
+use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
@@ -31,7 +32,7 @@ final class ServiceResolver implements ServiceResolverInterface
         private readonly ServiceBinderInterface $binder,
         private readonly ReflectionCacheInterface $reflectionCache,
         private readonly InterceptorRegistryInterface $interceptors,
-        private readonly ArgumentResolverInterface $parameterResolver
+        private readonly ArgumentResolverInterface $argumentResolver
     ) {
     }
 
@@ -55,55 +56,112 @@ final class ServiceResolver implements ServiceResolverInterface
     {
         $this->checkCircularDependency($id);
 
-        // Pre resolution interceptors
         $result = $this->interceptors->matchPre($id, $args);
         if ($result !== null) {
             $this->removeFromResolving($id);
-
             return $result;
         }
 
-        // Registered service
         $descriptor = $this->binder->getDescriptor($id);
-        if ($descriptor) {
-            if ($descriptor->isSingleton() && $instance = $descriptor->getInstance()) {
-                $this->removeFromResolving($id);
-                return $instance;
-            }
 
+        if ($descriptor !== null) {
+            $instance = $this->resolveFromDescriptor($id, $descriptor, $args);
+        } elseif (class_exists($id)) {
+            $instance = $this->resolveUnregistered($id, $args);
+        } else {
+            throw new NotFoundException($id);
+        }
+
+        $this->removeFromResolving($id);
+
+        return $instance;
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function resolveFromDescriptor(string $id, ServiceDescriptorInterface $descriptor, array $args): object
+    {
+        if ($descriptor->isSingleton() && $instance = $descriptor->getInstance()) {
+            return $instance;
+        }
+
+        if ($descriptor->hasFactory()) {
+            $instance = $this->resolveFromFactory($id, $descriptor, $args);
+        } else {
             $concrete = $descriptor->getConcrete();
             $args = array_merge($descriptor->getArguments(), $args);
 
             $instance = $concrete instanceof Closure
                 ? (object) $concrete()
                 : $this->resolveClass($concrete, $args);
-
-            $instance = $this->interceptors->matchPost($instance);
-
-            if ($descriptor->isSingleton()) {
-                $descriptor->storeInstance($instance);
-            }
-
-            $this->removeFromResolving($id);
-            return $instance;
         }
 
-        // Unregistered service (Direct class resolution)
-        if (!class_exists($id)) {
-            throw new NotFoundException($id);
+        $instance = $this->interceptors->matchPost($instance);
+
+        if ($descriptor->isSingleton()) {
+            $descriptor->storeInstance($instance);
         }
 
+        return $instance;
+    }
+
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function resolveFromFactory(string $id, ServiceDescriptorInterface $descriptor, array $args): object
+    {
+        $factoryClass = $descriptor->getFactoryClass();
+        $method = $descriptor->getFactoryMethod();
+
+        if ($factoryClass === null) {
+            throw ContainerException::fromServiceId($id, 'Factory class not defined.');
+        }
+
+        if (!method_exists($factoryClass, $method)) {
+            throw ContainerException::fromServiceId($id, sprintf(
+                'Factory method "%s" not found on class "%s".',
+                $method,
+                $factoryClass
+            ));
+        }
+
+        $reflection = new \ReflectionMethod($factoryClass, $method);
+
+        if ($reflection->isStatic()) {
+            $instance = (object) call_user_func_array([$factoryClass, $method], $args);
+        } else {
+            $factoryInstance = $this->resolveClass($factoryClass);
+            $instance = (object) call_user_func_array([$factoryInstance, $method], $args);
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Resolves a class that is not registered in the container.
+     *
+     * @param class-string $id
+     *
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function resolveUnregistered(string $id, array $args): object
+    {
         $reflection = $this->reflectionCache->get($id);
+
         if (!$reflection->isInstantiable()) {
             throw ContainerException::forNonInstantiableClass($id, $reflection->getName());
         }
 
         $instance = $this->resolveClass($id, $args);
-        $instance = $this->interceptors->matchPost($instance);
 
-        $this->removeFromResolving($id);
-        return $instance;
+        return $this->interceptors->matchPost($instance);
     }
+
 
     /**
      * Resolves a concrete class by analyzing its constructor dependencies.
@@ -168,7 +226,7 @@ final class ServiceResolver implements ServiceResolverInterface
     private function resolveConstructorParameters(array $params, array $overrides): array
     {
         return array_map(
-            fn(ReflectionParameter $param): mixed => $this->parameterResolver->resolve($param, $overrides),
+            fn(ReflectionParameter $param): mixed => $this->argumentResolver->resolve($param, $overrides),
             $params
         );
     }
