@@ -11,7 +11,8 @@
   ],
   "require": {
     "php": "^8.2",
-    "nette/php-generator": "^4.1"
+    "nette/php-generator": "^4.1",
+    "psr/container": "^2.0"
   },
   "require-dev": {
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
