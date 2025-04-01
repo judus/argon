@@ -7,7 +7,6 @@ namespace Maduser\Argon\Container;
 use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use ReflectionException;
 
 /**
  * Handles service tagging and retrieval by tag.
@@ -57,6 +56,8 @@ final class TagManager implements TagManagerInterface
     }
 
     /**
+     * Returns a list of *service instances* for a given tag.
+     *
      * @param string $tag
      * @return list<object>
      * @throws ContainerException
@@ -64,16 +65,20 @@ final class TagManager implements TagManagerInterface
      */
     public function getTagged(string $tag): array
     {
-        if (!isset($this->tags[$tag]) || empty($this->tags[$tag])) {
-            return [];
-        }
+        return array_map(
+            fn(string $id) => $this->container->get($id),
+            $this->getTaggedIds($tag)
+        );
+    }
 
-        $taggedServices = [];
-
-        foreach ($this->tags[$tag] as $serviceId) {
-            $taggedServices[] = $this->container->get($serviceId);
-        }
-
-        return $taggedServices;
+    /**
+     * Returns a list of service IDs for a given tag.
+     *
+     * @param string $tag
+     * @return list<string>
+     */
+    public function getTaggedIds(string $tag): array
+    {
+        return $this->tags[$tag] ?? [];
     }
 }

@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace Tests\Integration;
 
 use Maduser\Argon\Container\Container;
+use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
+use stdClass;
+use Tests\Integration\Mocks\A;
+use Tests\Integration\Mocks\B;
+use Tests\Integration\Mocks\C;
 use Tests\Integration\Mocks\Logger;
 use Tests\Integration\Mocks\UsesLogger;
 
@@ -20,6 +25,30 @@ final class ServiceContainerTest extends TestCase
     {
         $this->container = new ArgonContainer();
         Container::set($this->container);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testContainerIsAlwaysItselfAndProtected(): void
+    {
+        $container = new ArgonContainer();
+
+        // 1. Self resolution works
+        $this->assertSame($container, $container->get(ArgonContainer::class));
+
+        // 2. It cannot be bound manually
+        $this->expectException(ContainerException::class);
+        $container->bind(ArgonContainer::class, fn () => new ArgonContainer());
+
+        // 3. It cannot be bound as singleton either
+        try {
+            $container->singleton(ArgonContainer::class, fn () => new ArgonContainer());
+            $this->fail('Binding ArgonContainer::class should throw an exception.');
+        } catch (ContainerException $e) {
+            $this->assertStringContainsString('maniac', $e->getMessage());
+        }
     }
 
     /**
@@ -58,7 +87,7 @@ final class ServiceContainerTest extends TestCase
     {
         $result = $this->container->invoke(
             fn(string $message): string => "Message: $message",
-            parameters: ['message' => 'Overridden']
+            arguments: ['message' => 'Overridden']
         );
 
         $this->assertSame('Message: Overridden', $result);
@@ -83,5 +112,76 @@ final class ServiceContainerTest extends TestCase
     {
         $this->expectException(NotFoundException::class);
         $this->container->invoke('NonExistentService', 'method');
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testPostInterceptorModifiesResolvedInstance(): void
+    {
+        // Define a concrete interceptor class inline for clarity/testing
+        $interceptor = new class implements PostResolutionInterceptorInterface {
+            public static function supports(object|string $target): bool
+            {
+                return $target === stdClass::class || $target instanceof stdClass;
+            }
+
+            public function intercept(object $instance): void
+            {
+                $instance->intercepted = true;
+            }
+        };
+
+        // Register interceptor as FQCN (as expected now)
+        $container = new ArgonContainer();
+        $container->registerInterceptor(get_class($interceptor));
+
+        // Bind a service (autowiring would also work)
+        $container->bind('service', fn() => new \stdClass());
+
+        // Resolve the service
+        $instance = $container->get('service');
+
+        // Assertion
+        $this->assertTrue($instance->intercepted ?? false, 'Service instance should be intercepted.');
+    }
+
+    public function testSingletonSelfBindingThrowsException(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage("Don't bind the container to itself, you maniac.");
+
+        $container = new ArgonContainer();
+        $container->singleton(ArgonContainer::class);
+    }
+
+    public function testBindSelfBindingThrowsException(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage("Don't bind the container to itself, you maniac.");
+
+        $container = new ArgonContainer();
+        $container->bind(ArgonContainer::class);
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testGetTaggedIdsReturnsCorrectServiceIds(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->bind(A::class)->tag(['foo']);
+        $container->bind(B::class)->tag(['foo', 'bar']);
+        $container->bind(C::class)->tag(['bar']);
+
+        $fooTagged = $container->getTaggedIds('foo');
+        $barTagged = $container->getTaggedIds('bar');
+        $nonTagged = $container->getTaggedIds('baz');
+
+        $this->assertSame([A::class, B::class], $fooTagged, 'Expected foo tag to contain service.a and service.b');
+        $this->assertSame([B::class, C::class], $barTagged, 'Expected bar tag to contain service.b and service.c');
+        $this->assertSame([], $nonTagged, 'Expected unknown tag to return an empty array');
     }
 }

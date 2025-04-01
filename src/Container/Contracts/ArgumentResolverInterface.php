@@ -18,10 +18,11 @@ interface ArgumentResolverInterface
     /**
      * @param ReflectionParameter $param
      * @param array<array-key, mixed> $overrides
+     * @param string|null $contextId
      * @return mixed
      *
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function resolve(ReflectionParameter $param, array $overrides = []): mixed;
+    public function resolve(ReflectionParameter $param, array $overrides = [], ?string $contextId = null): mixed;
 }

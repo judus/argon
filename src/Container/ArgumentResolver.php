@@ -45,18 +45,21 @@ final class ArgumentResolver implements ArgumentResolverInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function resolve(ReflectionParameter $param, array $overrides = []): mixed
-    {
-        $className = $param->getDeclaringClass()?->getName() ?? 'unknown class';
+    public function resolve(
+        ReflectionParameter $param,
+        array $overrides = [],
+        ?string $contextId = null
+    ): mixed {
+        $context = $contextId ?? $param->getDeclaringClass()?->getName() ?? 'global';
         $paramName = $param->getName();
 
-        $merged = array_merge($this->arguments->get($className), $overrides);
+        $merged = array_merge($this->arguments->get($context), $overrides);
 
         if (array_key_exists($paramName, $merged)) {
             return $merged[$paramName];
         }
 
-        return $this->resolveByType($param, $className, $paramName);
+        return $this->resolveByType($param, $context, $paramName);
     }
 
     /**

@@ -214,7 +214,7 @@ class AppServiceProvider implements ServiceProviderInterface
     }
 }
 
-$container->registerProvider(AppServiceProvider::class);
+$container->register(AppServiceProvider::class);
 $container->boot();
 ```
 

@@ -166,7 +166,7 @@ class ContainerTest extends TestCase
     public function testRegisterProviderDelegatesToContainer(): void
     {
         $this->mockContainer->expects($this->once())
-            ->method('registerProvider')
+            ->method('register')
             ->with(SampleProvider::class);
 
         Container::registerProvider(SampleProvider::class);

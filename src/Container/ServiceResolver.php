@@ -130,12 +130,13 @@ final class ServiceResolver implements ServiceResolverInterface
         }
 
         $reflection = new \ReflectionMethod($factoryClass, $method);
+        $factoryInstance = $this->resolveClass($factoryClass);
 
         if ($reflection->isStatic()) {
+            // Even though we resolved it, static methods don't need the instance
             $instance = (object) call_user_func_array([$factoryClass, $method], $args);
         } else {
-            $factoryInstance = $this->resolveClass($factoryClass);
-            $instance = (object) call_user_func_array([$factoryInstance, $method], $args);
+            $instance = (object) $factoryInstance->$method(...$args);
         }
 
         return $instance;
