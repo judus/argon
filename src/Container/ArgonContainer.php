@@ -59,7 +59,7 @@ class ArgonContainer implements ContainerInterface
         ?ServiceProviderRegistryInterface $providers = null,
         ?ServiceResolverInterface $serviceResolver = null,
         ?ArgumentResolverInterface $argumentResolver = null,
-        ?ServiceBinderInterface $binder = null,
+        ?ServiceBinderInterface $binder = null
     ) {
         $this->arguments = $arguments ?? new ArgumentMap();
         $this->parameterStore = $parameters ?? new ParameterStore();
@@ -114,6 +114,10 @@ class ArgonContainer implements ContainerInterface
      */
     public function get(string $id, array $args = []): object
     {
+        if ($id === self::class || $id === ContainerInterface::class) {
+            return $this;
+        }
+
         return $this->serviceResolver->resolve($id, $args);
     }
 
@@ -137,6 +141,10 @@ class ArgonContainer implements ContainerInterface
         ?array $args = null
     ): BindingBuilderInterface {
 
+        if ($id === ArgonContainer::class) {
+            throw new ContainerException("Don't bind the container to itself, you maniac.");
+        }
+
         if ($args !== null) {
             $this->arguments->set($id, $args);
         }
@@ -157,6 +165,11 @@ class ArgonContainer implements ContainerInterface
         Closure|string|null $concrete = null,
         ?array $args = null
     ): BindingBuilderInterface {
+
+        if ($id === ArgonContainer::class) {
+            throw new ContainerException("Don't bind the container to itself, you maniac.");
+        }
+
         if ($args !== null) {
             $this->arguments->set($id, $args);
         }
@@ -195,7 +208,7 @@ class ArgonContainer implements ContainerInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function registerProvider(string $className): ArgonContainer
+    public function register(string $className): ArgonContainer
     {
         $this->providers->register($className);
 
@@ -322,14 +335,14 @@ class ArgonContainer implements ContainerInterface
     /**
      * @param object|string $classOrCallable
      * @param string|null $method
-     * @param array<string, mixed> $parameters
+     * @param array<string, mixed> $arguments
      * @return mixed
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function invoke(object|string $classOrCallable, ?string $method = null, array $parameters = []): mixed
+    public function invoke(object|string $classOrCallable, ?string $method = null, array $arguments = []): mixed
     {
-        return $this->invoker->call($classOrCallable, $method, $parameters);
+        return $this->invoker->call($classOrCallable, $method, $arguments);
     }
 
     /**
@@ -343,5 +356,16 @@ class ArgonContainer implements ContainerInterface
         return $this->has($id)
             ? $this->get($id)
             : new NullServiceProxy();
+    }
+
+    /**
+     * Returns a list of service IDs for a given tag.
+     *
+     * @param string $string
+     * @return list<string>
+     */
+    public function getTaggedIds(string $string): array
+    {
+        return $this->tags->getTaggedIds($string);
     }
 }

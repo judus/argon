@@ -7,5 +7,5 @@ argon.zip
 compiled.php
 /app.php
 /tests/resources/cache/*.php
-/resources/ideas.md
+/resources
 /coverage.xml

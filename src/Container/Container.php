@@ -145,7 +145,7 @@ class Container
      */
     public static function registerProvider(string $class): void
     {
-        self::instance()->registerProvider($class);
+        self::instance()->register($class);
     }
 
     /**

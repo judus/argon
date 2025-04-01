@@ -35,4 +35,10 @@ interface TagManagerInterface
      * @throws NotFoundException
      */
     public function getTagged(string $tag): array;
+
+    /**
+     * @param string $tag
+     * @return list<string>
+     */
+    public function getTaggedIds(string $tag): array;
 }

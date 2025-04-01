@@ -125,6 +125,16 @@ class ContainerCompilerTest extends TestCase
         $this->assertInstanceOf(Logger::class, $mailer->logger);
     }
 
+    public function testCompiledContainerResolvesSelf(): void
+    {
+        $container = new ArgonContainer();
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesSelf');
+
+        $this->assertInstanceOf(ArgonContainer::class, $compiled->get(ArgonContainer::class));
+        $this->assertSame($compiled, $compiled->get(ArgonContainer::class));
+    }
+
     /**
      * @throws ContainerException
      * @throws NotFoundException
@@ -228,7 +238,7 @@ class ContainerCompilerTest extends TestCase
     public function testCompiledContainerIncludesServiceProviders(): void
     {
         $container = new ArgonContainer();
-        $container->registerProvider(DummyProvider::class);
+        $container->register(DummyProvider::class);
 
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerIncludesServiceProviders');
 
