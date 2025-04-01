@@ -19,4 +19,9 @@ interface BindingBuilderInterface
      * @param list<string>|string $tags
      */
     public function tag(array|string $tags): BindingBuilderInterface;
+
+    /**
+     * @api
+     */
+    public function compilerIgnore(): BindingBuilderInterface;
 }

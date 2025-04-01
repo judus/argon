@@ -10,6 +10,7 @@ use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\ArgonContainer;
 use Nette\PhpGenerator\PhpFile;
+use Psr\Container\ContainerInterface;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionNamedType;
@@ -61,6 +62,10 @@ final class ContainerCompiler
             $methodName = $this->buildServiceMethodName($id);
 
             $concrete = $descriptor->getConcrete();
+
+            if ($descriptor->shouldIgnoreForCompilation()) {
+                continue;
+            }
 
             if ($concrete instanceof \Closure) {
                 throw new ContainerException("Cannot compile a container with closures: [$id]");

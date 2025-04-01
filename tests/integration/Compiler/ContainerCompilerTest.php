@@ -70,6 +70,7 @@ class ContainerCompilerTest extends TestCase
 
         $container->singleton(Logger::class, fn() => new Logger());
         $container->singleton(Mailer::class, fn() => new Mailer($container->get(Logger::class)));
+        $container->singleton(DefaultValueService::class, fn() => new DefaultValueService())->compilerIgnore();
 
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesClosures');
 
@@ -80,7 +81,26 @@ class ContainerCompilerTest extends TestCase
     }
 
     /**
+     * @throws NotFoundException
+     * @throws ReflectionException
      * @throws ContainerException
+     */
+    public function testCompiledContainerCanIgnore(): void
+    {
+        $container = new ArgonContainer();
+        $service = new DefaultValueService();
+        $container->singleton(DefaultValueService::class, fn() => $service)->compilerIgnore();
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesClosures');
+
+        // For now, we just check that compiler does not throw an error,
+        // just a dummy assertion
+        $this->assertNotSame($service, $compiled->get(DefaultValueService::class));
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
      */
     public function testCompiledContainerResolvesSingletons(): void
     {

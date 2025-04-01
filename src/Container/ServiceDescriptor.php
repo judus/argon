@@ -40,6 +40,9 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
      */
     private ?string $factoryMethod = null;
 
+    private bool $ignoreForCompilation = false;
+
+
     /**
      * @param string $id
      * @param class-string|Closure $concrete
@@ -132,5 +135,16 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
     public function getFactoryMethod(): string
     {
         return $this->factoryMethod ?? '__invoke';
+    }
+
+    public function compilerIgnore(): self
+    {
+        $this->ignoreForCompilation = true;
+        return $this;
+    }
+
+    public function shouldIgnoreForCompilation(): bool
+    {
+        return $this->ignoreForCompilation;
     }
 }
