@@ -47,6 +47,9 @@ class ArgonContainer implements ContainerInterface
     private readonly ParameterStoreInterface $parameterStore;
     private readonly InterceptorRegistryInterface $interceptors;
 
+    /**
+     * @throws ContainerException
+     */
     public function __construct(
         ?ArgumentMapInterface $arguments = null,
         ?ParameterStoreInterface $parameters = null,
@@ -91,6 +94,9 @@ class ArgonContainer implements ContainerInterface
             $this->serviceResolver,
             $argumentResolver
         );
+
+        $this->binder->singleton(ArgonContainer::class, fn() => $this)->compilerIgnore();
+        $this->binder->singleton(ContainerInterface::class, fn() => $this)->compilerIgnore();
     }
 
     public function getArgumentMap(): ArgumentMapInterface

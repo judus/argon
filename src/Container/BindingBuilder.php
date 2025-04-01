@@ -45,4 +45,11 @@ final readonly class BindingBuilder implements BindingBuilderInterface
 
         return $this;
     }
+
+    public function compilerIgnore(): BindingBuilderInterface
+    {
+        $this->descriptor->compilerIgnore();
+
+        return $this;
+    }
 }
