@@ -39,6 +39,9 @@ interface ServiceDescriptorInterface
 
     public function getFactoryMethod(): string;
 
+    /**
+     * @api
+     */
     public function compilerIgnore(): self;
 
     public function shouldIgnoreForCompilation(): bool;
