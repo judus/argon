@@ -89,21 +89,37 @@ final class ContainerCompiler
                 ->setValue(null);
 
 
-            $args = $this->resolveConstructorArguments($concrete);
-            if ($args === null) {
-                continue;
+            if ($descriptor->hasFactory()) {
+                $factoryClass = '\\' . ltrim($descriptor->getFactoryClass(), '\\');
+                $factoryMethod = $descriptor->getFactoryMethod();
+
+                $class->addMethod($methodName)
+                    ->setPrivate()
+                    ->setReturnType('object')
+                    ->setBody(<<<PHP
+            if (\$this->{$singletonProperty} === null) {
+                \$this->{$singletonProperty} = \$this->get('{$factoryClass}')->{$factoryMethod}();
+            }
+            return \$this->{$singletonProperty};
+        PHP);
+
+                $serviceMap[$id] = $methodName;
+                continue; // skip regular constructor-based instantiation
             }
 
-            $argString = implode(",\n", $args) . "\n\t\t";
+            $args = $this->resolveConstructorArguments($concrete, $id);
+
+            $argString = '';
+            if ($args !== null) {
+                $argString = implode(",\n", $args) . "\n\t\t";
+            }
 
             $class->addMethod($methodName)
                 ->setPrivate()
                 ->setReturnType('object')
                 ->setBody(<<<PHP
                     if (\$this->{$singletonProperty} === null) {
-                        \$this->{$singletonProperty} = \$this->applyPostInterceptors(
-                            new {$fqcn}({$argString})
-                        );
+                        \$this->{$singletonProperty} = new {$fqcn}({$argString});
                     }
                     return \$this->{$singletonProperty};
                 PHP);
@@ -224,12 +240,70 @@ final class ContainerCompiler
             return $results;
         PHP);
 
+        // --- getTagged() override ---
+        $getTaggedIdsMethod = $class->addMethod('getTaggedIds');
+        $getTaggedIdsMethod->addParameter('tag')->setType('string');
+        $getTaggedIdsMethod->setReturnType('array');
+        $getTaggedIdsMethod->addComment('@inheritDoc');
+        $getTaggedIdsMethod->setBody(<<<'PHP'
+        return $this->tagMap[$tag] ?? [];
+
+        PHP);
+
         $class->addMethod('has')
             ->setReturnType('bool')
             ->setBody(<<<'PHP'
                 return isset($this->serviceMap[$id]) || parent::has($id);
             PHP)
             ->addParameter('id')->setType('string');
+
+
+        $invoke = $class->addMethod('invoke')
+            ->setPublic()
+            ->setReturnType('mixed')
+            ->setBody(<<<'PHP'
+        if ($target instanceof \Closure) {
+            $reflection = new \ReflectionFunction($target);
+            $instance = null;
+        } else {
+            if (is_string($target)) {
+                if ($this->has($target)) {
+                    $instance = $this->get($target);
+                } elseif (class_exists($target)) {
+                    $instance = (new \ReflectionClass($target))->newInstance();
+                } else {
+                    throw new \RuntimeException("Cannot invoke unknown class or binding: {$target}");
+                }
+            } else {
+                $instance = $target;
+            }
+
+            $reflection = new \ReflectionMethod($instance, $method ?? '__invoke');
+        }
+
+        $params = [];
+
+        foreach ($reflection->getParameters() as $param) {
+            $name = $param->getName();
+            $type = $param->getType()?->getName();
+
+            if (array_key_exists($name, $arguments)) {
+                $params[] = $arguments[$name];
+            } elseif ($type && $this->has($type)) {
+                $params[] = $this->get($type);
+            } elseif ($param->isDefaultValueAvailable()) {
+                $params[] = $param->getDefaultValue();
+            } else {
+                throw new \RuntimeException("Unable to resolve parameter '{$name}' for '{$reflection->getName()}'");
+            }
+        }
+
+        return $reflection->invokeArgs($instance, $params);
+    PHP);
+
+        $invoke->addParameter('target')->setType('object|string');
+        $invoke->addParameter('method')->setType('?string')->setDefaultValue(null);
+        $invoke->addParameter('arguments')->setType('array')->setDefaultValue([]);
 
         // Final output
         $compiled = (string) $file;
@@ -249,7 +323,7 @@ final class ContainerCompiler
      * @throws ReflectionException
      * @throws Exception
      */
-    private function resolveConstructorArguments(string $class): ?array
+    private function resolveConstructorArguments(string $class, string $serviceId): ?array
     {
         $reflectionClass = new ReflectionClass($class);
         $constructor = $reflectionClass->getConstructor();
@@ -261,17 +335,14 @@ final class ContainerCompiler
         $resolved = [];
 
         foreach ($constructor->getParameters() as $param) {
-            $value = $this->resolveParameter($param);
-            if ($value === null) {
-                return null;
-            }
-            $resolved[] = $value;
+            $value = $this->resolveParameter($param, $class, $serviceId);
+            $resolved[] = $value ?? 'null';
         }
 
         return $resolved;
     }
 
-    private function resolveParameter(ReflectionParameter $parameter): ?string
+    private function resolveParameter(ReflectionParameter $parameter, string $class, string $serviceId): ?string
     {
         $name = $parameter->getName();
         /** @var ReflectionNamedType $type */
@@ -290,7 +361,11 @@ final class ContainerCompiler
                 }
             }
 
-            if ($this->argumentMap->has($className, $name)) {
+            if ($this->container->has($typeName) && !$type->allowsNull()) {
+                return "\$this->get('{$typeName}')";
+            }
+
+            if ($this->argumentMap->has($serviceId, $name)) {
                 return var_export($this->argumentMap->getArgument($className, $name), true);
             }
 
