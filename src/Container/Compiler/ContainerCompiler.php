@@ -52,6 +52,7 @@ final class ContainerCompiler
         $this->generateGetTaggedMethod($class);
         $this->generateGetTaggedIdsMethod($class);
         $this->generateHasMethod($class);
+        $this->generateInvokeMethod($class);
 
         $serviceMap = [];
 
@@ -136,11 +137,11 @@ final class ContainerCompiler
             ->setReference();
 
         $method->setBody(<<<PHP
-if (\$this->{$singletonProperty} === null) {
-    \$this->{$singletonProperty} = (new {$fqFactory}(\$this))->{$factoryMethod}();
-}
-return \$this->{$singletonProperty};
-PHP);
+            if (\$this->{$singletonProperty} === null) {
+                \$this->{$singletonProperty} = (new {$fqFactory}(\$this))->{$factoryMethod}();
+            }
+            return \$this->{$singletonProperty};
+        PHP);
 
         $serviceMap[$id] = $methodName;
     }
@@ -194,16 +195,16 @@ PHP);
         $pre->addParameter('args')->setType('array')->setDefaultValue([])->setReference();
 
         $pre->setBody(<<<'PHP'
-foreach ($this->preInterceptors as $interceptor) {
-    if ($interceptor::supports($id)) {
-        $result = (new $interceptor())->intercept($id, $args);
-        if ($result !== null) {
-            return $result;
-        }
-    }
-}
-return null;
-PHP);
+            foreach ($this->preInterceptors as $interceptor) {
+                if ($interceptor::supports($id)) {
+                    $result = (new $interceptor())->intercept($id, $args);
+                    if ($result !== null) {
+                        return $result;
+                    }
+                }
+            }
+            return null;
+        PHP);
 
         // Apply Post-Interceptors
         $post = $class->addMethod('applyPostInterceptors');
@@ -213,13 +214,13 @@ PHP);
         $post->addParameter('instance')->setType('object');
 
         $post->setBody(<<<'PHP'
-foreach ($this->postInterceptors as $interceptor) {
-    if ($interceptor::supports($instance)) {
-        (new $interceptor())->intercept($instance);
-    }
-}
-return $instance;
-PHP);
+            foreach ($this->postInterceptors as $interceptor) {
+                if ($interceptor::supports($instance)) {
+                    (new $interceptor())->intercept($instance);
+                }
+            }
+            return $instance;
+        PHP);
     }
 
 
@@ -228,17 +229,17 @@ PHP);
         $method = $class->addMethod('get')
             ->setReturnType('object')
             ->setBody(<<<'PHP'
-$instance = $this->applyPreInterceptors($id, $args);
-if ($instance !== null) {
-    return $instance;
-}
-
-$instance = isset($this->serviceMap[$id])
-    ? $this->{$this->serviceMap[$id]}($args)
-    : parent::get($id, $args);
-
-return $this->applyPostInterceptors($instance);
-PHP);
+                $instance = $this->applyPreInterceptors($id, $args);
+                if ($instance !== null) {
+                    return $instance;
+                }
+                
+                $instance = isset($this->serviceMap[$id])
+                    ? $this->{$this->serviceMap[$id]}($args)
+                    : parent::get($id, $args);
+                
+                return $this->applyPostInterceptors($instance);
+            PHP);
 
         $method->addParameter('id')->setType('string');
         $method->addParameter('args')->setType('array')->setDefaultValue([]);
@@ -249,16 +250,16 @@ PHP);
         $class->addMethod('getTagged')
             ->setReturnType('array')
             ->setBody(<<<'PHP'
-if (!isset($this->tagMap[$tag])) {
-    return [];
-}
-
-$results = [];
-foreach ($this->tagMap[$tag] as $id) {
-    $results[] = $this->get($id);
-}
-return $results;
-PHP)
+                if (!isset($this->tagMap[$tag])) {
+                    return [];
+                }
+                
+                $results = [];
+                foreach ($this->tagMap[$tag] as $id) {
+                    $results[] = $this->get($id);
+                }
+                return $results;
+            PHP)
             ->addParameter('tag')->setType('string');
     }
 
@@ -277,6 +278,51 @@ PHP)
             ->setReturnType('bool')
             ->setBody('return isset($this->serviceMap[$id]) || parent::has($id);')
             ->addParameter('id')->setType('string');
+    }
+
+    private function generateInvokeMethod(ClassType $class): void
+    {
+        $invoke = $class->addMethod('invoke')
+            ->setPublic()
+            ->setReturnType('mixed')
+            ->setBody(<<<'PHP'
+                if ($target instanceof \Closure) {
+                    $reflection = new \ReflectionFunction($target);
+                    $instance = null;
+                } else {
+                    if (is_string($target)) {
+                        if ($this->has($target)) {
+                            $instance = $this->get($target);
+                        } elseif (class_exists($target)) {
+                            $instance = (new \ReflectionClass($target))->newInstance();
+                        } else {
+                            throw new \RuntimeException("Cannot invoke unknown class or binding: {\$target}");
+                        }
+                    } else {
+                        $instance = $target;
+                    }
+                    $reflection = new \ReflectionMethod($instance, $method ?? '__invoke');
+                }
+                $params = [];
+                foreach ($reflection->getParameters() as $param) {
+                    $name = $param->getName();
+                    $type = $param->getType()?->getName();
+                    if (array_key_exists($name, $arguments)) {
+                        $params[] = $arguments[$name];
+                    } elseif ($type && $this->has($type)) {
+                        $params[] = $this->get($type);
+                    } elseif ($param->isDefaultValueAvailable()) {
+                        $params[] = $param->getDefaultValue();
+                    } else {
+                        throw new \RuntimeException("Unable to resolve parameter '{\$name}' for '{\$reflection->getName()}'");
+                    }
+                }
+                return $reflection->invokeArgs($instance, $params);
+            PHP);
+
+        $invoke->addParameter('target')->setType('object|string');
+        $invoke->addParameter('method')->setType('?string')->setDefaultValue(null);
+        $invoke->addParameter('arguments')->setType('array')->setDefaultValue([]);
     }
 
     private function generateSingletonProperty(ClassType $class, string $propertyName, string $id): void
@@ -306,11 +352,11 @@ PHP)
             ->setPrivate()
             ->setReturnType('object')
             ->setBody(<<<PHP
-if (\$this->{$singletonProperty} === null) {
-    \$this->{$singletonProperty} = new {$fqcn}({$argString});
-}
-return \$this->{$singletonProperty};
-PHP)
+                if (\$this->{$singletonProperty} === null) {
+                    \$this->{$singletonProperty} = new {$fqcn}({$argString});
+                }
+                return \$this->{$singletonProperty};
+            PHP)
             ->addParameter('args')->setType('array')->setDefaultValue([]);
     }
 
