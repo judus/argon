@@ -114,7 +114,7 @@ final class ContainerCompiler
                 $argString = implode(",\n", $args) . "\n\t\t";
             }
 
-            $class->addMethod($methodName)
+            $method = $class->addMethod($methodName)
                 ->setPrivate()
                 ->setReturnType('object')
                 ->setBody(<<<PHP
@@ -123,6 +123,10 @@ final class ContainerCompiler
                     }
                     return \$this->{$singletonProperty};
                 PHP);
+
+            $method->addParameter('args')
+                ->setType('array')
+                ->setDefaultValue([]);
 
             $serviceMap[$id] = $methodName;
         }
@@ -212,7 +216,7 @@ final class ContainerCompiler
             }
             
             $instance = isset($this->serviceMap[$id])
-                ? $this->{$this->serviceMap[$id]}()
+                ? $this->{$this->serviceMap[$id]}($args)
                 : parent::get($id, $args);
                         
             return $this->applyPostInterceptors($instance);
@@ -323,7 +327,7 @@ final class ContainerCompiler
      * @throws ReflectionException
      * @throws Exception
      */
-    private function resolveConstructorArguments(string $class, string $serviceId): ?array
+    private function resolveConstructorArguments(string $class, string $serviceId, string $argsVar = '$args'): ?array
     {
         $reflectionClass = new ReflectionClass($class);
         $constructor = $reflectionClass->getConstructor();
@@ -335,49 +339,62 @@ final class ContainerCompiler
         $resolved = [];
 
         foreach ($constructor->getParameters() as $param) {
-            $value = $this->resolveParameter($param, $class, $serviceId);
+            $value = $this->resolveParameter($param, $serviceId, $argsVar);
             $resolved[] = $value ?? 'null';
         }
 
         return $resolved;
     }
 
-    private function resolveParameter(ReflectionParameter $parameter, string $class, string $serviceId): ?string
+    private function resolveParameter(ReflectionParameter $parameter, string $serviceId, string $argsVar = '$args'): ?string
     {
         $name = $parameter->getName();
-        /** @var ReflectionNamedType $type */
         $type = $parameter->getType();
-        $typeName = $type->getName();
+        $typeName = $type instanceof ReflectionNamedType ? $type->getName() : null;
+
+        $runtime = "array_key_exists(" . var_export($name, true) . ", {$argsVar}) ? {$argsVar}[" . var_export($name, true) . "] : null";
+
+        // ✅ First priority: runtime argument passed to `get($id, $args)`
+        $runtimeArg = "{$argsVar}[" . var_export($name, true) . "]";
+
+        $fallbacks = [];
 
         $declaringClass = $parameter->getDeclaringClass();
+        $className = $declaringClass?->getName() ?? $serviceId;
 
-        if ($declaringClass !== null) {
-            $className = $declaringClass->getName();
-
-            if ($this->contextualBindings->has($className, $typeName)) {
-                $target = $this->contextualBindings->get($className, $typeName);
-                if (is_string($target)) {
-                    return "\$this->get('{$target}')";
-                }
-            }
-
-            if ($this->container->has($typeName) && !$type->allowsNull()) {
-                return "\$this->get('{$typeName}')";
-            }
-
-            if ($this->argumentMap->has($serviceId, $name)) {
-                return var_export($this->argumentMap->getArgument($className, $name), true);
-            }
-
-            if ($parameter->isDefaultValueAvailable()) {
-                return var_export($parameter->getDefaultValue(), true);
-            }
-
-            if ($typeName && class_exists($typeName)) {
-                return "\n\t\t\t\$this->get('{$typeName}')";
-            }
+        // Contextual binding
+        if ($this->contextualBindings->has($className, $typeName)) {
+            $target = $this->contextualBindings->get($className, $typeName);
+            $fallbacks[] = "\$this->get('{$target}')";
         }
 
-        return null;
+        // Container binding
+        if ($this->container->has($typeName) && !$type->allowsNull()) {
+            $fallbacks[] = "\$this->get('{$typeName}')";
+        }
+
+        // Argument map
+        if ($this->argumentMap->has($serviceId, $name)) {
+            $val = var_export($this->argumentMap->getArgument($className, $name), true);
+            $fallbacks[] = $val;
+        }
+
+        // Default value
+        if ($parameter->isDefaultValueAvailable()) {
+            $fallbacks[] = var_export($parameter->getDefaultValue(), true);
+        }
+
+        // Try class instantiation
+        if ($typeName && class_exists($typeName)) {
+            $fallbacks[] = "\$this->get('{$typeName}')";
+        }
+
+        // Merge fallbacks into a clean null coalescing chain
+        if ($fallbacks) {
+            return "{$runtimeArg} ?? " . implode(" ?? ", $fallbacks);
+        }
+
+        // If nothing matches
+        return $runtimeArg;
     }
 }
