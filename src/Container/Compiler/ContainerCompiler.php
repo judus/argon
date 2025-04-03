@@ -9,6 +9,7 @@ use Exception;
 use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
+use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\ServiceDescriptor;
 use Nette\PhpGenerator\ClassType;
@@ -32,8 +33,8 @@ final class ContainerCompiler
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
+     * @throws \ReflectionException
      */
     public function compile(string $filePath, string $className, string $namespace = 'App\\Compiled'): void
     {
@@ -41,6 +42,7 @@ final class ContainerCompiler
 
         $namespaceGen = $file->addNamespace($namespace);
         $namespaceGen->addUse(ArgonContainer::class);
+        $namespaceGen->addUse(ContainerException::class);
 
         $class = $namespaceGen->addClass($className);
         $class->setExtends(ArgonContainer::class);
@@ -90,6 +92,7 @@ final class ContainerCompiler
         $class->addProperty('serviceMap')->setValue($serviceMap);
 
         $compiled = (string) $file;
+
         if (!file_exists($filePath) || md5_file($filePath) !== md5($compiled)) {
             file_put_contents($filePath, $compiled);
         }
@@ -286,39 +289,44 @@ final class ContainerCompiler
             ->setPublic()
             ->setReturnType('mixed')
             ->setBody(<<<'PHP'
-                if ($target instanceof \Closure) {
-                    $reflection = new \ReflectionFunction($target);
-                    $instance = null;
+            if ($target instanceof \Closure) {
+                $reflection = new \ReflectionFunction($target);
+                $instance = null;
+            } else {
+                if (is_string($target)) {
+                    if ($this->has($target)) {
+                        $instance = $this->get($target);
+                    } elseif (class_exists($target)) {
+                        $instance = (new \ReflectionClass($target))->newInstance();
+                    } else {
+                        throw new \RuntimeException("Cannot invoke unknown class or binding: {$target}");
+                    }
                 } else {
-                    if (is_string($target)) {
-                        if ($this->has($target)) {
-                            $instance = $this->get($target);
-                        } elseif (class_exists($target)) {
-                            $instance = (new \ReflectionClass($target))->newInstance();
-                        } else {
-                            throw new \RuntimeException("Cannot invoke unknown class or binding: {\$target}");
-                        }
-                    } else {
-                        $instance = $target;
-                    }
-                    $reflection = new \ReflectionMethod($instance, $method ?? '__invoke');
+                    $instance = $target;
                 }
-                $params = [];
-                foreach ($reflection->getParameters() as $param) {
-                    $name = $param->getName();
-                    $type = $param->getType()?->getName();
-                    if (array_key_exists($name, $arguments)) {
-                        $params[] = $arguments[$name];
-                    } elseif ($type && $this->has($type)) {
-                        $params[] = $this->get($type);
-                    } elseif ($param->isDefaultValueAvailable()) {
-                        $params[] = $param->getDefaultValue();
-                    } else {
-                        throw new \RuntimeException("Unable to resolve parameter '{\$name}' for '{\$reflection->getName()}'");
-                    }
+
+                $reflection = new \ReflectionMethod($instance, $method ?? '__invoke');
+            }
+
+            $params = [];
+
+            foreach ($reflection->getParameters() as $param) {
+                $name = $param->getName();
+                $type = $param->getType()?->getName();
+
+                if (array_key_exists($name, $arguments)) {
+                    $params[] = $arguments[$name];
+                } elseif ($type && $this->has($type)) {
+                    $params[] = $this->get($type);
+                } elseif ($param->isDefaultValueAvailable()) {
+                    $params[] = $param->getDefaultValue();
+                } else {
+                    throw new \RuntimeException("Unable to resolve parameter '{$name}' for '{$reflection->getName()}'");
                 }
-                return $reflection->invokeArgs($instance, $params);
-            PHP);
+            }
+
+            return $reflection->invokeArgs($instance, $params);
+        PHP);
 
         $invoke->addParameter('target')->setType('object|string');
         $invoke->addParameter('method')->setType('?string')->setDefaultValue(null);
@@ -335,8 +343,10 @@ final class ContainerCompiler
     }
 
     /**
-     * @throws ReflectionException
+     * @param class-string|Closure $concrete
+     *
      * @throws ContainerException
+     * @throws ReflectionException
      */
     private function generateServiceMethod(ClassType $class, string|Closure $concrete, string $id, string $methodName, string $singletonProperty): void
     {
@@ -366,9 +376,12 @@ final class ContainerCompiler
     }
 
     /**
+     * @param class-string $class
+     * @return list<string>
+     *
      * @throws ReflectionException
      */
-    private function resolveConstructorArguments(string $class, string $serviceId, string $argsVar = '$args'): ?array
+    private function resolveConstructorArguments(string $class, string $serviceId, string $argsVar = '$args'): array
     {
         $reflectionClass = new ReflectionClass($class);
         $constructor = $reflectionClass->getConstructor();
@@ -380,47 +393,62 @@ final class ContainerCompiler
         $resolved = [];
 
         foreach ($constructor->getParameters() as $param) {
-            $resolved[] = $this->resolveParameter($param, $serviceId, $argsVar) ?? 'null';
+            $resolved[] = $this->resolveParameter($param, $serviceId, $argsVar);
         }
 
         return $resolved;
     }
 
-    private function resolveParameter(ReflectionParameter $parameter, string $serviceId, string $argsVar = '$args'): ?string
+    /**
+     * Resolves a constructor parameter for code generation in the compiled container.
+     *
+     * @param ReflectionParameter $parameter
+     * @param string $serviceId
+     * @param string $argsVar Variable name (e.g. '$args')
+     * @return string
+     */
+    private function resolveParameter(ReflectionParameter $parameter, string $serviceId, string $argsVar = '$args'): string
     {
         $name = $parameter->getName();
         $type = $parameter->getType();
         $typeName = $type instanceof ReflectionNamedType ? $type->getName() : null;
 
-        $runtime = "array_key_exists(" . var_export($name, true) . ", {$argsVar}) ? {$argsVar}[" . var_export($name, true) . "] : null";
+        $runtime = "{$argsVar}[" . var_export($name, true) . "]";
 
         $fallbacks = [];
         $declaringClass = $parameter->getDeclaringClass();
         $className = $declaringClass?->getName() ?? $serviceId;
 
-        if ($this->contextualBindings->has($className, $typeName)) {
-            $target = $this->contextualBindings->get($className, $typeName);
-            if (is_string($target)) {
-                $fallbacks[] = "\$this->get('{$target}')";
+        if ($typeName !== null) {
+            // Contextual bindings
+            if ($this->contextualBindings->has($className, $typeName)) {
+                $target = $this->contextualBindings->get($className, $typeName);
+                if (is_string($target)) {
+                    $fallbacks[] = "\$this->get('{$target}')";
+                }
+            }
+
+            // Registered service in container
+            if ($this->container->has($typeName) && !$type?->allowsNull()) {
+                $fallbacks[] = "\$this->get('{$typeName}')";
+            }
+
+            // Last-resort: autowiring for instantiable classes
+            if (class_exists($typeName)) {
+                $fallbacks[] = "\$this->get('{$typeName}')";
             }
         }
 
-        if ($this->container->has($typeName) && !$type?->allowsNull()) {
-            $fallbacks[] = "\$this->get('{$typeName}')";
-        }
-
+        // From argument map
         if ($this->argumentMap->has($serviceId, $name)) {
-            $fallbacks[] = var_export($this->argumentMap->getArgument($className, $name), true);
+            $fallbacks[] = var_export($this->argumentMap->getArgument($serviceId, $name), true);
         }
 
+        // Default value
         if ($parameter->isDefaultValueAvailable()) {
             $fallbacks[] = var_export($parameter->getDefaultValue(), true);
         }
 
-        if ($typeName && class_exists($typeName)) {
-            $fallbacks[] = "\$this->get('{$typeName}')";
-        }
-
-        return '(' . $runtime . ')' . ($fallbacks ? ' ?? ' . implode(' ?? ', $fallbacks) : '');
+        return $runtime . ($fallbacks ? ' ?? ' . implode(' ?? ', $fallbacks) : '');
     }
 }
