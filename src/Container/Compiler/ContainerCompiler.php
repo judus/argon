@@ -348,8 +348,13 @@ final class ContainerCompiler
      * @throws ContainerException
      * @throws ReflectionException
      */
-    private function generateServiceMethod(ClassType $class, string|Closure $concrete, string $id, string $methodName, string $singletonProperty): void
-    {
+    private function generateServiceMethod(
+        ClassType $class,
+        string|Closure $concrete,
+        string $id,
+        string $methodName,
+        string $singletonProperty
+    ): void {
         if ($concrete instanceof \Closure) {
             throw new ContainerException("Cannot compile a container with closures: [$id]");
         }
@@ -407,8 +412,11 @@ final class ContainerCompiler
      * @param string $argsVar Variable name (e.g. '$args')
      * @return string
      */
-    private function resolveParameter(ReflectionParameter $parameter, string $serviceId, string $argsVar = '$args'): string
-    {
+    private function resolveParameter(
+        ReflectionParameter $parameter,
+        string $serviceId,
+        string $argsVar = '$args'
+    ): string {
         $name = $parameter->getName();
         $type = $parameter->getType();
         $typeName = $type instanceof ReflectionNamedType ? $type->getName() : null;
