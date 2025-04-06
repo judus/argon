@@ -55,7 +55,7 @@ class CallableInvokerTest extends TestCase
             }
         };
 
-        $result = $this->invoker->call($obj, 'sayHello');
+        $result = $this->invoker->call([$obj, 'sayHello']);
         $this->assertSame('hello', $result);
     }
 
@@ -74,7 +74,7 @@ class CallableInvokerTest extends TestCase
 
         $this->resolver->method('resolve')->with('MyService')->willReturn($instance);
 
-        $result = $this->invoker->call('MyService', 'foo');
+        $result = $this->invoker->call(['MyService', 'foo']);
         $this->assertSame('bar', $result);
     }
 
@@ -100,10 +100,10 @@ class CallableInvokerTest extends TestCase
     public function testThrowsForUnsupportedCallableType(): void
     {
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage('Unsupported callable type');
+        $this->expectExceptionMessage('Cannot resolve callable.');
 
         // This string won't resolve to a valid service or callable
-        $this->invoker->call('not_a_callable_string', null, []);
+        $this->invoker->call('not_a_callable_string', []);
     }
 
     /**
@@ -112,9 +112,9 @@ class CallableInvokerTest extends TestCase
     public function testThrowsForReflectionFailure(): void
     {
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage('Failed to reflect callable');
+        $this->expectExceptionMessageMatches('/Failed to reflect callable/');
 
-        $this->invoker->call('NonExistentClass', 'nope');
+        $this->invoker->call(['NonExistentClass', 'nonExistentMethod']);
     }
 
     /**
@@ -133,6 +133,6 @@ class CallableInvokerTest extends TestCase
         $this->expectExceptionMessage("Failed to instantiate 'thrower' with resolved dependencies.");
 
         // This forces the invoker to use ReflectionMethod
-        $this->invoker->call($failing, 'thrower');
+        $this->invoker->call([$failing, 'thrower']);
     }
 }

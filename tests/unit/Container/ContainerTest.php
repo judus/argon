@@ -153,10 +153,10 @@ class ContainerTest extends TestCase
         $result = 'worked';
         $this->mockContainer->expects($this->once())
             ->method('invoke')
-            ->with('MyClass', 'myMethod', ['param' => 'value'])
+            ->with(['MyClass', 'myMethod'], ['param' => 'value'])
             ->willReturn($result);
 
-        $this->assertSame($result, Container::invoke('MyClass', 'myMethod', ['param' => 'value']));
+        $this->assertSame($result, Container::invoke(['MyClass', 'myMethod'], ['param' => 'value']));
     }
 
     /**

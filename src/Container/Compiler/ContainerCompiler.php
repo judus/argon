@@ -34,62 +34,29 @@ final class ContainerCompiler
 
     /**
      * @throws ContainerException
-     * @throws \ReflectionException
+     * @throws ReflectionException
      */
     public function compile(string $filePath, string $className, string $namespace = 'App\\Compiled'): void
     {
         $file = $this->generatePhpFile($namespace);
 
         $namespaceGen = $file->addNamespace($namespace);
-        $namespaceGen->addUse(ArgonContainer::class);
-        $namespaceGen->addUse(ContainerException::class);
 
         $class = $namespaceGen->addClass($className);
         $class->setExtends(ArgonContainer::class);
 
         $this->generateConstructor($class);
         $this->generateCoreProperties($class);
-        $this->generateInterceptorMethods($class);
+        $this->generateServiceMethods($namespaceGen, $class);
+        $this->generateServiceMethodInvokers($class);
+        $this->generateHasMethod($class);
         $this->generateGetMethod($class);
         $this->generateGetTaggedMethod($class);
         $this->generateGetTaggedIdsMethod($class);
-        $this->generateHasMethod($class);
+        $this->generateInterceptorMethods($class);
         $this->generateInvokeMethod($class);
-
-        $serviceMap = [];
-
-        foreach ($this->container->getBindings() as $id => $descriptor) {
-            $concrete = $descriptor->getConcrete();
-
-            if ($descriptor->shouldIgnoreForCompilation()) {
-                continue;
-            }
-
-            $methodName = $this->buildServiceMethodName($id);
-
-
-            if ($descriptor->hasFactory()) {
-                $this->compileFactoryService($namespaceGen, $class, $id, $methodName, $descriptor, $serviceMap);
-                continue;
-            }
-
-            if (!(new ReflectionClass($concrete))->isInstantiable()) {
-                $target = is_string($concrete) ? " [$concrete]" : '';
-                throw new ContainerException(
-                    "Service [$id] points to non-instantiable class$target."
-                );
-            }
-
-            $methodName = $this->buildServiceMethodName($id);
-            $singletonProperty = "singleton_$methodName";
-
-            $this->generateSingletonProperty($class, $singletonProperty, $id);
-            $this->generateServiceMethod($class, $concrete, $id, $methodName, $singletonProperty);
-
-            $serviceMap[$id] = $methodName;
-        }
-
-        $class->addProperty('serviceMap')->setValue($serviceMap);
+        $this->generateInvokeServiceMethod($class);
+        $this->generateBuildCompiledInvokerMethodName($class);
 
         $compiled = (string) $file;
 
@@ -155,6 +122,7 @@ final class ContainerCompiler
         $file->setStrictTypes();
         $namespaceGen = $file->addNamespace($namespace);
         $namespaceGen->addUse(ArgonContainer::class);
+        $namespaceGen->addUse(ContainerException::class);
         return $file;
     }
 
@@ -226,7 +194,6 @@ final class ContainerCompiler
         PHP);
     }
 
-
     private function generateGetMethod(ClassType $class): void
     {
         $method = $class->addMethod('get')
@@ -287,50 +254,60 @@ final class ContainerCompiler
     {
         $invoke = $class->addMethod('invoke')
             ->setPublic()
-            ->setReturnType('mixed')
-            ->setBody(<<<'PHP'
-            if ($target instanceof \Closure) {
-                $reflection = new \ReflectionFunction($target);
-                $instance = null;
-            } else {
-                if (is_string($target)) {
-                    if ($this->has($target)) {
-                        $instance = $this->get($target);
-                    } elseif (class_exists($target)) {
-                        $instance = (new \ReflectionClass($target))->newInstance();
-                    } else {
-                        throw new \RuntimeException("Cannot invoke unknown class or binding: {$target}");
-                    }
-                } else {
-                    $instance = $target;
-                }
+            ->setReturnType('mixed');
 
-                $reflection = new \ReflectionMethod($instance, $method ?? '__invoke');
-            }
-
-            $params = [];
-
-            foreach ($reflection->getParameters() as $param) {
-                $name = $param->getName();
-                $type = $param->getType()?->getName();
-
-                if (array_key_exists($name, $arguments)) {
-                    $params[] = $arguments[$name];
-                } elseif ($type && $this->has($type)) {
-                    $params[] = $this->get($type);
-                } elseif ($param->isDefaultValueAvailable()) {
-                    $params[] = $param->getDefaultValue();
-                } else {
-                    throw new \RuntimeException("Unable to resolve parameter '{$name}' for '{$reflection->getName()}'");
-                }
-            }
-
-            return $reflection->invokeArgs($instance, $params);
-        PHP);
-
-        $invoke->addParameter('target')->setType('object|string');
-        $invoke->addParameter('method')->setType('?string')->setDefaultValue(null);
+        $invoke->addParameter('target')->setType('callable|object|array|string');
         $invoke->addParameter('arguments')->setType('array')->setDefaultValue([]);
+
+        $invoke->setBody(<<<'PHP'
+        if (is_callable($target) && !is_array($target)) {
+            $reflection = new \ReflectionFunction($target);
+            $instance = null;
+        } elseif (is_array($target) && count($target) === 2) {
+            [$controller, $method] = $target;
+            $instance = is_object($controller) ? $controller : $this->get($controller);
+            $reflection = new \ReflectionMethod($instance, $method);
+        } else {
+            $instance = is_object($target) ? $target : $this->get($target);
+            $reflection = new \ReflectionMethod($instance, '__invoke');
+        }
+
+        $params = [];
+
+        foreach ($reflection->getParameters() as $param) {
+            $name = $param->getName();
+            $type = $param->getType()?->getName();
+
+            if (array_key_exists($name, $arguments)) {
+                $params[] = $arguments[$name];
+            } elseif ($type && $this->has($type)) {
+                $params[] = $this->get($type);
+            } elseif ($param->isDefaultValueAvailable()) {
+                $params[] = $param->getDefaultValue();
+            } else {
+                throw new \RuntimeException("Unable to resolve parameter '{$name}' for '{$reflection->getName()}'");
+            }
+        }
+
+        return $reflection->invokeArgs($instance, $params);
+    PHP);
+    }
+
+    private function generateBuildCompiledInvokerMethodName(ClassType $class): void
+    {
+        $method = $class->addMethod('buildCompiledInvokerMethodName')
+            ->setPrivate()
+            ->setReturnType('string');
+
+        $method->addParameter('serviceId')->setType('string');
+        $method->addParameter('method')->setType('string')->setDefaultValue('__invoke');
+
+        $method->setBody(<<<'PHP'
+            $sanitizedService = preg_replace('/[^A-Za-z0-9_]/', '_', $serviceId);
+            $sanitizedMethod  = preg_replace('/[^A-Za-z0-9_]/', '_', $method);
+        
+            return 'invoke_' . $sanitizedService . '__' . $sanitizedMethod;
+    PHP);
     }
 
     private function generateSingletonProperty(ClassType $class, string $propertyName, string $id): void
@@ -411,6 +388,7 @@ final class ContainerCompiler
      * @param string $serviceId
      * @param string $argsVar Variable name (e.g. '$args')
      * @return string
+     * @throws ContainerException
      */
     private function resolveParameter(
         ReflectionParameter $parameter,
@@ -447,9 +425,12 @@ final class ContainerCompiler
             }
         }
 
-        // From argument map
-        if ($this->argumentMap->has($serviceId, $name)) {
-            $fallbacks[] = var_export($this->argumentMap->getArgument($serviceId, $name), true);
+        // From descriptor
+        if ($this->container->getDescriptor($serviceId)?->hasArgument($name)) {
+            $fallbacks[] = var_export(
+                $this->container->getDescriptor($serviceId)->getArgument($name),
+                true
+            );
         }
 
         // Default value
@@ -458,5 +439,113 @@ final class ContainerCompiler
         }
 
         return $runtime . ($fallbacks ? ' ?? ' . implode(' ?? ', $fallbacks) : '');
+    }
+
+    /**
+     * @param PhpNamespace $namespaceGen
+     * @param ClassType $class
+     * @throws ContainerException
+     * @throws ReflectionException
+     */
+    public function generateServiceMethods(PhpNamespace $namespaceGen, ClassType $class): void
+    {
+        $serviceMap = [];
+
+        foreach ($this->container->getBindings() as $id => $descriptor) {
+            $concrete = $descriptor->getConcrete();
+
+            if ($descriptor->shouldIgnoreForCompilation()) {
+                continue;
+            }
+
+            $methodName = $this->buildServiceMethodName($id);
+
+
+            if ($descriptor->hasFactory()) {
+                $this->compileFactoryService($namespaceGen, $class, $id, $methodName, $descriptor, $serviceMap);
+                continue;
+            }
+
+            if (!(new ReflectionClass($concrete))->isInstantiable()) {
+                $target = is_string($concrete) ? " [$concrete]" : '';
+                throw new ContainerException(
+                    "Service [$id] points to non-instantiable class$target."
+                );
+            }
+
+            $methodName = $this->buildServiceMethodName($id);
+            $singletonProperty = "singleton_$methodName";
+
+            $this->generateSingletonProperty($class, $singletonProperty, $id);
+            $this->generateServiceMethod($class, $concrete, $id, $methodName, $singletonProperty);
+
+            $serviceMap[$id] = $methodName;
+        }
+
+        $class->addProperty('serviceMap')->setValue($serviceMap);
+    }
+
+    private function generateServiceMethodInvokers(ClassType $class): void
+    {
+        foreach ($this->container->getBindings() as $serviceId => $descriptor) {
+            foreach ($descriptor->getMethodMap() as $method => $args) {
+                $compiledMethodName = $this->buildMethodInvokerName($serviceId, $method);
+                $controllerFetch = "\$controller = \$this->get(" . var_export($serviceId, true) . ");";
+
+                // Build compiled argument array
+                $compiledArgs = [];
+                foreach ($args as $name => $value) {
+                    dump($value);
+                    if (is_string($value) && str_starts_with($value, '@')) {
+                        $className = substr($value, 1);
+                        $compiledArgs[] = var_export($name, true) . " => \$this->get(" . var_export($className, true) . ")";
+                    } else {
+                        $compiledArgs[] = var_export($name, true) . " => " . var_export($value, true);
+                    }
+                }
+
+                $mergedArgsLine = 'array_merge([' . implode(", ", $compiledArgs) . '], $args)';
+                $body = <<<PHP
+                    {$controllerFetch}
+                    \$mergedArgs = {$mergedArgsLine};
+                    return \$controller->{$method}(...\$mergedArgs);
+                PHP;
+
+                $class->addMethod($compiledMethodName)
+                    ->setPublic()
+                    ->setReturnType('mixed')
+                    ->setBody($body)
+                    ->addParameter('args')->setType('array')->setDefaultValue([]);
+            }
+        }
+    }
+
+
+    private function generateInvokeServiceMethod(ClassType $class): void
+    {
+        $method = $class->addMethod('invokeServiceMethod')
+            ->setPrivate()
+            ->setReturnType('mixed')
+            ->setBody(<<<'PHP'
+            $compiledMethod = $this->buildCompiledInvokerMethodName($serviceId, $method);
+
+            if (method_exists($this, $compiledMethod)) {
+                return $this->{$compiledMethod}($args);
+            }
+
+            return $this->invoke([$serviceId, $method], $args);
+        PHP);
+
+        $method->addParameter('serviceId')->setType('string');
+        $method->addParameter('method')->setType('string');
+        $method->addParameter('args')->setType('array')->setDefaultValue([]);
+    }
+
+    private function buildMethodInvokerName(string $serviceId, string $method): string
+    {
+        $sanitizedService = preg_replace('/[^A-Za-z0-9_]/', '_', $serviceId);
+        $sanitizedMethod  = preg_replace('/[^A-Za-z0-9_]/', '_', $method);
+
+        return 'invoke_' . $sanitizedService . '__' . $sanitizedMethod;
     }
 }

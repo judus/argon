@@ -39,6 +39,10 @@ interface ServiceDescriptorInterface
 
     public function getFactoryMethod(): string;
 
+    public function setMethod(string $method, array $arguments, ?string $returnType = null): void;
+
+    public function getMethod(string $method): array;
+
     /**
      * @api
      */

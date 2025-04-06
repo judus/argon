@@ -145,6 +145,10 @@ class ContainerCompilerTest extends TestCase
         $this->assertInstanceOf(Logger::class, $mailer->logger);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testCompiledContainerResolvesSelf(): void
     {
         $container = new ArgonContainer();
@@ -164,14 +168,11 @@ class ContainerCompilerTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        // Set primitive parameter overrides before compiling
-        $container->getArgumentMap()->set(TestServiceWithMultipleParams::class, [
+        // Bind the service
+        $container->bind(TestServiceWithMultipleParams::class, args: [
             'param1' => 'compiled-override',
             'param2' => 99,
         ]);
-
-        // Bind the service
-        $container->bind(TestServiceWithMultipleParams::class);
 
         // Compile and load container
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesWithPrimitiveOverrides');
