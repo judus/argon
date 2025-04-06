@@ -31,8 +31,8 @@ final class ReflectionUtilsTest extends TestCase
         $result = ReflectionUtils::getMethodParameters(TestSubject::class, 'objectTypes');
 
         $this->assertSame([
-            'service' => SomeClass::class,
-            'iface' => SampleInterface::class,
+            'service' => '@' . SomeClass::class,
+            'iface' => '@' . SampleInterface::class,
         ], $result);
     }
 
@@ -41,7 +41,7 @@ final class ReflectionUtilsTest extends TestCase
         $result = ReflectionUtils::getMethodParameters(TestSubject::class, 'nullable');
 
         $this->assertSame([
-            'maybe' => SomeClass::class,
+            'maybe' => '@' . SomeClass::class,
             'optional' => 'hello',
         ], $result);
     }
@@ -63,7 +63,7 @@ final class ReflectionUtilsTest extends TestCase
         $result = ReflectionUtils::getMethodParameters(TestSubject::class, 'enumDefault');
 
         $this->assertSame([
-            'e' => 'Tests\Unit\Container\Mocks\SomeEnum::FOO',
+            'e' => '@' . 'Tests\Unit\Container\Mocks\SomeEnum::FOO',
         ], $result);
     }
 
@@ -72,7 +72,7 @@ final class ReflectionUtilsTest extends TestCase
         $result = ReflectionUtils::getMethodParameters(TestSubject::class, 'unionTypes');
 
         $this->assertSame([
-            'id' => SomeClass::class,
+            'id' => '@' . SomeClass::class,
         ], $result);
     }
 
