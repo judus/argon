@@ -286,4 +286,44 @@ final class BindAndResolveTest extends TestCase
         $this->assertInstanceOf(Logger::class, $tagged[0]);
         $this->assertInstanceOf(Foo::class, $tagged[1]);
     }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testBindWithArgumentsCanBeRetrievedViaDescriptor(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->bind(Foo::class, args: ['value' => 'bar']);
+        $descriptor = $container->getDescriptor(Foo::class);
+
+        $this->assertTrue($descriptor?->hasArgument('value'));
+        $this->assertSame('bar', $descriptor->getArgument('value'));
+    }
+
+    public function testDescriptorThrowsIfArgumentNotFound(): void
+    {
+        $this->expectException(ContainerException::class);
+
+        $container = new ArgonContainer();
+        $container->bind(Foo::class);
+
+        $container->getDescriptor(Foo::class)?->getArgument('missing');
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testSetMethodStoresMethodMap(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->bind(Foo::class);
+        $descriptor = $container->getDescriptor(Foo::class);
+
+        $descriptor?->setMethod('hello', ['name' => 'string']);
+
+        $this->assertSame(['name' => 'string'], $descriptor?->getMethod('hello'));
+        $this->assertArrayHasKey('hello', (array) $descriptor?->getAllMethods());
+    }
 }

@@ -23,6 +23,19 @@ final readonly class BindingBuilder implements BindingBuilderInterface
     }
 
     /**
+     * @param string $methodName
+     * @param array<array-key, class-string|string|int|float|bool|null> $args
+     * @return BindingBuilderInterface
+     * @api
+     */
+    public function setMethod(string $methodName, array $args = []): BindingBuilderInterface
+    {
+        $this->descriptor->setMethod($methodName, $args);
+
+        return $this;
+    }
+
+    /**
      * @param class-string $factoryClass
      * @param string|null $method
      * @return BindingBuilderInterface

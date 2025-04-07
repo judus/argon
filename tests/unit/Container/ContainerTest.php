@@ -153,10 +153,10 @@ class ContainerTest extends TestCase
         $result = 'worked';
         $this->mockContainer->expects($this->once())
             ->method('invoke')
-            ->with('MyClass', 'myMethod', ['param' => 'value'])
+            ->with(['MyClass', 'myMethod'], ['param' => 'value'])
             ->willReturn($result);
 
-        $this->assertSame($result, Container::invoke('MyClass', 'myMethod', ['param' => 'value']));
+        $this->assertSame($result, Container::invoke(['MyClass', 'myMethod'], ['param' => 'value']));
     }
 
     /**
@@ -282,16 +282,6 @@ class ContainerTest extends TestCase
             ->willReturn($tags);
 
         $this->assertSame($tags, Container::tags());
-    }
-
-    public function testArgumentsDelegatesToContainer(): void
-    {
-        $arguments = $this->createMock(ArgumentMapInterface::class);
-        $this->mockContainer->expects($this->once())
-            ->method('getArgumentMap')
-            ->willReturn($arguments);
-
-        $this->assertSame($arguments, Container::arguments());
     }
 
     public function testParametersReturnsStore(): void

@@ -30,7 +30,11 @@ interface ServiceBinderInterface
      * @param Closure|string|null $concrete
      * @throws ContainerException
      */
-    public function singleton(string $id, Closure|string|null $concrete = null): BindingBuilderInterface;
+    public function singleton(
+        string $id,
+        Closure|string|null $concrete = null,
+        ?array $args = null
+    ): BindingBuilderInterface;
 
     /**
      * Registers a service (transient or singleton).
@@ -38,12 +42,15 @@ interface ServiceBinderInterface
      * @param string $id
      * @param Closure|string|null $concrete
      * @param bool $isSingleton
+     * @param array $args
+     * @return BindingBuilderInterface
      * @throws ContainerException
      */
     public function bind(
         string $id,
         Closure|string|null $concrete = null,
-        bool $isSingleton = false
+        bool $isSingleton = false,
+        array $args = []
     ): BindingBuilderInterface;
 
     /**

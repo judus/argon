@@ -74,7 +74,7 @@ final class ServiceContainerTest extends TestCase
     {
         $this->container->singleton(Logger::class);
 
-        $result = $this->container->invoke(UsesLogger::class, 'reportSomething');
+        $result = $this->container->invoke([UsesLogger::class, 'reportSomething']);
 
         $this->assertSame('Reported by logger', $result);
     }
@@ -99,8 +99,8 @@ final class ServiceContainerTest extends TestCase
      */
     public function testInvokeWithInvalidCallableThrows(): void
     {
-        $this->expectException(NotFoundException::class);
-        $this->expectExceptionMessage("Service 'this_is_not_callable' not found.");
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage("Cannot resolve callable.");
 
         $this->container->invoke('this_is_not_callable');
     }
@@ -111,7 +111,7 @@ final class ServiceContainerTest extends TestCase
     public function testInvokeThrowsWhenResolutionFails(): void
     {
         $this->expectException(NotFoundException::class);
-        $this->container->invoke('NonExistentService', 'method');
+        $this->container->invoke(['NonExistentService', 'method']);
     }
 
     /**

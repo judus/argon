@@ -29,83 +29,95 @@ readonly class CallableInvoker
     /**
      * Resolves and calls a method or closure, injecting dependencies.
      *
-     * @param object|string $target
-     * @param string|null $method
-     * @param array<string, mixed> $arguments
+     * @param object|string|array|callable $target
+     * @param array<array-key, mixed> $arguments
      * @return mixed
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function call(object|string $target, ?string $method = null, array $arguments = []): mixed
+    public function call(object|string|array|callable $target, array $arguments = []): mixed
     {
-        $callableWrapper = $this->resolveCallable($target, $method);
+        $callable = $this->resolveCallable($target);
 
-        $contextId = $this->buildContextId($target, $method);
+        $contextId = $this->buildContextId($callable);
 
         $resolvedParams = array_map(
             fn(ReflectionParameter $param): mixed =>
             $this->argumentResolver->resolve($param, $arguments, $contextId),
-            $callableWrapper->getReflection()->getParameters()
+            $callable->getReflection()->getParameters()
         );
 
-        return $this->invokeCallable($callableWrapper, $resolvedParams);
+        return $this->invokeCallable($callable, $resolvedParams);
     }
 
-    private function buildContextId(object|string $target, ?string $method): string
+    private function buildContextId(CallableWrapperInterface $callable): string
     {
-        if ($target instanceof Closure) {
+        $ref = $callable->getReflection();
+
+        if ($ref instanceof ReflectionFunction) {
             return 'closure';
         }
 
-        $className = is_object($target) ? $target::class : $target;
+        $instance = $callable->getInstance();
+        $class = is_object($instance) ? get_class($instance) : 'unknown';
 
-        return $method !== null ? "$className::$method" : $className;
+        return "$class::{$ref->getName()}";
     }
 
     /**
      * Resolves a callable target and provides the correct reflection.
      *
-     * @param object|string $target
-     * @param string|null $method
+     * @param object|string|array|callable $target
      * @return CallableWrapperInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
-    private function resolveCallable(object|string $target, ?string $method): CallableWrapperInterface
+    private function resolveCallable(object|string|array|callable $target): CallableWrapperInterface
     {
         try {
+            // 1. Direct Closure
             if ($target instanceof Closure) {
                 return new CallableWrapper(null, new ReflectionFunction($target));
             }
 
-            if (is_string($target)) {
-                $target = $this->serviceResolver->resolve($target);
+            // 2. Array callable: [$class, 'method'] or [$instance, 'method']
+            if (is_array($target) && count($target) === 2) {
+                [$handler, $method] = $target;
+
+                if (is_string($handler)) {
+                    $handler = $this->serviceResolver->resolve($handler);
+                }
+
+                if (is_object($handler)) {
+                    return new CallableWrapper($handler, new ReflectionMethod($handler, (string) $method));
+                }
             }
 
-            if ($method !== null) {
-                return new CallableWrapper($target, new ReflectionMethod($target, $method));
-            }
-
-            if (method_exists($target, '__invoke')) {
+            // 3. Callable object (with __invoke)
+            if (is_object($target) && method_exists($target, '__invoke')) {
                 return new CallableWrapper($target, new ReflectionMethod($target, '__invoke'));
             }
-        } catch (ReflectionException $e) {
-            throw new ContainerException(
-                sprintf(
-                    'Failed to reflect callable: %s::%s',
-                    is_object($target) ? $target::class : $target,
-                    $method ?? '__invoke or closure'
-                ),
-                0,
-                $e
-            );
-        }
 
-        throw new ContainerException(sprintf(
-            'Unsupported callable type: %s (method: %s)',
-            get_debug_type($target),
-            (string) $method
-        ));
+            // 4. String class → resolve and use __invoke
+            if (is_string($target) && class_exists($target)) {
+                $resolved = $this->serviceResolver->resolve($target);
+                return new CallableWrapper($resolved, new ReflectionMethod($resolved, '__invoke'));
+            }
+
+            // 5. String "Class::method"
+            if (is_string($target) && str_contains($target, '::')) {
+                $parts = explode('::', $target, 2);
+                if (count($parts) === 2) {
+                    [$class, $method] = $parts;
+                    $resolved = $this->serviceResolver->resolve($class);
+                    return new CallableWrapper($resolved, new ReflectionMethod($resolved, $method));
+                }
+            }
+
+            throw new ContainerException("Cannot resolve callable.");
+        } catch (ReflectionException $e) {
+            throw new ContainerException("Failed to reflect callable: " . get_debug_type($target), 0, $e);
+        }
     }
 
 

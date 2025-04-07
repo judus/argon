@@ -23,6 +23,17 @@ interface ServiceDescriptorInterface
     public function getInstance(): ?object;
     public function getArguments(): array;
 
+    public function hasArgument(string $name): bool;
+
+    public function setArgument(string $name, mixed $value): void;
+
+    public function getArgument(string $name): mixed;
+
+    /**
+     * @return array<array-key, array<array-key, class-string|string|int|float|bool|null>>
+     */
+    public function getMethodMap(): array;
+
     public function storeInstance(object $instance): void;
 
     /**
@@ -38,6 +49,21 @@ interface ServiceDescriptorInterface
     public function getFactoryClass(): ?string;
 
     public function getFactoryMethod(): string;
+
+    /**
+     * @param string $method
+     * @param array<array-key, class-string|string|int|float|bool|null> $arguments
+     * @param string|null $returnType
+     * @return void
+     */
+    public function setMethod(string $method, array $arguments, ?string $returnType = null): void;
+
+    public function getMethod(string $method): array;
+
+    /**
+     * @return array<array-key, array<array-key, class-string|string|int|float|bool|null>>
+     */
+    public function getAllMethods(): array;
 
     /**
      * @api

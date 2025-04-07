@@ -367,7 +367,7 @@ class ServiceContainerTest extends TestCase
 
         // Resolve the service and call the method
         $service = $container->get(TestService::class);
-        $result = $container->invoke($service, 'someMethod');
+        $result = $container->invoke([$service, 'someMethod']);
 
         // Assert that the method returns the default value ('defaultValue')
         $this->assertEquals('defaultValue', $result);
@@ -388,7 +388,7 @@ class ServiceContainerTest extends TestCase
         $service = $container->get(TestService::class);
 
         // Call the method with an override for 'dependency'
-        $result = $container->invoke($service, 'someMethod', ['dependency' => 'overrideValue']);
+        $result = $container->invoke([$service, 'someMethod'], ['dependency' => 'overrideValue']);
 
         // Assert that the method returns the overridden value
         $this->assertEquals('overrideValue', $result);

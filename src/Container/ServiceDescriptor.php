@@ -26,7 +26,7 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
     private ?object $instance = null;
 
     /**
-     * @var array<string, mixed>
+     * @var array<array-key, mixed>
      */
     private array $arguments;
 
@@ -42,19 +42,23 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
 
     private bool $ignoreForCompilation = false;
 
+    /**
+     * @var array<string, array<array-key, class-string|string|int|float|bool|null>>
+     */
+    private array $methodMap = [];
 
     /**
      * @param string $id
      * @param class-string|Closure $concrete
      * @param bool $isSingleton
-     * @param array<string, mixed> $arguments
+     * @param array<array-key, mixed> $arguments
      */
-    public function __construct(string $id, string|Closure $concrete, bool $isSingleton, array $arguments = [])
+    public function __construct(string $id, string|Closure $concrete, bool $isSingleton, ?array $arguments = [])
     {
         $this->id = $id;
         $this->concrete = $concrete;
         $this->isSingleton = $isSingleton;
-        $this->arguments = $arguments;
+        $this->arguments = $arguments ?? [];
     }
 
     public function getId(): string
@@ -88,11 +92,41 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<array-key, mixed>
      */
     public function getArguments(): array
     {
         return $this->arguments;
+    }
+
+    public function hasArgument(string $name): bool
+    {
+        return array_key_exists($name, $this->arguments);
+    }
+
+    public function setArgument(string $name, mixed $value): void
+    {
+        $this->arguments[$name] = $value;
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function getArgument(string $name): mixed
+    {
+        if (!array_key_exists($name, $this->arguments)) {
+            throw new ContainerException("Constructor argument [{$name}] not found in service [{$this->id}]");
+        }
+
+        return $this->arguments[$name];
+    }
+
+    /**
+     * @return array<array-key, array<array-key, class-string|string|int|float|bool|null>>
+     */
+    public function getMethodMap(): array
+    {
+        return $this->methodMap;
     }
 
     /**
@@ -146,5 +180,34 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
     public function shouldIgnoreForCompilation(): bool
     {
         return $this->ignoreForCompilation;
+    }
+
+    /**
+     * Store argument definitions for a method.
+     *
+     * @param string $method
+     * @param array<array-key, class-string|string|int|float|bool|null> $arguments
+     * @param string|null $returnType (optional, unused for now)
+     */
+    public function setMethod(string $method, array $arguments, ?string $returnType = null): void
+    {
+        $this->methodMap[$method] = $arguments;
+    }
+
+    /**
+     * @param string $method
+     * @return array<array-key, class-string|string|int|float|bool|null>
+     */
+    public function getMethod(string $method): array
+    {
+        return $this->methodMap[$method] ?? [];
+    }
+
+    /**
+     * @return array<array-key, array<array-key, class-string|string|int|float|bool|null>>
+     */
+    public function getAllMethods(): array
+    {
+        return $this->methodMap;
     }
 }

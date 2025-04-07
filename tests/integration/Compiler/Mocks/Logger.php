@@ -8,7 +8,8 @@ class Logger
 {
     public bool $intercepted = false;
 
-    public function log(string $msg): void
+    public function log(string $msg): string
     {
+        return $msg;
     }
 }

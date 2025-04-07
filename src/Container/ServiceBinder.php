@@ -49,14 +49,14 @@ final class ServiceBinder implements ServiceBinderInterface
      *
      * @param string $id
      * @param Closure|string|null $concrete
-     * @param array<string, mixed> $args
+     * @param array<array-key, mixed>|null $args
      * @return BindingBuilderInterface
      * @throws ContainerException
      */
     public function singleton(
         string $id,
         Closure|string|null $concrete = null,
-        array $args = []
+        ?array $args = null
     ): BindingBuilderInterface {
         return $this->bind($id, $concrete, true, $args);
     }
@@ -67,7 +67,7 @@ final class ServiceBinder implements ServiceBinderInterface
      * @param string $id
      * @param Closure|string|null $concrete
      * @param bool $isSingleton
-     * @param array<string, mixed> $args
+     * @param array<array-key, mixed> $args
      * @return BindingBuilderInterface
      * @throws ContainerException
      */
@@ -75,7 +75,7 @@ final class ServiceBinder implements ServiceBinderInterface
         string $id,
         Closure|string|null $concrete = null,
         bool $isSingleton = false,
-        array $args = []
+        ?array $args = []
     ): BindingBuilderInterface {
         $concrete ??= $id;
 

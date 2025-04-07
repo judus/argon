@@ -193,4 +193,24 @@ class ServiceDescriptorTest extends TestCase
 
         $method->invoke($resolver, Foo::class, $descriptor, []);
     }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testSetAndGetArgument(): void
+    {
+        $desc = new ServiceDescriptor('test', stdClass::class, true);
+        $desc->setArgument('foo', 'bar');
+
+        $this->assertTrue($desc->hasArgument('foo'));
+        $this->assertSame('bar', $desc->getArgument('foo'));
+    }
+
+    public function testGetArgumentThrowsIfMissing(): void
+    {
+        $this->expectException(ContainerException::class);
+
+        $desc = new ServiceDescriptor('test', stdClass::class, true);
+        $desc->getArgument('missing');
+    }
 }

@@ -124,15 +124,14 @@ class Container
     /**
      * Calls a method or closure with automatic dependency injection.
      *
-     * @param object|string $target  Object instance or class name
-     * @param string|null $method    Method name if calling on a class/object
-     * @param array<string, mixed> $parameters      Optional parameter overrides
+     * @param object|string|callable|array $target  Object instance or class name
+     * @param array<array-key, mixed> $arguments      Optional parameter overrides
      *
      * @throws NotFoundException|ContainerException
      */
-    public static function invoke(object|string $target, ?string $method = null, array $parameters = []): mixed
+    public static function invoke(object|string|callable|array $target, array $arguments = []): mixed
     {
-        return self::instance()->invoke($target, $method, $parameters);
+        return self::instance()->invoke($target, $arguments);
     }
 
     /**
@@ -262,14 +261,6 @@ class Container
     public static function parameters(): ParameterStoreInterface
     {
         return self::instance()->getParameters();
-    }
-
-    /**
-     * Gets access to the argument map.
-     */
-    public static function arguments(): ArgumentMapInterface
-    {
-        return self::instance()->getArgumentMap();
     }
 
     /**
