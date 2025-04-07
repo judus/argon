@@ -19,6 +19,8 @@ use Tests\Integration\Compiler\Mocks\DefaultValueService;
 use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
+use Tests\Integration\Compiler\Mocks\MailerFactory;
+use Tests\Integration\Compiler\Mocks\ServiceWithDependency;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
 use Tests\Integration\Mocks\CustomLogger;
 use Tests\Integration\Mocks\LoggerInterface;
@@ -290,7 +292,6 @@ class ContainerCompilerTest extends TestCase
 
         $containerMock = $this->createMock(ArgonContainer::class);
         $containerMock->method('getBindings')->willReturn([$serviceId => $descriptor]);
-        $containerMock->method('getArgumentMap')->willReturn(new ArgumentMap());
         $containerMock->method('getTags')->willReturn([]);
         $containerMock->method('getPostInterceptors')->willReturn([]);
 
@@ -395,5 +396,96 @@ class ContainerCompilerTest extends TestCase
 
         $this->assertInstanceOf(SimpleService::class, $instance);
         $this->assertSame('compiled-store', $instance->value, 'Parameter store value should be injected correctly.');
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testInvokeServiceMethodInvokesCompiledMethod(): void
+    {
+        $container = new ArgonContainer();
+        $container->singleton(Logger::class)
+            ->setMethod('log', ['msg' => 'hello']);
+
+        $compiled = $this->compileAndLoadContainer($container, 'testInvokeServiceMethodInvokesCompiledMethod');
+
+        $refMethod = new \ReflectionMethod($compiled, 'invokeServiceMethod');
+
+        $result = $refMethod->invoke($compiled, Logger::class, 'log', ['msg' => 'hello']);
+
+        $this->assertSame('hello', $result);
+        $this->assertTrue(method_exists($compiled, 'invoke_' . str_replace('\\', '_', Logger::class) . '__log'));
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testCompileHandlesFactoryBinding(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->singleton(Logger::class);
+        $container->singleton(Mailer::class)->useFactory(MailerFactory::class, 'create');
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompileHandlesFactoryBinding');
+
+        $mailer = $compiled->get(Mailer::class);
+
+        $this->assertInstanceOf(Mailer::class, $mailer);
+        $this->assertInstanceOf(Logger::class, $mailer->logger);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testGenerateServiceMethodInvokerInjectsClassFromAtSymbol(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->singleton(Logger::class);
+        $container->singleton(ServiceWithDependency::class)
+            ->setMethod('doSomething', [
+                'logger' => '@' . Logger::class,
+            ]);
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testGenerateServiceMethodInvokerInjectsClassFromAtSymbol'
+        );
+
+        // The method should be compiled to: invoke_ServiceWithDependency__doSomething
+        $methodName = 'invoke_' . str_replace('\\', '_', ServiceWithDependency::class) . '__doSomething';
+
+        $this->assertTrue(method_exists($compiled, $methodName), "Expected compiled method {$methodName} to exist");
+
+        $result = $compiled->{$methodName}([]);
+        $this->assertSame('from-invoker', $result);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testCompileFailsWhenClosureIsNotIgnored(): void
+    {
+        $container = new \Maduser\Argon\Container\ArgonContainer();
+
+        $container->singleton('some.closure', fn () => new \stdClass());
+
+        $this->expectException(\Maduser\Argon\Container\Exceptions\ContainerException::class);
+        $this->expectExceptionMessage(
+            'Cannot compile a container with closures: [some.closure]. ' .
+            'Mark with ->compilerIgnore() to exclude from compilation.'
+        );
+
+        $compiler = new \Maduser\Argon\Container\Compiler\ContainerCompiler($container);
+        $compiler->compile(
+            __DIR__ . '/../../resources/cache/testCompileFailsWhenClosureIsNotIgnored.php',
+            'testCompileFailsWhenClosureIsNotIgnored',
+            'Tests\\Integration\\Compiler'
+        );
     }
 }

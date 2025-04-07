@@ -22,13 +22,11 @@ use ReflectionParameter;
 
 final class ContainerCompiler
 {
-    private ArgumentMapInterface $argumentMap;
     private ContextualBindingsInterface $contextualBindings;
 
     public function __construct(
         private readonly ArgonContainer $container
     ) {
-        $this->argumentMap = $container->getArgumentMap();
         $this->contextualBindings = $container->getContextualBindings();
     }
 
@@ -66,7 +64,6 @@ final class ContainerCompiler
     }
 
     /**
-     * @throws ContainerException
      */
     private function compileFactoryService(
         PhpNamespace $namespace,
@@ -79,9 +76,8 @@ final class ContainerCompiler
         $factoryClass = $descriptor->getFactoryClass();
         $factoryMethod = $descriptor->getFactoryMethod();
 
-        if (!$factoryClass) {
-            throw new ContainerException("Factory class missing for [$id]");
-        }
+        /** We would never get here if it was null, but it makes Psalm happy */
+        assert($factoryClass !== null);
 
         $fqFactory = '\\' . ltrim($factoryClass, '\\');
         $returnType = class_exists($id) ? '\\' . ltrim($id, '\\') : 'object';
@@ -320,21 +316,17 @@ final class ContainerCompiler
     }
 
     /**
-     * @param class-string|Closure $concrete
+     * @param class-string $concrete
      *
-     * @throws ContainerException
      * @throws ReflectionException
      */
     private function generateServiceMethod(
         ClassType $class,
-        string|Closure $concrete,
+        string $concrete,
         string $id,
         string $methodName,
         string $singletonProperty
     ): void {
-        if ($concrete instanceof \Closure) {
-            throw new ContainerException("Cannot compile a container with closures: [$id]");
-        }
 
         $fqcn = '\\' . ltrim($concrete, '\\');
         $args = $this->resolveConstructorArguments($concrete, $id, '$args');
@@ -428,7 +420,7 @@ final class ContainerCompiler
         // From descriptor
         if ($this->container->getDescriptor($serviceId)?->hasArgument($name)) {
             $fallbacks[] = var_export(
-                $this->container->getDescriptor($serviceId)->getArgument($name),
+                $this->container->getDescriptor($serviceId)?->getArgument($name),
                 true
             );
         }
@@ -460,6 +452,12 @@ final class ContainerCompiler
 
             $methodName = $this->buildServiceMethodName($id);
 
+            if ($concrete instanceof Closure) {
+                throw new ContainerException(
+                    "Cannot compile a container with closures: [$id]. " .
+                    "Mark with ->compilerIgnore() to exclude from compilation."
+                );
+            }
 
             if ($descriptor->hasFactory()) {
                 $this->compileFactoryService($namespaceGen, $class, $id, $methodName, $descriptor, $serviceMap);
@@ -467,7 +465,7 @@ final class ContainerCompiler
             }
 
             if (!(new ReflectionClass($concrete))->isInstantiable()) {
-                $target = is_string($concrete) ? " [$concrete]" : '';
+                $target = " [$concrete]";
                 throw new ContainerException(
                     "Service [$id] points to non-instantiable class$target."
                 );
@@ -489,18 +487,19 @@ final class ContainerCompiler
     {
         foreach ($this->container->getBindings() as $serviceId => $descriptor) {
             foreach ($descriptor->getMethodMap() as $method => $args) {
-                $compiledMethodName = $this->buildMethodInvokerName($serviceId, $method);
+                $compiledMethodName = $this->buildMethodInvokerName($serviceId, (string) $method);
                 $controllerFetch = "\$controller = \$this->get(" . var_export($serviceId, true) . ");";
 
                 // Build compiled argument array
                 $compiledArgs = [];
                 foreach ($args as $name => $value) {
-                    dump($value);
                     if (is_string($value) && str_starts_with($value, '@')) {
                         $className = substr($value, 1);
-                        $compiledArgs[] = var_export($name, true) . " => \$this->get(" . var_export($className, true) . ")";
+                        $compiledArgs[] = var_export($name, true) .
+                            " => \$this->get(" . var_export($className, true) . ")";
                     } else {
-                        $compiledArgs[] = var_export($name, true) . " => " . var_export($value, true);
+                        $compiledArgs[] = var_export($name, true) .
+                            " => " . var_export($value, true);
                     }
                 }
 

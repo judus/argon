@@ -264,14 +264,6 @@ class Container
     }
 
     /**
-     * Gets access to the argument map.
-     */
-    public static function arguments(): ArgumentMapInterface
-    {
-        return self::instance()->getArgumentMap();
-    }
-
-    /**
      * Gets access to the contextual binding registry.
      */
     public static function contextualBindings(): ContextualBindingsInterface

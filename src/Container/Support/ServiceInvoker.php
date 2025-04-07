@@ -11,8 +11,10 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 /**
  * Callable that directly invokes a compiled service method,
  * or falls back to dynamic invocation if not compiled.
+ *
+ * @api
  */
-final readonly class ServiceInvoker
+class ServiceInvoker
 {
     /**
      * @param ArgonContainer $container

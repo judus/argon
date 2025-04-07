@@ -284,16 +284,6 @@ class ContainerTest extends TestCase
         $this->assertSame($tags, Container::tags());
     }
 
-    public function testArgumentsDelegatesToContainer(): void
-    {
-        $arguments = $this->createMock(ArgumentMapInterface::class);
-        $this->mockContainer->expects($this->once())
-            ->method('getArgumentMap')
-            ->willReturn($arguments);
-
-        $this->assertSame($arguments, Container::arguments());
-    }
-
     public function testParametersReturnsStore(): void
     {
         $parameters = $this->createMock(ParameterStoreInterface::class);

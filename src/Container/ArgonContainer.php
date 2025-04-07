@@ -32,8 +32,6 @@ use Psr\Container\ContainerInterface;
  *
  * This class may be extended by generated or compiled containers.
  * Do not subclass this manually.
- *
- * @template T of object
  */
 class ArgonContainer implements ContainerInterface
 {
@@ -44,7 +42,6 @@ class ArgonContainer implements ContainerInterface
     private readonly ServiceProviderRegistryInterface $providers;
     private readonly ServiceResolverInterface $serviceResolver;
     private readonly ServiceBinderInterface $binder;
-    private readonly ArgumentMapInterface $arguments;
     private readonly ParameterStoreInterface $parameterStore;
     private readonly InterceptorRegistryInterface $interceptors;
 
@@ -52,7 +49,7 @@ class ArgonContainer implements ContainerInterface
      * @throws ContainerException
      */
     public function __construct(
-        ?ArgumentMapInterface $arguments = null,
+        ?ArgumentMapInterface $argumentMap = null,
         ?ParameterStoreInterface $parameters = null,
         ?ReflectionCacheInterface $reflectionCache = null,
         ?InterceptorRegistryInterface $interceptors = null,
@@ -65,7 +62,7 @@ class ArgonContainer implements ContainerInterface
         ?ArgumentResolverInterface $argumentResolver = null,
         ?ServiceBinderInterface $binder = null
     ) {
-        $this->arguments = $arguments ?? new ArgumentMap();
+        $argumentMap = $argumentMap ?? new ArgumentMap();
         $this->parameterStore = $parameters ?? new ParameterStore();
         $this->interceptors = $interceptors ?? new InterceptorRegistry();
         $this->contextualBindings = $contextualRegistry ?? new ContextualBindings();
@@ -78,7 +75,7 @@ class ArgonContainer implements ContainerInterface
 
         $argumentResolver = $argumentResolver ?? new ArgumentResolver(
             $this->contextual,
-            $this->arguments,
+            $argumentMap,
             $this->contextualBindings
         );
 
@@ -98,11 +95,6 @@ class ArgonContainer implements ContainerInterface
 
         $this->binder->singleton(ArgonContainer::class, fn() => $this)->compilerIgnore();
         $this->binder->singleton(ContainerInterface::class, fn() => $this)->compilerIgnore();
-    }
-
-    public function getArgumentMap(): ArgumentMapInterface
-    {
-        return $this->arguments;
     }
 
     public function getContextualBindings(): ContextualBindingsInterface
@@ -135,11 +127,7 @@ class ArgonContainer implements ContainerInterface
 
     public function getDescriptor(string $serviceId): ?ServiceDescriptorInterface
     {
-        if ($this->binder->has($serviceId)) {
-            return $this->binder->getDescriptor($serviceId);
-        }
-
-        return null;
+        return $this->binder->getDescriptor($serviceId);
     }
 
     /**
@@ -161,7 +149,7 @@ class ArgonContainer implements ContainerInterface
             throw new ContainerException("Don't bind the container to itself, you maniac.");
         }
 
-        return $this->binder->bind($id, $concrete, $isSingleton, $args);
+        return $this->binder->bind($id, $concrete, $isSingleton, $args ?? []);
     }
 
 

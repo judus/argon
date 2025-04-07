@@ -88,7 +88,9 @@ readonly class CallableInvoker
                     $handler = $this->serviceResolver->resolve($handler);
                 }
 
-                return new CallableWrapper($handler, new ReflectionMethod($handler, $method));
+                if (is_object($handler)) {
+                    return new CallableWrapper($handler, new ReflectionMethod($handler, (string) $method));
+                }
             }
 
             // 3. Callable object (with __invoke)
@@ -104,9 +106,12 @@ readonly class CallableInvoker
 
             // 5. String "Class::method"
             if (is_string($target) && str_contains($target, '::')) {
-                [$class, $method] = explode('::', $target, 2);
-                $resolved = $this->serviceResolver->resolve($class);
-                return new CallableWrapper($resolved, new ReflectionMethod($resolved, $method));
+                $parts = explode('::', $target, 2);
+                if (count($parts) === 2) {
+                    [$class, $method] = $parts;
+                    $resolved = $this->serviceResolver->resolve($class);
+                    return new CallableWrapper($resolved, new ReflectionMethod($resolved, $method));
+                }
             }
 
             throw new ContainerException("Cannot resolve callable.");

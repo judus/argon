@@ -7,4 +7,5 @@ namespace Tests\Unit\Container\Mocks;
 enum SomeEnum: string
 {
     case FOO = 'foo';
+    case BAR = 'bar';
 }

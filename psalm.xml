@@ -18,6 +18,7 @@
         <ignoreFiles>
             <directory name="vendor"/>
             <directory name="tests/resources/cache"/>
+            <directory name="tests/unit/Container/Mocks"/>
         </ignoreFiles>
     </projectFiles>
 

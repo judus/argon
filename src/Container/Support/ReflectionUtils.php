@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container\Support;
 
+use BackedEnum;
+use ReflectionEnum;
 use ReflectionException;
 use ReflectionIntersectionType;
 use ReflectionMethod;
@@ -41,7 +43,8 @@ final class ReflectionUtils
 
             if ($type instanceof ReflectionIntersectionType) {
                 throw new ContainerException(
-                    "Intersection types are not supported for parameter \${$param->getName()} in {$refMethod->getName()}()"
+                    "Intersection types are not supported for parameter " .
+                    "\${$param->getName()} in {$refMethod->getName()}()"
                 );
             }
 
@@ -66,19 +69,29 @@ final class ReflectionUtils
      * @throws ReflectionException
      * @throws ContainerException
      */
-    private static function resolveUnionType(ReflectionParameter $param, ReflectionUnionType $type, ReflectionMethod $method): string|int|float|bool|null
-    {
+    private static function resolveUnionType(
+        ReflectionParameter $param,
+        ReflectionUnionType $type,
+        ReflectionMethod $method
+    ): string|int|float|bool|null {
         $defaultAvailable = $param->isDefaultValueAvailable();
         $default = $defaultAvailable ? $param->getDefaultValue() : null;
         $types = $type->getTypes();
 
         // Scalar union with valid default (e.g. int|string $x = 42)
-        $allScalars = array_reduce($types, fn ($carry, $t) => $carry && self::isPrimitive($t->getName()), true);
+        /** @var int|string $allScalars */
+        $allScalars = array_reduce($types, function (
+            bool $carry,
+            ReflectionNamedType|ReflectionUnionType|ReflectionIntersectionType $t
+        ): bool {
+            return method_exists($t, 'getName') && $carry && self::isPrimitive((string) $t->getName());
+        }, true);
 
         if ($allScalars) {
             if (!$defaultAvailable || (!is_scalar($default) && $default !== null)) {
                 throw new ContainerException(
-                    "Union of scalar types for parameter \${$param->getName()} in {$method->getName()}() requires a scalar default"
+                    "Union of scalar types for parameter " .
+                    "\${$param->getName()} in {$method->getName()}() requires a scalar default"
                 );
             }
             return $default;
@@ -87,11 +100,13 @@ final class ReflectionUtils
         // Look for a single resolvable class/interface
         $resolved = null;
         foreach ($types as $t) {
+            /** @var ReflectionNamedType $t */
             $name = $t->getName();
             if (!self::isPrimitive($name) && (class_exists($name) || interface_exists($name))) {
                 if ($resolved !== null) {
                     throw new ContainerException(
-                        "Multiple class/interface types in union not supported for \${$param->getName()} in {$method->getName()}()"
+                        "Multiple class/interface types in union not supported for " .
+                        "\${$param->getName()} in {$method->getName()}()"
                     );
                 }
                 $resolved = $name;
@@ -114,8 +129,11 @@ final class ReflectionUtils
     /**
      * @throws ContainerException
      */
-    private static function resolveNamedType(ReflectionParameter $param, ReflectionNamedType $type, ReflectionMethod $method): string|int|float|bool|null
-    {
+    private static function resolveNamedType(
+        ReflectionParameter $param,
+        ReflectionNamedType $type,
+        ReflectionMethod $method
+    ): string|int|float|bool|null {
         $typeName = $type->getName();
 
         if (self::isPrimitive($typeName)) {
@@ -127,30 +145,21 @@ final class ReflectionUtils
         }
 
         // ENUM SUPPORT
-        if (enum_exists($typeName)) {
+        if (enum_exists($typeName) && is_subclass_of($typeName, UnitEnum::class)) {
             if ($param->isDefaultValueAvailable()) {
+                /** @var UnitEnum $default */
                 $default = $param->getDefaultValue();
 
-                // Backed enums
-                if (is_scalar($default)) {
-                    foreach ($typeName::cases() as $case) {
-                        if ($case instanceof \BackedEnum && $case->value === $default) {
-                            return '@' . $typeName . '::' . $case->name;
+                if ($default instanceof UnitEnum) {
+                    $cases = (new ReflectionEnum($typeName))->getCases();
+
+                    foreach ($cases as $caseReflection) {
+                        if ($caseReflection->getValue()->name === $default->name) {
+                            return '@' . $typeName . '::' . $default->name;
                         }
                     }
                 }
-
-                // Pure enums (non-backed)
-                foreach ($typeName::cases() as $case) {
-                    if ($case === $default) {
-                        return '@' . $typeName . '::' . $case->name;
-                    }
-                }
-
-                throw new ContainerException("Failed to resolve enum default value for \${$param->getName()} in {$method->getName()}()");
             }
-
-            return '@' . $typeName;
         }
 
         if (!class_exists($typeName) && !interface_exists($typeName)) {
@@ -161,57 +170,11 @@ final class ReflectionUtils
 
         // OBJECT OR ARRAY DEFAULTS NOT ALLOWED
         if ($param->isDefaultValueAvailable()) {
+            /** @var scalar|array|object|null $default */
             $default = $param->getDefaultValue();
 
             if ($default === null && $type->allowsNull()) {
                 return '@' . $typeName;
-            }
-
-            if (is_object($default)) {
-                throw new ContainerException("Cannot compile object default for \${$param->getName()} in {$method->getName()}()");
-            }
-
-            if (is_array($default)) {
-                throw new ContainerException("Array default not allowed for \${$param->getName()} in {$method->getName()}()");
-            }
-
-            if (is_scalar($default) || $default === null) {
-                return $default;
-            }
-
-            throw new ContainerException("Unsupported default value type " . get_debug_type($default) . " for \${$param->getName()} in {$method->getName()}()");
-        }
-
-        return '@' . $typeName;
-    }
-
-
-    /**
-     * @throws ContainerException
-     */
-    private static function resolveDefaultOrNull(ReflectionParameter $param, ReflectionMethod $method): string|int|float|bool|null
-    {
-        if ($param->isDefaultValueAvailable()) {
-            $default = $param->getDefaultValue();
-
-            if ($default instanceof \UnitEnum) {
-                return get_class($default) . '::' . $default->name;
-            }
-
-            if (is_array($default)) {
-                throw new ContainerException(
-                    "Default array value not supported for \${$param->getName()} in {$method->getName()}()"
-                );
-            }
-
-            if (is_object($default)) {
-                throw new ContainerException(
-                    "Object instance as default not supported for \${$param->getName()} in {$method->getName()}()"
-                );
-            }
-
-            if (is_scalar($default) || $default === null) {
-                return $default;
             }
 
             throw new ContainerException(
@@ -220,9 +183,42 @@ final class ReflectionUtils
             );
         }
 
-        return null;
+        return '@' . $typeName;
     }
 
+    /**
+     * @throws ContainerException
+     */
+    private static function resolveDefaultOrNull(
+        ReflectionParameter $param,
+        ReflectionMethod $method
+    ): string|int|float|bool|null {
+        if (!$param->isDefaultValueAvailable()) {
+            return null;
+        }
+
+        /** @var string|int|float|bool|array|object|null $default */
+        $default = $param->getDefaultValue();
+
+        if ($default instanceof UnitEnum) {
+            return '@' . get_class($default) . '::' . $default->name;
+        }
+
+        if (is_array($default)) {
+            throw new ContainerException(
+                "Default array value not supported for \${$param->getName()} in {$method->getName()}()"
+            );
+        }
+
+        if (is_object($default)) {
+            throw new ContainerException(
+                "Object instance as default not supported for \${$param->getName()} in {$method->getName()}()"
+            );
+        }
+
+        /** @var string|int|float|bool|null $default */
+        return $default;
+    }
 
     private static function isPrimitive(string $type): bool
     {

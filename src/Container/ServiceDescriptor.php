@@ -43,7 +43,7 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
     private bool $ignoreForCompilation = false;
 
     /**
-     * @var array<string, array<string, class-string|string|int|float|bool|null>>
+     * @var array<string, array<array-key, class-string|string|int|float|bool|null>>
      */
     private array $methodMap = [];
 
@@ -104,10 +104,9 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
         return array_key_exists($name, $this->arguments);
     }
 
-    public function setArgument(string $name, mixed $value): self
+    public function setArgument(string $name, mixed $value): void
     {
         $this->arguments[$name] = $value;
-        return $this;
     }
 
     /**
@@ -123,7 +122,7 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<array-key, array<array-key, class-string|string|int|float|bool|null>>
      */
     public function getMethodMap(): array
     {
@@ -187,7 +186,7 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
      * Store argument definitions for a method.
      *
      * @param string $method
-     * @param array<string, class-string|string|int|float|bool|null> $arguments
+     * @param array<array-key, class-string|string|int|float|bool|null> $arguments
      * @param string|null $returnType (optional, unused for now)
      */
     public function setMethod(string $method, array $arguments, ?string $returnType = null): void
@@ -197,7 +196,7 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
 
     /**
      * @param string $method
-     * @return array<string, class-string|string|int|float|bool|null>
+     * @return array<array-key, class-string|string|int|float|bool|null>
      */
     public function getMethod(string $method): array
     {
@@ -205,7 +204,7 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
     }
 
     /**
-     * @return array<string, array<string, class-string|string|int|float|bool|null>>
+     * @return array<array-key, array<array-key, class-string|string|int|float|bool|null>>
      */
     public function getAllMethods(): array
     {

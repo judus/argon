@@ -135,4 +135,54 @@ class CallableInvokerTest extends TestCase
         // This forces the invoker to use ReflectionMethod
         $this->invoker->call([$failing, 'thrower']);
     }
+
+    public function testInvokableClassResolvedByServiceResolver(): void
+    {
+        // Define a real invokable class
+        $className = new class {
+            public function __invoke(): string
+            {
+                return 'invoked';
+            }
+        };
+
+        // Create a unique name for this anonymous class
+        $fauxClassName = get_class($className);
+
+        // Mock resolver to return it when asked for this class
+        $this->resolver->method('resolve')->with($fauxClassName)->willReturn($className);
+
+        // Invoke by class name (string)
+        $result = $this->invoker->call($fauxClassName);
+        $this->assertSame('invoked', $result);
+    }
+
+    public function testStaticStringCallableResolution(): void
+    {
+        $instance = new class {
+            public function foo(): string
+            {
+                return 'from method';
+            }
+        };
+
+        $this->resolver->method('resolve')->with('SomeClass')->willReturn($instance);
+
+        $result = $this->invoker->call('SomeClass::foo');
+        $this->assertSame('from method', $result);
+    }
+
+    public function testDirectCallableObjectIsInvoked(): void
+    {
+        $callable = new class {
+            public function __invoke(): string
+            {
+                return 'direct-callable';
+            }
+        };
+
+        $result = $this->invoker->call($callable);
+
+        $this->assertSame('direct-callable', $result);
+    }
 }

@@ -127,4 +127,62 @@ final class ReflectionUtilsTest extends TestCase
         $this->expectException(ContainerException::class);
         ReflectionUtils::getMethodParameters(TestSubject::class, 'variadicParams');
     }
+
+    public function testUntypedParameterWithDefaultFallsBack(): void
+    {
+        $result = ReflectionUtils::getMethodParameters(TestSubject::class, 'noTypeParam');
+
+        $this->assertSame(['param' => 'fallback'], $result);
+    }
+
+    public function testIntersectionTypeThrows(): void
+    {
+        $this->expectException(ContainerException::class);
+        ReflectionUtils::getMethodParameters(TestSubject::class, 'intersectionType');
+    }
+
+    public function testUnknownTypeThrows(): void
+    {
+        $this->expectException(ContainerException::class);
+        ReflectionUtils::getMethodParameters(TestSubject::class, 'nonExistentType');
+    }
+
+    public function testUnionWithNonResolvableButScalarDefaultReturnsDefault(): void
+    {
+        $result = ReflectionUtils::getMethodParameters(TestSubject::class, 'unionWithNothingResolvableButDefault');
+
+        $this->assertSame([
+            'val' => 'fallback',
+        ], $result);
+    }
+
+    public function testUnresolvableUnionTypeThrows(): void
+    {
+        $this->expectException(ContainerException::class);
+        ReflectionUtils::getMethodParameters(TestSubject::class, 'unresolvableUnion');
+    }
+
+    public function testUnitEnumDefaultResolves(): void
+    {
+        $result = ReflectionUtils::getMethodParameters(TestSubject::class, 'pureEnum');
+
+        $this->assertSame([
+            'e' => '@' . SomeEnum::class . '::FOO',
+        ], $result);
+    }
+
+    public function testUntypedEnumDefaultCompilesAsStringReference(): void
+    {
+        $result = ReflectionUtils::getMethodParameters(TestSubject::class, 'untypedEnumDefault');
+
+        $this->assertSame([
+            'e' => '@' . SomeEnum::class . '::FOO',
+        ], $result);
+    }
+
+    public function testUntypedObjectDefaultThrows(): void
+    {
+        $this->expectException(ContainerException::class);
+        ReflectionUtils::getMethodParameters(TestSubject::class, 'untypedObjectDefault');
+    }
 }
