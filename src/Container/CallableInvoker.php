@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container;
 
+use ArgumentCountError;
 use Closure;
 use Maduser\Argon\Container\Contracts\CallableWrapperInterface;
 use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
@@ -128,6 +129,7 @@ readonly class CallableInvoker
      * @param array<int, mixed> $resolvedParams
      * @return mixed
      * @throws ContainerException
+     * @throws Throwable
      */
     private function invokeCallable(CallableWrapperInterface $callable, array $resolvedParams): mixed
     {
@@ -140,7 +142,7 @@ readonly class CallableInvoker
                 $reflection instanceof ReflectionFunction => $reflection->invokeArgs($resolvedParams),
                 default => throw new ContainerException('Unhandled reflection type: ' . get_class($reflection)),
             };
-        } catch (Throwable $e) {
+        } catch (ArgumentCountError | ReflectionException $e) {
             throw ContainerException::forInstantiationFailure($reflection->getName(), $e);
         }
     }
