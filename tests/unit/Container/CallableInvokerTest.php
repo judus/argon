@@ -14,7 +14,9 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
+use RuntimeException;
 use stdClass;
+use TypeError;
 
 class CallableInvokerTest extends TestCase
 {
@@ -108,31 +110,56 @@ class CallableInvokerTest extends TestCase
 
     /**
      * @throws NotFoundException
+     * @throws ContainerException
      */
-    public function testThrowsForReflectionFailure(): void
+    public function testFailsWithNativeTypeErrorWhenNoArgsProvided(): void
     {
-        $this->expectException(ContainerException::class);
-        $this->expectExceptionMessageMatches('/Failed to reflect callable/');
+        $failing = new class {
+            public function thrower(string $unresolvable): void
+            {
+            }
+        };
 
-        $this->invoker->call(['NonExistentClass', 'nonExistentMethod']);
+        $this->expectException(TypeError::class);
+        $this->expectExceptionMessageMatches('/must be of type string, null given/');
+
+        $this->invoker->call([$failing, 'thrower']);
     }
 
     /**
      * @throws NotFoundException
+     * @throws ContainerException
+     */
+    public function testThrowsOnUnresolvableDependency(): void
+    {
+        $failing = new class {
+            public function thrower(string $unresolvable): void
+            {
+            }
+        };
+
+        $this->expectException(TypeError::class);
+        $this->expectExceptionMessageMatches('/must be of type string, null given/');
+
+        $this->invoker->call([$failing, 'thrower']);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ContainerException
      */
     public function testThrowsOnReflectionInvokeFailure(): void
     {
         $failing = new class {
             public function thrower(): void
             {
-                throw new \RuntimeException("Boom");
+                throw new RuntimeException("Boom!");
             }
         };
 
-        $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage("Failed to instantiate 'thrower' with resolved dependencies.");
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("Boom!");
 
-        // This forces the invoker to use ReflectionMethod
         $this->invoker->call([$failing, 'thrower']);
     }
 
