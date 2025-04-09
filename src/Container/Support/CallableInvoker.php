@@ -20,7 +20,7 @@ use Throwable;
 readonly class CallableInvoker
 {
     public function __construct(
-        private ServiceResolverInterface  $serviceResolver,
+        private ServiceResolverInterface $serviceResolver,
         private ArgumentResolverInterface $argumentResolver
     ) {
     }
@@ -139,7 +139,7 @@ readonly class CallableInvoker
                 $reflection instanceof ReflectionFunction => $reflection->invokeArgs($resolvedParams),
                 default => throw new ContainerException('Unhandled reflection type: ' . get_class($reflection)),
             };
-        } catch (ArgumentCountError|ReflectionException $e) {
+        } catch (ArgumentCountError | ReflectionException $e) {
             throw ContainerException::forInstantiationFailure($reflection->getName(), $e);
         }
     }

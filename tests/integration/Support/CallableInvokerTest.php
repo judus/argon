@@ -14,8 +14,10 @@ use Maduser\Argon\Container\Support\CallableWrapper;
 use Maduser\Argon\Container\Support\ReflectionUtils;
 use Maduser\Argon\Container\Support\ServiceInvoker;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use ReflectionFunction;
 use ReflectionMethod;
+use ReflectionParameter;
 
 class CallableInvokerTest extends TestCase
 {
@@ -40,14 +42,13 @@ class CallableInvokerTest extends TestCase
         };
 
         $argumentResolver = new class implements ArgumentResolverInterface {
-            public function resolve(\ReflectionParameter $param, array $overrides = [], ?string $contextId = null): mixed
+            public function resolve(ReflectionParameter $param, array $overrides = [], ?string $contextId = null): mixed
             {
                 return $overrides[$param->getName()] ?? null;
             }
 
             public function setServiceResolver(ServiceResolverInterface $resolver): void
             {
-                // TODO: Implement setServiceResolver() method.
             }
         };
 
@@ -97,20 +98,18 @@ class CallableInvokerTest extends TestCase
         $obj = new class {
             public function needsParam(string $required): void
             {
-                // never reached
             }
         };
 
-        $reflection = new \ReflectionMethod($obj, 'needsParam');
-        $wrapper = new \Maduser\Argon\Container\Support\CallableWrapper($obj, $reflection);
+        $reflection = new ReflectionMethod($obj, 'needsParam');
+        $wrapper = new CallableWrapper($obj, $reflection);
 
-        $invokerReflection = new \ReflectionClass($this->invoker);
+        $invokerReflection = new ReflectionClass($this->invoker);
         $method = $invokerReflection->getMethod('invokeCallable');
 
-        $this->expectException(\Maduser\Argon\Container\Exceptions\ContainerException::class);
+        $this->expectException(ContainerException::class);
         $this->expectExceptionMessage("Failed to instantiate 'needsParam' with resolved dependencies.");
 
-        $method->invoke($this->invoker, $wrapper, []); // Intentionally empty args
+        $method->invoke($this->invoker, $wrapper, []);
     }
-
 }
