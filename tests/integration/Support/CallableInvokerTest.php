@@ -1,0 +1,116 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit\Container\Support;
+
+use ArgumentCountError;
+use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
+use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
+use Maduser\Argon\Container\Exceptions\ContainerException;
+use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\CallableInvoker;
+use Maduser\Argon\Container\Support\CallableWrapper;
+use Maduser\Argon\Container\Support\ReflectionUtils;
+use Maduser\Argon\Container\Support\ServiceInvoker;
+use PHPUnit\Framework\TestCase;
+use ReflectionFunction;
+use ReflectionMethod;
+
+class CallableInvokerTest extends TestCase
+{
+    private CallableInvoker $invoker;
+
+    protected function setUp(): void
+    {
+        $serviceResolver = new class implements ServiceResolverInterface {
+            public function resolve(string $id, array $args = []): object
+            {
+                if ($id === 'test') {
+                    return new class {
+                        public function __invoke(): string
+                        {
+                            return 'works';
+                        }
+                    };
+                }
+
+                throw new \RuntimeException("Service not found: $id");
+            }
+        };
+
+        $argumentResolver = new class implements ArgumentResolverInterface {
+            public function resolve(\ReflectionParameter $param, array $overrides = [], ?string $contextId = null): mixed
+            {
+                return $overrides[$param->getName()] ?? null;
+            }
+
+            public function setServiceResolver(ServiceResolverInterface $resolver): void
+            {
+                // TODO: Implement setServiceResolver() method.
+            }
+        };
+
+        $this->invoker = new CallableInvoker($serviceResolver, $argumentResolver);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testClosureThrowsExceptionIsBubbled(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Kaboom');
+
+        $this->invoker->call(fn() => throw new \RuntimeException('Kaboom'));
+    }
+
+    /**
+     * @throws NotFoundException
+     */
+    public function testFailsOnUnresolvableTarget(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Cannot resolve callable');
+
+        $this->invoker->call('not-a-callable');
+    }
+
+    /**
+     * @throws NotFoundException
+     */
+    public function testFailsOnInvalidMethod(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessageMatches('/Failed to reflect callable/');
+
+        $this->invoker->call([new class {
+        }, 'doesNotExist']);
+    }
+
+    /**
+     * @throws \ReflectionException
+     */
+    public function testThrowsOnFailedInvokeDueToArgumentCount(): void
+    {
+        $obj = new class {
+            public function needsParam(string $required): void
+            {
+                // never reached
+            }
+        };
+
+        $reflection = new \ReflectionMethod($obj, 'needsParam');
+        $wrapper = new \Maduser\Argon\Container\Support\CallableWrapper($obj, $reflection);
+
+        $invokerReflection = new \ReflectionClass($this->invoker);
+        $method = $invokerReflection->getMethod('invokeCallable');
+
+        $this->expectException(\Maduser\Argon\Container\Exceptions\ContainerException::class);
+        $this->expectExceptionMessage("Failed to instantiate 'needsParam' with resolved dependencies.");
+
+        $method->invoke($this->invoker, $wrapper, []); // Intentionally empty args
+    }
+
+}
