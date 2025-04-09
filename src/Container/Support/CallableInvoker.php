@@ -2,21 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Maduser\Argon\Container;
+namespace Maduser\Argon\Container\Support;
 
 use ArgumentCountError;
 use Closure;
-use Maduser\Argon\Container\Contracts\CallableWrapperInterface;
 use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
+use Maduser\Argon\Container\Contracts\CallableWrapperInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\Support\CallableWrapper;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionParameter;
-use Stringable;
 use Throwable;
 
 readonly class CallableInvoker
@@ -43,8 +41,7 @@ readonly class CallableInvoker
         $contextId = $this->buildContextId($callable);
 
         $resolvedParams = array_map(
-            fn(ReflectionParameter $param): mixed =>
-            $this->argumentResolver->resolve($param, $arguments, $contextId),
+            fn(ReflectionParameter $param): mixed => $this->argumentResolver->resolve($param, $arguments, $contextId),
             $callable->getReflection()->getParameters()
         );
 
@@ -90,7 +87,7 @@ readonly class CallableInvoker
                 }
 
                 if (is_object($handler)) {
-                    return new CallableWrapper($handler, new ReflectionMethod($handler, (string) $method));
+                    return new CallableWrapper($handler, new ReflectionMethod($handler, (string)$method));
                 }
             }
 

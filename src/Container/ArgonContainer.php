@@ -24,6 +24,7 @@ use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\CallableInvoker;
 use Maduser\Argon\Container\Support\NullServiceProxy;
 use Psr\Container\ContainerInterface;
 

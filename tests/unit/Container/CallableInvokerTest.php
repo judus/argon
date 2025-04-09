@@ -4,18 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Container;
 
-use Closure;
-use Maduser\Argon\Container\CallableInvoker;
-use Maduser\Argon\Container\Contracts\CallableWrapperInterface;
 use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\CallableInvoker;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use ReflectionException;
 use RuntimeException;
-use stdClass;
 use TypeError;
 
 class CallableInvokerTest extends TestCase
