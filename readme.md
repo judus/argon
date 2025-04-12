@@ -121,7 +121,7 @@ compatible with the **compiled container** — values are embedded directly into
 
 Use it to define reusable values, inject environment settings.
 
-####🔹 Set and retrieve values
+#### 🔹 Set and retrieve values
 
 ```php
 $parameters = $container->getParameters();
@@ -132,7 +132,7 @@ $parameters->set('apiUrl', 'https://api.example.com');
 $apiKey = $parameters->get('apiKey');
 ```
 
-####🔹 Use parameters in bindings or at resolution
+#### 🔹 Use parameters in bindings or at resolution
 
 ```php
 $container->set(ApiClient::class, args: [
