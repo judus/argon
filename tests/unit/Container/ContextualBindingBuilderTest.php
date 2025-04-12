@@ -20,7 +20,7 @@ class ContextualBindingBuilderTest extends TestCase
             ->with('MyService', 'MyDependency', 'MyConcrete');
 
         $builder = new ContextualBindingBuilder($registry, 'MyService');
-        $builder->bind('MyDependency', 'MyConcrete');
+        $builder->set('MyDependency', 'MyConcrete');
     }
 
     public function testSetDelegatesToRegistryWithClosure(): void
@@ -34,6 +34,6 @@ class ContextualBindingBuilderTest extends TestCase
             ->with('TargetClass', 'SomeDep', $closure);
 
         $builder = new ContextualBindingBuilder($registry, 'TargetClass');
-        $builder->bind('SomeDep', $closure);
+        $builder->set('SomeDep', $closure);
     }
 }

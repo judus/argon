@@ -8,39 +8,20 @@
 
 # Argon Service Container
 
-A compilable, PSR-11 compliant dependency injection container.
+A high-performance, PSR-11 compliant dependency injection container with optional compilation.
 
-Argon compiles your service graph into a native PHP class — no reflection, no guesswork, just fast, explicit wiring. Prefer autowiring? Argon handles that too, with smart, reliable resolution for services, methods, and closures.
+_**Strict when you want it, magic when you allow it**_
 
-It favors a single, unambiguous way to define services: plain PHP.
-No YAML. No annotations. Just testable code.
+Argon compiles your service graph into native PHP code, eliminating reflection and runtime resolution overhead.  
+When no binding exists, it seamlessly falls back to autowiring constructors, closures, and methods — offering predictable, optimized performance when declared, and ~~black magic~~ convenient flexibility when not.
 
-And definitely no attributes: #[DoSomethingElse].
-
----
-
-## Features
-
-- **🔥 Compilable**: Eliminate runtime reflection with native, precompiled service classes.
-- **⚙️ PSR-11 Compliant**: Drop-in compatibility with standard containers.
-- **🧠 Autowiring**: Automatically resolves constructor, method, and closure dependencies.
-- **♻️ Singleton & Transient Services**: Use shared or separate instances per resolution.
-- **🧩 Parameter Overrides**: Inject primitives and scalar values by name or context.
-- **🔁 Contextual Bindings**: Provide different implementations depending on the consumer.
-- **🧰 Service Providers**: Group related bindings and lifecycle logic into reusable classes.
-- **🛠 Interceptors**: Hook into service creation before or after instantiation.
-- **🛠 Factories**: Register custom factory methods for fine-tuned instantiation.
-- **🎭 Decorators**: Extend or wrap existing services transparently at runtime.
-- **🧱 Runtime Extension**: Modify bindings, decorate services, or register interceptors on the fly.
-- **❓ Optional Resolution**: Use `optional()` for soft dependency injection with graceful fallbacks.
-- **⏱ Lazy Loading**: Services are only created when actually needed.
-- **🚨 Circular Dependency Detection**: Protects against infinite loops in your graph.
+- **Adaptable**: strict or dynamic, compiled or runtime — it's up to you.
+- **Framework-agnostic**: no vendor lock-in, no framework dependencies.
+- **Optimized for production**: compiled output is pure PHP, ready for opcode caching.
+- **Feature-rich**: lifecycle hooks, contextual bindings, decorators, and more.
+- **Predictable**: clear and consistent API, no annotations, no attributes, no YAML. Just PHP.
 
 ---
-
-Want me to move on to the next section and give the same treatment to **Installation** and **Usage**?
----
-
 ## Installation
 
 ```bash
@@ -86,7 +67,7 @@ $cache = $container->get(CacheInterface::class);
 $logger = $container->get(LoggerInterface::class);
 ```
 
-### 2. Autowiring
+### 2. Automatic Dependency Resolution
 
 ```php
 class Logger {}
@@ -99,9 +80,10 @@ class UserService
 $container->get(UserService::class); // Works out of the box
 ```
 
-### 3. Constructor Arguments & Parameter Registry
+### 3. Binding Arguments
 
-You can inject primitive values or custom arguments into service constructors by matching argument names. Arguments can be either raw values or retrieved from the parameter registry. They may be applied when binding a service or passed at resolution time (for transient services only).
+When registering a service, you can provide **constructor arguments** using an associative array.  
+These arguments are matched by **name** to the constructor’s parameter list — no need for full signatures or complex configuration.
 
 ```php
 class ApiClient
@@ -110,66 +92,97 @@ class ApiClient
 }
 ```
 
-#### 🔹 Bind custom arguments to a service
+#### 🔹 Set arguments during binding
 
 ```php
 $container->set(ApiClient::class, args: [
-    'apiKey' => $_ENV['APP_ENV'] === 'prod' ? 'prod-key' : 'dev-key',
-    'apiUrl' => 'https://api.example.com'
+    'apiKey' => 'dev-123',
+    'apiUrl' => 'https://api.example.com',
 ]);
-
-$container->get(ApiClient::class);
 ```
 
-These arguments will be applied every time this binding is resolved.
+These arguments are attached to the service binding and used **every time** it's resolved.
 
-
-#### 🔹 Resolve a service with custom arguments (transients only)
+#### 🔹 Override arguments during resolution (transients only)
 
 ```php
-$container->get(ApiClient::class, args: [
-    'apiKey' => $_ENV['APP_ENV'] === 'prod' ? 'prod-key' : 'dev-key',
-    'apiUrl' => 'https://api.example.com'
+$client = $container->get(ApiClient::class, args: [
+    'apiKey' => 'prod-999',
+    'apiUrl' => 'https://api.example.com',
 ]);
 ```
 
-These arguments are used only for this specific call. They will not affect singleton instances.
+This works only for **transient** services. Shared services are constructed once, and cannot be reconfigured at runtime.
 
+---
 
-#### 🔹 Store parameters in the parameter registry
+## 4. Parameter Registry
+
+The **parameter registry** is a built-in key/value store used to centralize application configuration. It is fully 
+compatible with the **compiled container** — values are embedded directly into the generated service code.
+
+Use it to define reusable values, inject environment settings.
+
+### 🔹 Set and retrieve values
 
 ```php
 $parameters = $container->getParameters();
 
-$parameters->set('apiUrl', 'https://api.example.com');
 $parameters->set('apiKey', $_ENV['APP_ENV'] === 'prod' ? 'prod-key' : 'dev-key');
+$parameters->set('apiUrl', 'https://api.example.com');
+
+$apiKey = $parameters->get('apiKey');
 ```
 
-
-#### 🔹 Bind arguments using values from the registry
+### 🔹 Use parameters in bindings or at resolution
 
 ```php
 $container->set(ApiClient::class, args: [
     'apiKey' => $parameters->get('apiKey'),
-    'apiUrl' => $parameters->get('apiUrl')
+    'apiUrl' => $parameters->get('apiUrl'),
 ]);
 
-$container->get(ApiClient::class);
-```
-
-
-#### 🔹 Resolve a service with arguments from the registry (transients only)
-
-```php
+// Although this works only with transients
 $container->get(ApiClient::class, args: [
     'apiKey' => $parameters->get('apiKey'),
-    'apiUrl' => $parameters->get('apiUrl')
+    'apiUrl' => $parameters->get('apiUrl'),
 ]);
 ```
+TIP: you can wrap the parameter registry with your own "ConfigRepository" and implement validation, scopes via dot notation, etc.
 
-These arguments will only apply to this specific resolution.
+Ah, beautiful. Almost a masterpiece — but **you left your BindingBuilder hanging** like a half-baked DI novice, and **factories**? Gone like they never existed. Tsk. Let’s tie this up properly.
+
+Here’s what we need to do:
+
+---
 
 
+## 🔧 Factory Bindings
+
+If you want to take full control over how a service is instantiated — but still benefit from the DI container's lifecycle management — use `.factory()` on a binding:
+
+```php
+$container->set(Connection::class)
+    ->factory(function (): Connection {
+        $dsn = $_ENV['DB_DSN'] ?? 'sqlite::memory:';
+        return new Connection($dsn);
+    });
+```
+
+This lets you bypass constructor injection entirely and wire things by hand — but **still retain tags, decorators, compilation, etc.**
+
+Or go wild:
+
+```php
+$container->set(ClockInterface::class)
+    ->factory(fn () => ClockFactory::make(timezone: 'Europe/Berlin'))
+    ->transient()
+    ->tag(['utility', 'time']);
+```
+
+---
+
+Want me to edit your final block and merge all of this in like a proper obsessive PHP gremlin?
 
 ### 4. Contextual Bindings
 
@@ -389,40 +402,52 @@ if (file_exists($file) && !$_ENV['DEV']) {
     $compiler->compileToFile($file);
 }
 ```
-The compiled container is a pure PHP class with zero runtime resolution logic for standard bindings. It eliminates reflections and parameter lookups by generating dedicated methods for each service. All bindings, tags, parameters, and interceptors are statically resolved and written as native PHP code — ready to be opcode-cached and preloaded in production.
+The compiled container is a pure PHP class with zero runtime resolution logic for standard bindings. It eliminates reflections and parameter lookups by generating dedicated methods for each service. All bindings, tags, parameters, and interceptors are statically resolved and written as native PHP code.
 
-No config parsing. No service resolution logic. No performance bottlenecks.
-
-Just raw, optimized, dependency injection at runtime speed.
 
 ---
 
-## 🧩 API
+## 🧩 `ArgonContainer` API
 
-| ArgonContainer            | Parameters                                      | Return                                     | Description                                                              |
-|---------------------------|-------------------------------------------------|--------------------------------------------|--------------------------------------------------------------------------|
-| `set()`                   | `string $id`, `Closure\|string\|null $concrete` | `ArgonContainer`                           | Registers a service as shared by default (use `transient()` to override) |
-| `get()`                   | `string $id`                                    | `object`                                   | Resolves and returns the service.                                        |
-| `has()`                   | `string $id`                                    | `bool`                                     | Checks if a service binding exists.                                      |
-| `getBindings()`           | –                                               | `array<string, ServiceDescriptor>`         | Returns all registered service descriptors.                              |
-| `getContextualBindings()` | –                                               | `ContextualBindingsInterface`              | Returns all contextual service descriptors.                              |
-| `getDescriptor()`         | `string $id`                                    | `ServiceDescriptorInterface                | null`                                                                    | Returns the descriptor for an existing binding.                          |
-| `getParameters()`         | –                                               | `ParameterStoreInterface`                  | Access the parameter registry for raw or shared values.                  |
-| `registerInterceptor()`   | `class-string<InterceptorInterface> $class`     | `ArgonContainer`                           | Registers a type interceptor.                                            |
-| `registerProvider()`      | `class-string<ServiceProviderInterface> $class` | `ArgonContainer`                           | Registers and invokes a service provider.                                |
-| `tag()`                   | `string $id`, `list<string> $tags`              | `ArgonContainer`                           | Tags a service with one or more labels.                                  |
-| `getTags()`               | –                                               | `array<string, list<string>>`              | Returns all tag definitions in the container.                            |
-| `getTagged()`             | `string $tag`                                   | `list<object>`                             | Resolves all services tagged with the given label.                       |
-| `boot()`                  | –                                               | `ArgonContainer`                           | Bootstraps all registered service providers.                             |
-| `extend()`                | `string $id`  `callable $decorator`             | `ArgonContainer`                           | Decorates an already-resolved service at runtime.                        |
-| `for()`                   | `string $target`                                | `ContextualBindingBuilder`                 | Starts a contextual binding chain for a specific class.                  |
-| `getPreInterceptors()`    | –                                               | `list<class-string<InterceptorInterface>>` | Lists all registered pre-interceptors.                                   |
-| `getPostInterceptors()`   | –                                               | `list<class-string<InterceptorInterface>>` | Lists all registered post-interceptors.                                  |
-| `invoke()`                | `object                                         | string                                     | callable                                                                 |array $target`, `array $params = []`      | `mixed`                  | Calls a method or closure with injected dependencies.           |
-| `isResolvable()`          | `string $id`                                    | `bool`                                     | Checks if a service can be resolved, even if not explicitly bound.       |
-| `optional()`              | `string $id`                                    | `object`                                   | Resolves a service or returns a NullServiceProxy if not found.           |
+| ArgonContainer            | Parameters                                      | Return                                     | Description                                                                       |
+|---------------------------|-------------------------------------------------|--------------------------------------------|-----------------------------------------------------------------------------------|
+| `set()`                   | `string $id`, `Closure\|string\|null $concrete` | `ArgonContainer`                           | Registers a service as shared by default (use `->transient()` to override)        |
+| `get()`                   | `string $id`                                    | `object`                                   | Resolves and returns the service.                                                 |
+| `has()`                   | `string $id`                                    | `bool`                                     | Checks if a service binding exists.                                               |
+| `getBindings()`           | –                                               | `array<string, ServiceDescriptor>`         | Returns all registered service descriptors.                                       |
+| `getContextualBindings()` | –                                               | `ContextualBindingsInterface`              | Returns all contextual service descriptors.                                       |
+| `getDescriptor()`         | `string $id`                                    | `ServiceDescriptorInterface`               | Returns the service description associated with the id.                           |
+| `getParameters()`         | –                                               | `ParameterStoreInterface`                  | Access the parameter registry for raw or shared values.                           |
+| `registerInterceptor()`   | `class-string<InterceptorInterface> $class`     | `ArgonContainer`                           | Registers a type interceptor.                                                     |
+| `registerProvider()`      | `class-string<ServiceProviderInterface> $class` | `ArgonContainer`                           | Registers and invokes a service provider.                                         |
+| `tag()`                   | `string $id`, `list<string> $tags`              | `ArgonContainer`                           | Tags a service with one or more labels.                                           |
+| `getTags()`               | –                                               | `array<string, list<string>>`              | Returns all tag definitions in the container.                                     |
+| `getTagged()`             | `string $tag`                                   | `list<object>`                             | Resolves all services tagged with the given label.                                |
+| `boot()`                  | –                                               | `ArgonContainer`                           | Bootstraps all registered service providers.                                      |
+| `extend()`                | `string $id`  `callable $decorator`             | `ArgonContainer`                           | Decorates an already-resolved service at runtime.                                 |
+| `for()`                   | `string $target`                                | `ContextualBindingBuilder`                 | Begins a contextual binding chain — call `->set()` to define per-target bindings. |
+| `getPreInterceptors()`    | –                                               | `list<class-string<InterceptorInterface>>` | Lists all registered pre-interceptors.                                            |
+| `getPostInterceptors()`   | –                                               | `list<class-string<InterceptorInterface>>` | Lists all registered post-interceptors.                                           |
+| `invoke()`                | `callable $target`, `array $params = []`        | `mixed`                                    | Calls a method or closure with injected dependencies.                             |
+| `isResolvable()`          | `string $id`                                    | `bool`                                     | Checks if a service can be resolved, even if not explicitly bound.                |
+| `optional()`              | `string $id`                                    | `object`                                   | Resolves a service or returns a NullServiceProxy if not found.                    |
 
 ---
+## 🧩 `BindingBuilder` API
+
+When you call `set()`, it returns a `BindingBuilder`, which lets you **configure** the binding fluently.
+
+| Method               | Parameters                                       | Return                       | Description                                                                              |
+|----------------------|--------------------------------------------------|------------------------------|------------------------------------------------------------------------------------------|
+| `transient()`        | –                                                | `BindingBuilder`             | Marks the service as non-shared. A new instance will be created for each request.        |
+| `skipCompilation()`  | –                                                | `BindingBuilder`             | Excludes this binding from the compiled container. Useful for closures or dynamic logic. |
+| `tag()`              | `string\|list<string> $tags`                     | `BindingBuilder`             | Assigns one or more tags to this service.                                                |
+| `factory()`          | `string $factoryClass`, `?string $method = null` | `BindingBuilder`             | Uses a factory class (optionally a method) to construct the service.                     |
+| `defineInvocation()` | `string $methodName`, `array $args = []`         | `BindingBuilder`             | Pre-defines arguments for a later `invoke()` call. Avoids reflection at runtime.         |
+| `getDescriptor()`    | –                                                | `ServiceDescriptorInterface` | Returns the internal service descriptor for advanced inspection or modification.         |
+
+---
+
 
 ## License
 
