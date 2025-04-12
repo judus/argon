@@ -28,29 +28,14 @@ interface ServiceBinderInterface
      *
      * @param string $id
      * @param Closure|string|null $concrete
-     * @throws ContainerException
-     */
-    public function singleton(
-        string $id,
-        Closure|string|null $concrete = null,
-        ?array $args = null
-    ): BindingBuilderInterface;
-
-    /**
-     * Registers a service (transient or singleton).
-     *
-     * @param string $id
-     * @param Closure|string|null $concrete
-     * @param bool $isSingleton
-     * @param array $args
+     * @param array|null $args
      * @return BindingBuilderInterface
      * @throws ContainerException
      */
-    public function bind(
+    public function set(
         string $id,
         Closure|string|null $concrete = null,
-        bool $isSingleton = false,
-        array $args = []
+        ?array $args = null
     ): BindingBuilderInterface;
 
     /**
@@ -59,7 +44,7 @@ interface ServiceBinderInterface
      *
      * @param string $id
      * @param callable(): mixed $factory
-     * @param bool $singleton
+     * @param bool $shared
      */
-    public function registerFactory(string $id, callable $factory, bool $singleton = true): void;
+    public function registerFactory(string $id, callable $factory, bool $shared = true): void;
 }

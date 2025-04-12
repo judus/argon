@@ -24,7 +24,6 @@ final class ServiceContainerTest extends TestCase
     protected function setUp(): void
     {
         $this->container = new ArgonContainer();
-        Container::set($this->container);
     }
 
     /**
@@ -40,11 +39,11 @@ final class ServiceContainerTest extends TestCase
 
         // 2. It cannot be bound manually
         $this->expectException(ContainerException::class);
-        $container->bind(ArgonContainer::class, fn () => new ArgonContainer());
+        $container->set(ArgonContainer::class, fn () => new ArgonContainer());
 
         // 3. It cannot be bound as singleton either
         try {
-            $container->singleton(ArgonContainer::class, fn () => new ArgonContainer());
+            $container->set(ArgonContainer::class, fn () => new ArgonContainer());
             $this->fail('Binding ArgonContainer::class should throw an exception.');
         } catch (ContainerException $e) {
             $this->assertStringContainsString('maniac', $e->getMessage());
@@ -57,7 +56,7 @@ final class ServiceContainerTest extends TestCase
      */
     public function testInvokeClosureWithDependency(): void
     {
-        $this->container->singleton(Logger::class);
+        $this->container->set(Logger::class);
 
         $result = $this->container->invoke(function (Logger $logger): string {
             return get_class($logger);
@@ -72,7 +71,7 @@ final class ServiceContainerTest extends TestCase
      */
     public function testInvokeMethodOnResolvedClass(): void
     {
-        $this->container->singleton(Logger::class);
+        $this->container->set(Logger::class);
 
         $result = $this->container->invoke([UsesLogger::class, 'reportSomething']);
 
@@ -138,7 +137,7 @@ final class ServiceContainerTest extends TestCase
         $container->registerInterceptor(get_class($interceptor));
 
         // Bind a service (autowiring would also work)
-        $container->bind('service', fn() => new \stdClass());
+        $container->set('service', fn() => new \stdClass());
 
         // Resolve the service
         $instance = $container->get('service');
@@ -153,7 +152,7 @@ final class ServiceContainerTest extends TestCase
         $this->expectExceptionMessage("Don't bind the container to itself, you maniac.");
 
         $container = new ArgonContainer();
-        $container->singleton(ArgonContainer::class);
+        $container->set(ArgonContainer::class);
     }
 
     public function testBindSelfBindingThrowsException(): void
@@ -162,7 +161,7 @@ final class ServiceContainerTest extends TestCase
         $this->expectExceptionMessage("Don't bind the container to itself, you maniac.");
 
         $container = new ArgonContainer();
-        $container->bind(ArgonContainer::class);
+        $container->set(ArgonContainer::class);
     }
 
     /**
@@ -172,9 +171,9 @@ final class ServiceContainerTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->bind(A::class)->tag(['foo']);
-        $container->bind(B::class)->tag(['foo', 'bar']);
-        $container->bind(C::class)->tag(['bar']);
+        $container->set(A::class)->tag(['foo']);
+        $container->set(B::class)->tag(['foo', 'bar']);
+        $container->set(C::class)->tag(['bar']);
 
         $fooTagged = $container->getTaggedIds('foo');
         $barTagged = $container->getTaggedIds('bar');

@@ -18,7 +18,7 @@ class DummyProvider implements ServiceProviderInterface
      */
     public function register(ArgonContainer $container): void
     {
-        $container->singleton('dummy.service', stdClass::class);
+        $container->set('dummy.service', stdClass::class);
     }
 
     public function boot(ArgonContainer $container): void

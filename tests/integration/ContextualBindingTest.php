@@ -44,7 +44,7 @@ class ContextualBindingTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->singleton(LoggerInterface::class, NullLogger::class);
+        $container->set(LoggerInterface::class, NullLogger::class);
 
         $instance = $container->get(UnboundConsumer::class);
 
@@ -59,10 +59,10 @@ class ContextualBindingTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->bind(FileLogger::class);
-        $container->bind(DatabaseLogger::class);
-        $container->bind(ServiceA::class);
-        $container->bind(ServiceB::class);
+        $container->set(FileLogger::class);
+        $container->set(DatabaseLogger::class);
+        $container->set(ServiceA::class);
+        $container->set(ServiceB::class);
 
         $container->for(ServiceA::class)->bind(LoggerInterface::class, FileLogger::class);
         $container->for(ServiceB::class)->bind(LoggerInterface::class, DatabaseLogger::class);
@@ -82,7 +82,7 @@ class ContextualBindingTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->bind(ServiceA::class);
+        $container->set(ServiceA::class);
 
         $container->for(ServiceA::class)->bind(LoggerInterface::class, function (): LoggerInterface {
             return new FileLogger();

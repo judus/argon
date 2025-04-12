@@ -41,7 +41,7 @@ class ServiceContainerTest extends TestCase
     public function testSingletonServiceBinding(): void
     {
         $container = new ArgonContainer();
-        $container->singleton('service', fn() => new stdClass());
+        $container->set('service', fn() => new stdClass());
 
         $instance1 = $container->get('service');
         $instance2 = $container->get('service');
@@ -56,7 +56,7 @@ class ServiceContainerTest extends TestCase
     public function testTransientServiceBinding(): void
     {
         $container = new ArgonContainer();
-        $container->bind('service', fn() => new stdClass());
+        $container->set('service', fn() => new stdClass())->transient();
 
         $instance1 = $container->get('service');
         $instance2 = $container->get('service');
@@ -71,7 +71,7 @@ class ServiceContainerTest extends TestCase
     public function testRegisterFactorySingleton(): void
     {
         $container = new ArgonContainer();
-        $container->registerFactory('factory', fn() => new stdClass());
+        $container->set('factory', fn() => new stdClass());
 
         $instance1 = $container->get('factory');
         $instance2 = $container->get('factory');
@@ -90,7 +90,7 @@ class ServiceContainerTest extends TestCase
     public function testRegisterFactoryTransient(): void
     {
         $container = new ArgonContainer();
-        $container->registerFactory('factory', fn() => new stdClass(), false);
+        $container->set('factory', fn() => new stdClass())->transient();
 
         $instance1 = $container->get('factory');
         $instance2 = $container->get('factory');
@@ -111,8 +111,8 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         // Bind services that cause a circular dependency
-        $container->singleton('A', fn() => $container->get('B'));
-        $container->singleton('B', fn() => $container->get('A'));
+        $container->set('A', fn() => $container->get('B'));
+        $container->set('B', fn() => $container->get('A'));
 
         // Expect the consolidated ContainerException instead of CircularDependencyException
         $this->expectException(ContainerException::class);
@@ -157,8 +157,8 @@ class ServiceContainerTest extends TestCase
     public function testTaggingAndRetrievingServices(): void
     {
         $container = new ArgonContainer();
-        $container->singleton('service1', fn() => new stdClass());
-        $container->singleton('service2', fn() => new stdClass());
+        $container->set('service1', fn() => new stdClass());
+        $container->set('service2', fn() => new stdClass());
 
         $container->tag('service1', ['groupA']);
         $container->tag('service2', ['groupA', 'groupB']);
@@ -196,7 +196,7 @@ class ServiceContainerTest extends TestCase
     {
         $this->expectException(ContainerException::class);
         $container = new ArgonContainer();
-        $container->bind('invalidService', 'NonExistentClass');
+        $container->set('invalidService', 'NonExistentClass');
     }
 
     /**
@@ -329,7 +329,7 @@ class ServiceContainerTest extends TestCase
         $this->assertEmpty($internalCacheProperty->getValue($reflectionCache));
 
         // Trigger resolution
-        $container->bind('service', \stdClass::class);
+        $container->set('service', \stdClass::class);
         $container->get('service');
 
         // Now the reflection cache should contain one entry
@@ -363,7 +363,7 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         // Provide a default value for the constructor dependency
-        $container->bind(TestService::class, fn() => new TestService('constructorDependency'));
+        $container->set(TestService::class, fn() => new TestService('constructorDependency'));
 
         // Resolve the service and call the method
         $service = $container->get(TestService::class);
@@ -382,7 +382,7 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         // Bind the TestService with its constructor dependency
-        $container->bind(TestService::class, fn() => new TestService('constructorDependency'));
+        $container->set(TestService::class, fn() => new TestService('constructorDependency'));
 
         // Resolve the service from the container
         $service = $container->get(TestService::class);
@@ -421,8 +421,8 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         // Bind two services that cause a circular dependency
-        $container->singleton('A', fn() => $container->get('B'));
-        $container->singleton('B', fn() => $container->get('A'));
+        $container->set('A', fn() => $container->get('B'));
+        $container->set('B', fn() => $container->get('A'));
 
         // Expect the consolidated ContainerException
         $this->expectException(ContainerException::class);
@@ -479,7 +479,7 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         // Bind a singleton service
-        $container->singleton('service', fn() => new stdClass());
+        $container->set('service', fn() => new stdClass());
 
         // Fetch the service twice
         $instance1 = $container->get('service');
@@ -498,7 +498,7 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         // Bind a non-singleton service
-        $container->bind('service', fn() => new stdClass());
+        $container->set('service', fn() => new stdClass())->transient();
 
         // Fetch the service twice
         $instance1 = $container->get('service');
@@ -532,7 +532,7 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         // Manually bind the service with its dependency
-        $container->bind(
+        $container->set(
             TestServiceWithDependency::class,
             fn() => new TestServiceWithDependency(new TestDependency())
         );
@@ -553,7 +553,7 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         // Bind the interface to a concrete class
-        $container->bind(TestInterface::class, TestConcreteClass::class);
+        $container->set(TestInterface::class, TestConcreteClass::class);
 
         // Fetch the interface, which should resolve to the concrete class
         $instance = $container->get(TestInterface::class);
@@ -597,7 +597,7 @@ class ServiceContainerTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->bind(TestConcreteClass::class, TestConcreteClass::class);
+        $container->set(TestConcreteClass::class, TestConcreteClass::class);
 
         $instance = $container->get(TestConcreteClass::class);
 
@@ -635,7 +635,7 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         // Assuming TestServiceWithDependency depends on TestDependency
-        $container->bind(
+        $container->set(
             TestServiceWithDependency::class,
             fn() => new TestServiceWithDependency(new TestDependency())
         );
@@ -675,7 +675,7 @@ class ServiceContainerTest extends TestCase
         // Use a flag to track instantiation
         $isInstantiated = false;
 
-        $container->singleton('lazyService', function () use (&$isInstantiated) {
+        $container->set('lazyService', function () use (&$isInstantiated) {
             $isInstantiated = true;
 
             return new TestService('some-dependency');
@@ -713,7 +713,7 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         for ($i = 0; $i < 1000; $i++) {
-            $container->singleton("service$i", fn() => new stdClass());
+            $container->set("service$i", fn() => new stdClass());
         }
 
         for ($i = 0; $i < 1000; $i++) {
@@ -738,7 +738,7 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         // Original service
-        $container->singleton(stdClass::class, fn() => new stdClass());
+        $container->set(stdClass::class, fn() => new stdClass());
 
         // Trigger the initial resolution
         $original = $container->get(stdClass::class);
@@ -783,7 +783,7 @@ class ServiceContainerTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->singleton(FooBarService::class, args: [
+        $container->set(FooBarService::class, args: [
             'foo' => 'hello',
             'bar' => 42,
         ]);

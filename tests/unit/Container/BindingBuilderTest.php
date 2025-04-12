@@ -23,8 +23,8 @@ class BindingBuilderTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $builder = $container->bind(Foo::class);
-        $result = $builder->useFactory(FooFactory::class);
+        $builder = $container->set(Foo::class);
+        $result = $builder->factory(FooFactory::class);
 
         $this->assertInstanceOf(BindingBuilderInterface::class, $result);
     }
@@ -38,7 +38,7 @@ class BindingBuilderTest extends TestCase
             $this->createMock(TagManagerInterface::class)
         );
 
-        $builder = $binder->bind(Foo::class);
+        $builder = $binder->set(Foo::class)->transient();
 
         $descriptor = $builder->getDescriptor();
 

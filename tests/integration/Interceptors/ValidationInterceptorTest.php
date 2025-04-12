@@ -28,7 +28,7 @@ class ValidationInterceptorTest extends TestCase
         $container->registerInterceptor(ValidationInterceptor::class);
 
         // Provide a valid request object
-        $container->bind(ValidRequest::class);
+        $container->set(ValidRequest::class);
 
         // Act
         $request = $container->get(ValidRequest::class);
@@ -47,7 +47,7 @@ class ValidationInterceptorTest extends TestCase
         $this->expectExceptionMessage('Title is required.');
 
         $container = new ArgonContainer();
-        $container->bind(InvalidRequest::class);
+        $container->set(InvalidRequest::class);
 
         $container->registerInterceptor(ValidationInterceptor::class);
 
@@ -63,7 +63,7 @@ class ValidationInterceptorTest extends TestCase
         $container = new ArgonContainer();
 
         // Simulate user input
-        $container->singleton(Request::class, fn() => new Request([
+        $container->set(Request::class, fn() => new Request([
             'title' => 'Valid Title',
         ]));
 

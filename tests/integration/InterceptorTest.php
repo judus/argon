@@ -99,7 +99,7 @@ final class InterceptorTest extends TestCase
         $container = new ArgonContainer();
 
         $container->registerInterceptor(PostHook::class);
-        $container->singleton(InterceptedClass::class);
+        $container->set(InterceptedClass::class);
 
         $a = $container->get(InterceptedClass::class);
         $b = $container->get(InterceptedClass::class);

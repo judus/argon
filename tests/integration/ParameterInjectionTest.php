@@ -28,7 +28,7 @@ final class ParameterInjectionTest extends TestCase
      */
     public function testBindArgumentsAreUsedWhenResolving(): void
     {
-        $this->container->bind(ApiClient::class, args: [
+        $this->container->set(ApiClient::class, args: [
             'apiKey' => 'bound-key',
             'apiUrl' => 'https://bound.example.com',
         ]);
@@ -39,12 +39,16 @@ final class ParameterInjectionTest extends TestCase
         $this->assertSame('https://bound.example.com', $client->apiUrl);
     }
 
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testTransientArgumentsOverrideBinding(): void
     {
-        $this->container->bind(ApiClient::class, args: [
+        $this->container->set(ApiClient::class, args: [
             'apiKey' => 'bound-key',
             'apiUrl' => 'https://bound.example.com',
-        ]);
+        ])->transient();
 
         $client = $this->container->get(ApiClient::class, [
             'apiKey' => 'override-key',
@@ -66,7 +70,7 @@ final class ParameterInjectionTest extends TestCase
         $params->set('apiKey', 'registry-key');
         $params->set('apiUrl', 'https://registry.example.com');
 
-        $this->container->bind(ApiClient::class, args: [
+        $this->container->set(ApiClient::class, args: [
             'apiKey' => $params->get('apiKey'),
             'apiUrl' => $params->get('apiUrl'),
         ]);
@@ -77,13 +81,17 @@ final class ParameterInjectionTest extends TestCase
         $this->assertSame('https://registry.example.com', $client->apiUrl);
     }
 
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testBindUsesParameterRegistryValues(): void
     {
         $params = $this->container->getParameters();
         $params->set('apiKey', 'reg-key');
         $params->set('apiUrl', 'https://reg.example.com');
 
-        $this->container->bind(ApiClient::class, args: [
+        $this->container->set(ApiClient::class, args: [
             'apiKey' => $params->get('apiKey'),
             'apiUrl' => $params->get('apiUrl'),
         ]);
@@ -94,6 +102,10 @@ final class ParameterInjectionTest extends TestCase
         $this->assertSame('https://reg.example.com', $client->apiUrl);
     }
 
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testNullableParametersGetNull(): void
     {
         $client = $this->container->get(NullableApiClient::class);
@@ -102,6 +114,10 @@ final class ParameterInjectionTest extends TestCase
         $this->assertNull($client->apiUrl);
     }
 
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testOptionalParametersUseDefaults(): void
     {
         $client = $this->container->get(OptionalClient::class);
@@ -110,6 +126,9 @@ final class ParameterInjectionTest extends TestCase
         $this->assertSame('https://default.com', $client->apiUrl);
     }
 
+    /**
+     * @throws NotFoundException
+     */
     public function testMissingPrimitiveThrows(): void
     {
         $this->expectException(ContainerException::class);

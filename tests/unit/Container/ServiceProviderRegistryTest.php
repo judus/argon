@@ -38,7 +38,7 @@ class ServiceProviderRegistryTest extends TestCase
         );
 
         $this->container = $this->getMockBuilder(ArgonContainer::class)
-            ->onlyMethods(['singleton', 'tag', 'get'])
+            ->onlyMethods(['set', 'tag', 'get'])
             ->setConstructorArgs([ 'binder' => $binder ])
             ->getMock();
 
@@ -46,10 +46,10 @@ class ServiceProviderRegistryTest extends TestCase
         $providerMock = $this->createMock(SampleProvider::class);
 
         // Return real binding builder (safe even though it's final)
-        $bindingBuilder = $binder->singleton($providerClass);
+        $bindingBuilder = $binder->set($providerClass);
 
         $this->container->expects($this->once())
-            ->method('singleton')
+            ->method('set')
             ->with($providerClass)
             ->willReturn($bindingBuilder);
 

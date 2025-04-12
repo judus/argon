@@ -41,21 +41,21 @@ class AbstractServiceProviderTest extends TestCase
         );
 
         $container = $this->getMockBuilder(ArgonContainer::class)
-            ->onlyMethods(['singleton'])
+            ->onlyMethods(['set'])
             ->setConstructorArgs([ 'binder' => $binder ])
             ->getMock();
 
-        $bindingBuilder = $binder->singleton(SomeClass::class);
+        $bindingBuilder = $binder->set(SomeClass::class);
 
         $container->expects($this->once())
-            ->method('singleton')
+            ->method('set')
             ->with(SomeClass::class)
             ->willReturn($bindingBuilder);
 
         $provider = new class extends AbstractServiceProvider {
             public function register(ArgonContainer $container): void
             {
-                $container->singleton(SomeClass::class);
+                $container->set(SomeClass::class);
             }
         };
 

@@ -37,13 +37,13 @@ class ServiceDescriptorTest extends TestCase
     public function testIsSingletonReturnsTrueWhenSet(): void
     {
         $descriptor = new ServiceDescriptor('serviceId', stdClass::class, true);
-        $this->assertTrue($descriptor->isSingleton());
+        $this->assertTrue($descriptor->isShared());
     }
 
     public function testIsSingletonReturnsFalseWhenNotSet(): void
     {
         $descriptor = new ServiceDescriptor('serviceId', stdClass::class, false);
-        $this->assertFalse($descriptor->isSingleton());
+        $this->assertFalse($descriptor->isShared());
     }
 
     public function testGetConcreteReturnsClassString(): void

@@ -36,7 +36,7 @@ final readonly class ServiceProviderRegistry implements ServiceProviderRegistryI
             throw new ContainerException("Service provider '$className' must implement ServiceProviderInterface.");
         }
 
-        $this->container->singleton($className);
+        $this->container->set($className);
         $this->container->tag($className, ['service.provider']);
 
         $provider = $this->container->get($className);

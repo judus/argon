@@ -24,7 +24,7 @@ class ServiceContainerIfTest extends TestCase
         $stub = new TestService('');
 
         $container = new ArgonContainer();
-        $container->singleton(TestService::class, fn() => $stub);
+        $container->set(TestService::class, fn() => $stub);
 
         $container->optional(TestService::class)->callMe();
 

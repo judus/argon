@@ -31,7 +31,7 @@ final class FactoryIntegrationTest extends TestCase
      */
     public function testUseFactoryWithExplicitMethod(): void
     {
-        $this->container->bind(Foo::class)->useFactory(FooFactory::class, 'make');
+        $this->container->set(Foo::class)->factory(FooFactory::class, 'make');
 
         $foo = $this->container->get(Foo::class);
 
@@ -45,7 +45,7 @@ final class FactoryIntegrationTest extends TestCase
      */
     public function testUseFactoryWithInvokeMethod(): void
     {
-        $this->container->bind(Foo::class)->useFactory(InvokableFactory::class);
+        $this->container->set(Foo::class)->factory(InvokableFactory::class);
 
         $foo = $this->container->get(Foo::class);
 
@@ -59,7 +59,7 @@ final class FactoryIntegrationTest extends TestCase
      */
     public function testFactorySupportsArguments(): void
     {
-        $this->container->bind(Foo::class)->useFactory(FooFactory::class, 'makeWithArgs');
+        $this->container->set(Foo::class)->factory(FooFactory::class, 'makeWithArgs');
 
         $foo = $this->container->get(Foo::class, ['label' => 'custom-arg']);
 
@@ -73,7 +73,7 @@ final class FactoryIntegrationTest extends TestCase
      */
     public function testUseFactoryWithStaticMethod(): void
     {
-        $this->container->bind(Foo::class)->useFactory(StaticFooFactory::class, 'createStatic');
+        $this->container->set(Foo::class)->factory(StaticFooFactory::class, 'createStatic');
 
         $foo = $this->container->get(Foo::class);
 
@@ -89,7 +89,7 @@ final class FactoryIntegrationTest extends TestCase
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessage("Factory method \"missingMethod\" not found on class");
 
-        $this->container->bind(Foo::class)->useFactory(FooFactory::class, 'missingMethod');
+        $this->container->set(Foo::class)->factory(FooFactory::class, 'missingMethod');
 
         $this->container->get(Foo::class);
     }
@@ -118,6 +118,6 @@ final class FactoryIntegrationTest extends TestCase
          * @psalm-suppress ArgumentTypeCoercion
          * @psalm-suppress UndefinedClass
          */
-        $container->bind(Foo::class)->useFactory('FakeFactoryClass');
+        $container->set(Foo::class)->factory('FakeFactoryClass');
     }
 }
