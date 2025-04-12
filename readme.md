@@ -92,7 +92,7 @@ class ApiClient
 }
 ```
 
-#### 🔹 Set arguments during binding
+#### Set arguments during binding
 
 ```php
 $container->set(ApiClient::class, args: [
@@ -103,7 +103,7 @@ $container->set(ApiClient::class, args: [
 
 These arguments are attached to the service binding and used **every time** it's resolved.
 
-#### 🔹 Override arguments during resolution (transients only)
+#### Override arguments during resolution (transients only)
 
 ```php
 $client = $container->get(ApiClient::class, args: [
@@ -121,7 +121,7 @@ compatible with the **compiled container** — values are embedded directly into
 
 Use it to define reusable values, inject environment settings.
 
-#### 🔹 Set and retrieve values
+#### Set and retrieve values
 
 ```php
 $parameters = $container->getParameters();
@@ -132,7 +132,7 @@ $parameters->set('apiUrl', 'https://api.example.com');
 $apiKey = $parameters->get('apiKey');
 ```
 
-#### 🔹 Use parameters in bindings or at resolution
+#### Use parameters in bindings or at resolution
 
 ```php
 $container->set(ApiClient::class, args: [
@@ -224,7 +224,7 @@ $container->boot();
 
 Interceptors allow you to hook into the service resolution lifecycle. They are automatically called either **before** or **after** a service is constructed.
 
-#### 🔹 Post-Resolution Interceptors
+#### Post-Resolution Interceptors
 
 These are executed **after** a service is created, and can modify the object (e.g., inject metadata, call validation, register hooks).
 
@@ -261,7 +261,7 @@ $container->registerInterceptor(ValidationInterceptor::class);
 $dto = $container->get(MyDTO::class); // validate() is automatically called
 ```
 
-#### 🔹 Pre-Resolution Interceptors
+#### Pre-Resolution Interceptors
 
 These run **before** a service is instantiated. They can modify constructor parameters or short-circuit the entire resolution.
 
