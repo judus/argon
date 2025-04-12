@@ -12,7 +12,7 @@ A high-performance, PSR-11 compliant dependency injection container with optiona
 
 _**Strict when you want it, magic when you allow it**_
 
-Argon compiles your service graph into native PHP code, eliminating reflection and runtime resolution overhead.  
+Argon compiles your service graph into native PHP code, eliminating reflection and runtime resolution overhead. 
 When no binding exists, it seamlessly falls back to autowiring constructors, closures, and methods — offering predictable, optimized performance when declared, and ~~black magic~~ convenient flexibility when not.
 
 - **Adaptable**: strict or dynamic, compiled or runtime — it's up to you.
