@@ -66,20 +66,6 @@ $transient = $container->get(MyOtherService::class);
 $cache = $container->get(CacheInterface::class);
 $logger = $container->get(LoggerInterface::class);
 ```
-
-### Automatic Dependency Resolution
-
-```php
-class Logger {}
-
-class UserService
-{
-    public function __construct(Logger $logger) {}
-}
-
-$container->get(UserService::class); // Works out of the box
-```
-
 ### Binding Arguments
 
 When registering a service, you can provide **constructor arguments** using an associative array.  
@@ -92,7 +78,7 @@ class ApiClient
 }
 ```
 
-#### 🔹 Set arguments during binding
+#### Set arguments during binding
 
 ```php
 $container->set(ApiClient::class, args: [
@@ -103,7 +89,7 @@ $container->set(ApiClient::class, args: [
 
 These arguments are attached to the service binding and used **every time** it's resolved.
 
-#### 🔹 Override arguments during resolution (transients only)
+#### Override arguments during resolution (transients only)
 
 ```php
 $client = $container->get(ApiClient::class, args: [
@@ -114,6 +100,40 @@ $client = $container->get(ApiClient::class, args: [
 
 This works only for **transient** services. Shared services are constructed once, and cannot be reconfigured at runtime.
 
+### Automatic Dependency Resolution
+
+```php
+class Logger {}
+
+class UserService
+{
+    public function __construct(Logger $logger, string $env = 'prod') {}
+}
+
+$container->get(UserService::class); // Works out of the box
+```
+Argon will resolve Logger by class name, and skip env because it's optional. 
+
+What will **NOT** work:
+```php
+interface LoggerInterface {}
+
+class UserService
+{
+    public function __construct(LoggerInterface $logger, string $env) {}
+}
+
+$container->get(UserService::class); // 500: No interface binding, no default value for $env.
+```
+In this case, you must bind the interface to a concrete class first and provide a default value for the primitive:
+```php
+$container->set(LoggerInterface::class, FileLogger::class);
+$container->set(UserService::class, args: [
+    'env' => $_ENV['APP_ENV'],
+]);
+```
+
+
 ### Parameter Registry
 
 The **parameter registry** is a built-in key/value store used to centralize application configuration. It is fully 
@@ -121,7 +141,7 @@ compatible with the **compiled container** — values are embedded directly into
 
 Use it to define reusable values, inject environment settings.
 
-####🔹 Set and retrieve values
+#### Set and retrieve values
 
 ```php
 $parameters = $container->getParameters();
@@ -132,16 +152,10 @@ $parameters->set('apiUrl', 'https://api.example.com');
 $apiKey = $parameters->get('apiKey');
 ```
 
-####🔹 Use parameters in bindings or at resolution
+#### Use parameters in bindings or at resolution
 
 ```php
 $container->set(ApiClient::class, args: [
-    'apiKey' => $parameters->get('apiKey'),
-    'apiUrl' => $parameters->get('apiUrl'),
-]);
-
-// Although this works only with transients
-$container->get(ApiClient::class, args: [
     'apiKey' => $parameters->get('apiKey'),
     'apiUrl' => $parameters->get('apiUrl'),
 ]);
@@ -167,9 +181,6 @@ To use a specific method:
 $container->set(ClockInterface::class)
     ->factory(ClockFactory::class, 'create');
 ```
-
-The factory class is fully integrated — it can depend on other services, parameters, or even contextual bindings.
-
 
 ### Contextual Bindings
 
@@ -227,7 +238,7 @@ $container->boot();
 
 Interceptors allow you to hook into the service resolution lifecycle. They are automatically called either **before** or **after** a service is constructed.
 
-#### 🔹 Post-Resolution Interceptors
+#### Post-Resolution Interceptors
 
 These are executed **after** a service is created, and can modify the object (e.g., inject metadata, call validation, register hooks).
 
@@ -264,7 +275,7 @@ $container->registerInterceptor(ValidationInterceptor::class);
 $dto = $container->get(MyDTO::class); // validate() is automatically called
 ```
 
-#### 🔹 Pre-Resolution Interceptors
+#### Pre-Resolution Interceptors
 
 These run **before** a service is instantiated. They can modify constructor parameters or short-circuit the entire resolution.
 
