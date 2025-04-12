@@ -66,20 +66,6 @@ $transient = $container->get(MyOtherService::class);
 $cache = $container->get(CacheInterface::class);
 $logger = $container->get(LoggerInterface::class);
 ```
-
-### Automatic Dependency Resolution
-
-```php
-class Logger {}
-
-class UserService
-{
-    public function __construct(Logger $logger) {}
-}
-
-$container->get(UserService::class); // Works out of the box
-```
-
 ### Binding Arguments
 
 When registering a service, you can provide **constructor arguments** using an associative array.  
@@ -114,6 +100,40 @@ $client = $container->get(ApiClient::class, args: [
 
 This works only for **transient** services. Shared services are constructed once, and cannot be reconfigured at runtime.
 
+### Automatic Dependency Resolution
+
+```php
+class Logger {}
+
+class UserService
+{
+    public function __construct(Logger $logger, string $env = 'prod') {}
+}
+
+$container->get(UserService::class); // Works out of the box
+```
+Argon will resolve Logger by class name, and skip env because it's optional. 
+
+What will **NOT** work:
+```php
+interface LoggerInterface {}
+
+class UserService
+{
+    public function __construct(LoggerInterface $logger, string $env) {}
+}
+
+$container->get(UserService::class); // 500: No interface binding, no default value for $env.
+```
+In this case, you must bind the interface to a concrete class first and provide a default value for the primitive:
+```php
+$container->set(LoggerInterface::class, FileLogger::class);
+$container->set(UserService::class, args: [
+    'env' => $_ENV['APP_ENV'],
+]);
+```
+
+
 ### Parameter Registry
 
 The **parameter registry** is a built-in key/value store used to centralize application configuration. It is fully 
@@ -136,12 +156,6 @@ $apiKey = $parameters->get('apiKey');
 
 ```php
 $container->set(ApiClient::class, args: [
-    'apiKey' => $parameters->get('apiKey'),
-    'apiUrl' => $parameters->get('apiUrl'),
-]);
-
-// Although this works only with transients
-$container->get(ApiClient::class, args: [
     'apiKey' => $parameters->get('apiKey'),
     'apiUrl' => $parameters->get('apiUrl'),
 ]);
