@@ -29,7 +29,7 @@ final class BindAndResolveTest extends TestCase
     public function testTransientBindingCreatesNewInstances(): void
     {
         $container = new ArgonContainer();
-        $container->bind(Foo::class);
+        $container->set(Foo::class)->transient();
 
         $a = $container->get(Foo::class);
         $b = $container->get(Foo::class);
@@ -45,7 +45,7 @@ final class BindAndResolveTest extends TestCase
     public function testSingletonBindingReturnsSameInstance(): void
     {
         $container = new ArgonContainer();
-        $container->singleton(Bar::class);
+        $container->set(Bar::class);
 
         $a = $container->get(Bar::class);
         $b = $container->get(Bar::class);
@@ -60,7 +60,7 @@ final class BindAndResolveTest extends TestCase
     public function testBindingConcreteClassToAbstract(): void
     {
         $container = new ArgonContainer();
-        $container->bind(MyInterface::class, Concrete::class);
+        $container->set(MyInterface::class, Concrete::class);
 
         $service = $container->get(MyInterface::class);
 
@@ -74,7 +74,7 @@ final class BindAndResolveTest extends TestCase
     public function testSingletonBindingWithExplicitConcrete(): void
     {
         $container = new ArgonContainer();
-        $container->singleton(MyInterface::class, Concrete::class);
+        $container->set(MyInterface::class, Concrete::class);
 
         $a = $container->get(MyInterface::class);
         $b = $container->get(MyInterface::class);
@@ -88,7 +88,7 @@ final class BindAndResolveTest extends TestCase
         $this->expectException(ContainerException::class);
 
         $container = new ArgonContainer();
-        $container->bind(MyInterface::class, 'TotallyNotAClass');
+        $container->set(MyInterface::class, 'TotallyNotAClass');
     }
 
     /**
@@ -123,10 +123,10 @@ final class BindAndResolveTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->singleton(MyInterface::class, Concrete::class);
+        $container->set(MyInterface::class, Concrete::class);
         $first = $container->get(MyInterface::class);
 
-        $container->singleton(MyInterface::class, OtherConcrete::class);
+        $container->set(MyInterface::class, OtherConcrete::class);
         $second = $container->get(MyInterface::class);
 
         $this->assertInstanceOf(OtherConcrete::class, $second);
@@ -140,7 +140,7 @@ final class BindAndResolveTest extends TestCase
     public function testRegisterFactoryAsSingleton(): void
     {
         $container = new ArgonContainer();
-        $container->registerFactory(Foo::class, fn() => new Foo());
+        $container->set(Foo::class, fn() => new Foo());
 
         $a = $container->get(Foo::class);
         $b = $container->get(Foo::class);
@@ -156,7 +156,7 @@ final class BindAndResolveTest extends TestCase
     public function testRegisterFactoryAsTransient(): void
     {
         $container = new ArgonContainer();
-        $container->registerFactory(Foo::class, fn() => new Foo(), isSingleton: false);
+        $container->set(Foo::class, fn() => new Foo())->transient();
 
         $a = $container->get(Foo::class);
         $b = $container->get(Foo::class);
@@ -171,7 +171,7 @@ final class BindAndResolveTest extends TestCase
     public function testBindWithNullConcreteInfersConcreteFromId(): void
     {
         $container = new ArgonContainer();
-        $container->bind(Foo::class, null); // same as $container->bind(Foo::class);
+        $container->set(Foo::class, null);
 
         $instance = $container->get(Foo::class);
         $this->assertInstanceOf(Foo::class, $instance);
@@ -183,7 +183,7 @@ final class BindAndResolveTest extends TestCase
     public function testHasReturnsTrueForBoundService(): void
     {
         $container = new ArgonContainer();
-        $container->singleton(Foo::class);
+        $container->set(Foo::class);
 
         $this->assertTrue($container->has(Foo::class));
     }
@@ -215,10 +215,10 @@ final class BindAndResolveTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->bind(MyInterface::class, Concrete::class);
+        $container->set(MyInterface::class, Concrete::class);
         $a = $container->get(MyInterface::class);
 
-        $container->bind(MyInterface::class, fn() => new OtherConcrete());
+        $container->set(MyInterface::class, fn() => new OtherConcrete());
         $b = $container->get(MyInterface::class);
 
         $this->assertInstanceOf(OtherConcrete::class, $b);
@@ -232,7 +232,7 @@ final class BindAndResolveTest extends TestCase
     public function testBindWithItselfAsConcrete(): void
     {
         $container = new ArgonContainer();
-        $container->bind(Foo::class, Foo::class);
+        $container->set(Foo::class, Foo::class);
 
         $this->assertInstanceOf(Foo::class, $container->get(Foo::class));
     }
@@ -241,17 +241,18 @@ final class BindAndResolveTest extends TestCase
      * @throws NotFoundException
      * @throws ContainerException
      */
-    public function testSingletonReplacesFactoryProperly(): void
+    public function testReplacesFactoryProperly(): void
     {
         $container = new ArgonContainer();
 
-        $container->registerFactory(Foo::class, fn() => new Foo(), false);
-        $container->singleton(Foo::class, fn() => new Foo());
+        $bar = new Bar();
 
-        $a = $container->get(Foo::class);
-        $b = $container->get(Foo::class);
+        $container->set('someId', fn() => new Foo());
+        $container->set('someId', fn() => $bar);
 
-        $this->assertSame($a, $b);
+        $a = $container->get('someId');
+
+        $this->assertSame($a, $bar);
     }
 
     /**
@@ -262,7 +263,7 @@ final class BindAndResolveTest extends TestCase
         $this->expectException(ContainerException::class);
 
         $container = new ArgonContainer();
-        $container->bind('InvalidInterface', 'Fake\Concrete\Missing');
+        $container->set('InvalidInterface', 'Fake\Concrete\Missing');
         $container->get('InvalidInterface');
     }
 
@@ -274,10 +275,10 @@ final class BindAndResolveTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->bind(Logger::class)->tag(['loggers', 'debug']);
-        $container->bind('foo', Foo::class)
+        $container->set(Logger::class)->tag(['loggers', 'debug']);
+        $container->set('foo', Foo::class)
             ->tag('loggers')
-            ->useFactory(InvokableFactory::class)
+            ->factory(InvokableFactory::class)
             ->tag('some-other-tag');
 
         $tagged = $container->getTagged('loggers');
@@ -294,7 +295,7 @@ final class BindAndResolveTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->bind(Foo::class, args: ['value' => 'bar']);
+        $container->set(Foo::class, args: ['value' => 'bar']);
         $descriptor = $container->getDescriptor(Foo::class);
 
         $this->assertTrue($descriptor?->hasArgument('value'));
@@ -306,7 +307,7 @@ final class BindAndResolveTest extends TestCase
         $this->expectException(ContainerException::class);
 
         $container = new ArgonContainer();
-        $container->bind(Foo::class);
+        $container->set(Foo::class);
 
         $container->getDescriptor(Foo::class)?->getArgument('missing');
     }
@@ -318,12 +319,12 @@ final class BindAndResolveTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->bind(Foo::class);
+        $container->set(Foo::class);
         $descriptor = $container->getDescriptor(Foo::class);
 
-        $descriptor?->setMethod('hello', ['name' => 'string']);
+        $descriptor?->defineInvocation('hello', ['name' => 'string']);
 
-        $this->assertSame(['name' => 'string'], $descriptor?->getMethod('hello'));
-        $this->assertArrayHasKey('hello', (array) $descriptor?->getAllMethods());
+        $this->assertSame(['name' => 'string'], $descriptor?->getInvocation('hello'));
+        $this->assertArrayHasKey('hello', (array) $descriptor?->getInvocationMap());
     }
 }

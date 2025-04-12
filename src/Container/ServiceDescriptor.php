@@ -9,8 +9,7 @@ use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 
 /**
- * Holds metadata about a service: its concrete implementation, singleton status,
- * optional constructor arguments, and optionally a factory.
+ * @inheritDoc
  */
 final class ServiceDescriptor implements ServiceDescriptorInterface
 {
@@ -21,7 +20,7 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
      */
     private string|Closure $concrete;
 
-    private bool $isSingleton;
+    private bool $isShared;
 
     private ?object $instance = null;
 
@@ -40,78 +39,67 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
      */
     private ?string $factoryMethod = null;
 
-    private bool $ignoreForCompilation = false;
+    private bool $shouldCompile = true;
 
     /**
      * @var array<string, array<array-key, class-string|string|int|float|bool|null>>
      */
-    private array $methodMap = [];
+    private array $invocationMap = [];
 
     /**
-     * @param string $id
      * @param class-string|Closure $concrete
-     * @param bool $isSingleton
-     * @param array<array-key, mixed> $arguments
      */
-    public function __construct(string $id, string|Closure $concrete, bool $isSingleton, ?array $arguments = [])
+    public function __construct(string $id, string|Closure $concrete, bool $isShared, ?array $arguments = [])
     {
         $this->id = $id;
         $this->concrete = $concrete;
-        $this->isSingleton = $isSingleton;
+        $this->isShared = $isShared;
         $this->arguments = $arguments ?? [];
     }
 
+    /** @inheritDoc */
     public function getId(): string
     {
         return $this->id;
     }
 
-    public function isSingleton(): bool
+    /** @inheritDoc */
+    public function isShared(): bool
     {
-        return $this->isSingleton;
+        return $this->isShared;
     }
 
-    /**
-     * @return class-string|Closure
-     */
+    /** @inheritDoc */
+    public function setShared(bool $isShared): void
+    {
+        $this->isShared = $isShared;
+    }
+
+    /** @inheritDoc */
     public function getConcrete(): string|Closure
     {
         return $this->concrete;
     }
 
-    public function getInstance(): ?object
-    {
-        return $this->instance;
-    }
-
-    public function storeInstance(object $instance): void
-    {
-        if ($this->isSingleton && $this->instance === null) {
-            $this->instance = $instance;
-        }
-    }
-
-    /**
-     * @return array<array-key, mixed>
-     */
+    /** @inheritDoc */
     public function getArguments(): array
     {
         return $this->arguments;
     }
 
+    /** @inheritDoc */
     public function hasArgument(string $name): bool
     {
         return array_key_exists($name, $this->arguments);
     }
 
+    /** @inheritDoc */
     public function setArgument(string $name, mixed $value): void
     {
         $this->arguments[$name] = $value;
     }
 
-    /**
-     * @throws ContainerException
-     */
+    /** @inheritDoc */
     public function getArgument(string $name): mixed
     {
         if (!array_key_exists($name, $this->arguments)) {
@@ -121,19 +109,7 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
         return $this->arguments[$name];
     }
 
-    /**
-     * @return array<array-key, array<array-key, class-string|string|int|float|bool|null>>
-     */
-    public function getMethodMap(): array
-    {
-        return $this->methodMap;
-    }
-
-    /**
-     * @param class-string $class
-     * @param string|null $method
-     * @throws ContainerException
-     */
+    /** @inheritDoc */
     public function setFactory(string $class, ?string $method = null): void
     {
         if (!class_exists($class)) {
@@ -156,58 +132,66 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
         $this->factoryMethod = $method;
     }
 
+    /** @inheritDoc */
     public function hasFactory(): bool
     {
         return $this->factoryClass !== null;
     }
 
+    /** @inheritDoc */
     public function getFactoryClass(): ?string
     {
         return $this->factoryClass;
     }
 
+    /** @inheritDoc */
     public function getFactoryMethod(): string
     {
         return $this->factoryMethod ?? '__invoke';
     }
 
-    public function compilerIgnore(): self
+    /** @inheritDoc */
+    public function defineInvocation(string $method, array $arguments, ?string $returnType = null): void
     {
-        $this->ignoreForCompilation = true;
+        $this->invocationMap[$method] = $arguments;
+    }
+
+    /** @inheritDoc */
+    public function getInvocation(string $method): array
+    {
+        return $this->invocationMap[$method] ?? [];
+    }
+
+    /** @inheritDoc */
+    public function getInvocationMap(): array
+    {
+        return $this->invocationMap;
+    }
+
+    /** @inheritDoc */
+    public function getInstance(): ?object
+    {
+        return $this->instance;
+    }
+
+    /** @inheritDoc */
+    public function storeInstance(object $instance): void
+    {
+        if ($this->isShared && $this->instance === null) {
+            $this->instance = $instance;
+        }
+    }
+
+    /** @inheritDoc */
+    public function skipCompilation(): self
+    {
+        $this->shouldCompile = false;
         return $this;
     }
 
-    public function shouldIgnoreForCompilation(): bool
+    /** @inheritDoc */
+    public function shouldCompile(): bool
     {
-        return $this->ignoreForCompilation;
-    }
-
-    /**
-     * Store argument definitions for a method.
-     *
-     * @param string $method
-     * @param array<array-key, class-string|string|int|float|bool|null> $arguments
-     * @param string|null $returnType (optional, unused for now)
-     */
-    public function setMethod(string $method, array $arguments, ?string $returnType = null): void
-    {
-        $this->methodMap[$method] = $arguments;
-    }
-
-    /**
-     * @param string $method
-     * @return array<array-key, class-string|string|int|float|bool|null>
-     */
-    public function getMethod(string $method): array
-    {
-        return $this->methodMap[$method] ?? [];
-    }
-
-    /**
-     * @return array<array-key, array<array-key, class-string|string|int|float|bool|null>>
-     */
-    public function getAllMethods(): array
-    {
-        return $this->methodMap;
+        return $this->shouldCompile;
     }
 }

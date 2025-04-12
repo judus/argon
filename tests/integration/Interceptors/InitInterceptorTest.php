@@ -21,7 +21,7 @@ class InitInterceptorTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $container->singleton(NeedsInit::class);
+        $container->set(NeedsInit::class);
         $container->registerInterceptor(InitInterceptor::class);
 
         $instance = $container->get(NeedsInit::class);

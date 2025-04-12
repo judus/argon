@@ -53,29 +53,10 @@ final class ServiceBinder implements ServiceBinderInterface
      * @return BindingBuilderInterface
      * @throws ContainerException
      */
-    public function singleton(
+    public function set(
         string $id,
         Closure|string|null $concrete = null,
         ?array $args = null
-    ): BindingBuilderInterface {
-        return $this->bind($id, $concrete, true, $args);
-    }
-
-    /**
-     * Registers a service (transient or singleton).
-     *
-     * @param string $id
-     * @param Closure|string|null $concrete
-     * @param bool $isSingleton
-     * @param array<array-key, mixed> $args
-     * @return BindingBuilderInterface
-     * @throws ContainerException
-     */
-    public function bind(
-        string $id,
-        Closure|string|null $concrete = null,
-        bool $isSingleton = false,
-        ?array $args = []
     ): BindingBuilderInterface {
         $concrete ??= $id;
 
@@ -83,7 +64,7 @@ final class ServiceBinder implements ServiceBinderInterface
             throw ContainerException::fromServiceId($id, "Class '$concrete' does not exist.");
         }
 
-        $descriptor = new ServiceDescriptor($id, $concrete, $isSingleton, $args);
+        $descriptor = new ServiceDescriptor($id, $concrete, true, $args);
         $this->descriptors[$id] = $descriptor;
 
         return new BindingBuilder($descriptor, $this->tagManager);
@@ -94,14 +75,14 @@ final class ServiceBinder implements ServiceBinderInterface
      *
      * @param string $id
      * @param callable(): mixed $factory
-     * @param bool $singleton
+     * @param bool $shared
      */
-    public function registerFactory(string $id, callable $factory, bool $singleton = true): void
+    public function registerFactory(string $id, callable $factory, bool $shared = true): void
     {
         $this->descriptors[$id] = new ServiceDescriptor(
             $id,
             static fn(): mixed => $factory(),
-            $singleton
+            $shared
         );
     }
 }

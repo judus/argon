@@ -444,18 +444,17 @@ final class ContainerCompiler
         $serviceMap = [];
 
         foreach ($this->container->getBindings() as $id => $descriptor) {
-            $concrete = $descriptor->getConcrete();
-
-            if ($descriptor->shouldIgnoreForCompilation()) {
+            if ($descriptor->shouldCompile() === false) {
                 continue;
             }
 
+            $concrete = $descriptor->getConcrete();
             $methodName = $this->buildServiceMethodName($id);
 
             if ($concrete instanceof Closure) {
                 throw new ContainerException(
                     "Cannot compile a container with closures: [$id]. " .
-                    "Mark with ->compilerIgnore() to exclude from compilation."
+                    "Use skipCompilation() to exclude from compilation."
                 );
             }
 
@@ -486,8 +485,8 @@ final class ContainerCompiler
     private function generateServiceMethodInvokers(ClassType $class): void
     {
         foreach ($this->container->getBindings() as $serviceId => $descriptor) {
-            foreach ($descriptor->getMethodMap() as $method => $args) {
-                $compiledMethodName = $this->buildMethodInvokerName($serviceId, (string) $method);
+            foreach ($descriptor->getInvocationMap() as $method => $args) {
+                $compiledMethodName = $this->buildMethodInvokerName($serviceId, $method);
                 $controllerFetch = "\$controller = \$this->get(" . var_export($serviceId, true) . ");";
 
                 // Build compiled argument array

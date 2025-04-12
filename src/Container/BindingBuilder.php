@@ -7,8 +7,10 @@ namespace Maduser\Argon\Container;
 use Maduser\Argon\Container\Contracts\BindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Contracts\TagManagerInterface;
-use Maduser\Argon\Container\Exceptions\ContainerException;
 
+/**
+ * @inheritDoc
+ */
 final readonly class BindingBuilder implements BindingBuilderInterface
 {
     public function __construct(
@@ -17,39 +19,23 @@ final readonly class BindingBuilder implements BindingBuilderInterface
     ) {
     }
 
-    public function getDescriptor(): ServiceDescriptorInterface
-    {
-        return $this->descriptor;
-    }
-
-    /**
-     * @param string $methodName
-     * @param array<array-key, class-string|string|int|float|bool|null> $args
-     * @return BindingBuilderInterface
-     * @api
-     */
-    public function setMethod(string $methodName, array $args = []): BindingBuilderInterface
-    {
-        $this->descriptor->setMethod($methodName, $args);
-
-        return $this;
-    }
-
-    /**
-     * @param class-string $factoryClass
-     * @param string|null $method
-     * @return BindingBuilderInterface
-     */
-    public function useFactory(string $factoryClass, ?string $method = null): BindingBuilderInterface
+    /** @inheritDoc */
+    public function factory(string $factoryClass, ?string $method = null): BindingBuilderInterface
     {
         $this->descriptor->setFactory($factoryClass, $method);
 
         return $this;
     }
 
-    /**
-     * @param list<string>|string $tags
-     */
+    /** @inheritDoc */
+    public function defineInvocation(string $methodName, array $args = []): BindingBuilderInterface
+    {
+        $this->descriptor->defineInvocation($methodName, $args);
+
+        return $this;
+    }
+
+    /** @inheritDoc */
     public function tag(array|string $tags): BindingBuilderInterface
     {
         $tags = is_array($tags) ? $tags : [$tags];
@@ -59,10 +45,25 @@ final readonly class BindingBuilder implements BindingBuilderInterface
         return $this;
     }
 
-    public function compilerIgnore(): BindingBuilderInterface
+    /** @inheritDoc */
+    public function skipCompilation(): BindingBuilderInterface
     {
-        $this->descriptor->compilerIgnore();
+        $this->descriptor->skipCompilation();
 
         return $this;
+    }
+
+    /** @inheritDoc */
+    public function transient(): BindingBuilderInterface
+    {
+        $this->descriptor->setShared(false);
+
+        return $this;
+    }
+
+    /** @inheritDoc */
+    public function getDescriptor(): ServiceDescriptorInterface
+    {
+        return $this->descriptor;
     }
 }

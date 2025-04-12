@@ -94,8 +94,8 @@ class ArgonContainer implements ContainerInterface
             $argumentResolver
         );
 
-        $this->binder->singleton(ArgonContainer::class, fn() => $this)->compilerIgnore();
-        $this->binder->singleton(ContainerInterface::class, fn() => $this)->compilerIgnore();
+        $this->binder->set(ArgonContainer::class, fn() => $this)->skipCompilation();
+        $this->binder->set(ContainerInterface::class, fn() => $this)->skipCompilation();
     }
 
     public function getContextualBindings(): ContextualBindingsInterface
@@ -134,34 +134,11 @@ class ArgonContainer implements ContainerInterface
     /**
      * @param string $id
      * @param Closure|string|null $concrete
-     * @param bool $isSingleton
-     * @param array<array-key, mixed>|null $args
-     * @return BindingBuilderInterface
-     * @throws ContainerException
-     */
-    public function bind(
-        string $id,
-        Closure|string|null $concrete = null,
-        bool $isSingleton = false,
-        ?array $args = null
-    ): BindingBuilderInterface {
-
-        if ($id === ArgonContainer::class) {
-            throw new ContainerException("Don't bind the container to itself, you maniac.");
-        }
-
-        return $this->binder->bind($id, $concrete, $isSingleton, $args ?? []);
-    }
-
-
-    /**
-     * @param string $id
-     * @param Closure|string|null $concrete
      * @param array|null $args
      * @return BindingBuilderInterface
      * @throws ContainerException
      */
-    public function singleton(
+    public function set(
         string $id,
         Closure|string|null $concrete = null,
         ?array $args = null
@@ -171,7 +148,7 @@ class ArgonContainer implements ContainerInterface
             throw new ContainerException("Don't bind the container to itself, you maniac.");
         }
 
-        return $this->binder->singleton($id, $concrete, $args);
+        return $this->binder->set($id, $concrete, $args);
     }
 
     /**
@@ -185,19 +162,6 @@ class ArgonContainer implements ContainerInterface
     public function getParameters(): ParameterStoreInterface
     {
         return $this->parameterStore;
-    }
-
-    /**
-     * @param string $id
-     * @param callable(): mixed $factory
-     * @param bool $isSingleton
-     * @return $this
-     */
-    public function registerFactory(string $id, callable $factory, bool $isSingleton = true): ArgonContainer
-    {
-        $this->binder->registerFactory($id, $factory, $isSingleton);
-
-        return $this;
     }
 
     /**
@@ -318,7 +282,7 @@ class ArgonContainer implements ContainerInterface
         $instance = $this->get($id);
         $decorated = $decorator($instance);
 
-        $this->binder->singleton($id, fn() => $decorated);
+        $this->binder->set($id, fn() => $decorated);
         $this->binder->getDescriptor($id)?->storeInstance($decorated);
 
         return $this;
@@ -357,11 +321,11 @@ class ArgonContainer implements ContainerInterface
     /**
      * Returns a list of service IDs for a given tag.
      *
-     * @param string $string
+     * @param string $tag
      * @return list<string>
      */
-    public function getTaggedIds(string $string): array
+    public function getTaggedIds(string $tag): array
     {
-        return $this->tags->getTaggedIds($string);
+        return $this->tags->getTaggedIds($tag);
     }
 }

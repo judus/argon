@@ -73,7 +73,7 @@ class ServiceResolverTest extends TestCase
         $instance = new stdClass();
 
         $this->binder->method('getDescriptor')->willReturn($descriptor);
-        $descriptor->method('isSingleton')->willReturn(true);
+        $descriptor->method('isShared')->willReturn(true);
         $descriptor->method('getInstance')->willReturn($instance);
         $this->interceptors->expects($this->never())->method('matchPost');
 
@@ -92,7 +92,7 @@ class ServiceResolverTest extends TestCase
 
         $descriptor = $this->createMock(ServiceDescriptorInterface::class);
         $descriptor->method('getConcrete')->willReturn($closure);
-        $descriptor->method('isSingleton')->willReturn(false);
+        $descriptor->method('isShared')->willReturn(false);
         $descriptor->method('getInstance')->willReturn(null);
 
         $this->binder->method('getDescriptor')->willReturn($descriptor);
@@ -191,7 +191,7 @@ class ServiceResolverTest extends TestCase
 
         $descriptor = $this->createMock(ServiceDescriptorInterface::class);
         $descriptor->method('getConcrete')->willReturn($closure);
-        $descriptor->method('isSingleton')->willReturn(false);
+        $descriptor->method('isShared')->willReturn(false);
         $descriptor->method('getInstance')->willReturn(null);
 
         $this->binder->method('getDescriptor')->willReturn($descriptor);
@@ -211,7 +211,7 @@ class ServiceResolverTest extends TestCase
     {
         $descriptor = $this->createMock(ServiceDescriptorInterface::class);
         $descriptor->method('getConcrete')->willReturn(SampleInterface::class);
-        $descriptor->method('isSingleton')->willReturn(false);
+        $descriptor->method('isShared')->willReturn(false);
         $descriptor->method('getInstance')->willReturn(null);
 
         $this->binder->method('getDescriptor')->willReturn($descriptor);
@@ -292,7 +292,7 @@ class ServiceResolverTest extends TestCase
         $descriptor = $this->createMock(ServiceDescriptorInterface::class);
         $descriptor->method('getConcrete')
             ->willReturn(fn() => $expectedInstance);
-        $descriptor->method('isSingleton')
+        $descriptor->method('isShared')
             ->willReturn(false);
         $descriptor->method('getInstance')
             ->willReturn(null);
@@ -323,7 +323,7 @@ class ServiceResolverTest extends TestCase
         $descriptor = $this->createMock(ServiceDescriptorInterface::class);
         $descriptor->method('getConcrete')
             ->willReturn($concreteClass);
-        $descriptor->method('isSingleton')
+        $descriptor->method('isShared')
             ->willReturn(false);
         $descriptor->method('getInstance')
             ->willReturn(null);

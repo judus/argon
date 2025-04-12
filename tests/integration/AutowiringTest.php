@@ -156,8 +156,8 @@ final class AutowiringTest extends TestCase
         $container = new ArgonContainer();
 
         // Both Logger and Bar are resolvable => ambiguous
-        $container->bind(Logger::class);
-        $container->bind(Bar::class);
+        $container->set(Logger::class);
+        $container->set(Bar::class);
 
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessageMatches('/ambiguous union type/i');

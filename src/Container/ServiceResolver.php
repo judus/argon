@@ -83,7 +83,7 @@ final class ServiceResolver implements ServiceResolverInterface
      */
     private function resolveFromDescriptor(string $id, ServiceDescriptorInterface $descriptor, array $args): object
     {
-        if ($descriptor->isSingleton() && $instance = $descriptor->getInstance()) {
+        if ($descriptor->isShared() && $instance = $descriptor->getInstance()) {
             return $instance;
         }
 
@@ -100,7 +100,7 @@ final class ServiceResolver implements ServiceResolverInterface
 
         $instance = $this->interceptors->matchPost($instance);
 
-        if ($descriptor->isSingleton()) {
+        if ($descriptor->isShared()) {
             $descriptor->storeInstance($instance);
         }
 

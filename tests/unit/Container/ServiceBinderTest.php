@@ -23,13 +23,13 @@ class ServiceBinderTest extends TestCase
             $this->createMock(TagManagerInterface::class)
         );
 
-        $binder->singleton(stdClass::class);
+        $binder->set(stdClass::class);
 
         $descriptor = $binder->getDescriptor(stdClass::class);
 
         $this->assertInstanceOf(ServiceDescriptor::class, $descriptor);
         $this->assertSame(stdClass::class, $descriptor->getConcrete());
-        $this->assertTrue($descriptor->isSingleton());
+        $this->assertTrue($descriptor->isShared());
     }
 
     /**
@@ -42,13 +42,13 @@ class ServiceBinderTest extends TestCase
         );
 
         $closure = fn(): object => new stdClass();
-        $binder->singleton('my-service', $closure);
+        $binder->set('my-service', $closure);
 
         $descriptor = $binder->getDescriptor('my-service');
 
         $this->assertInstanceOf(ServiceDescriptor::class, $descriptor);
         $this->assertSame($closure, $descriptor->getConcrete());
-        $this->assertTrue($descriptor->isSingleton());
+        $this->assertTrue($descriptor->isShared());
     }
 
     /**
@@ -59,12 +59,12 @@ class ServiceBinderTest extends TestCase
         $binder = new ServiceBinder(
             $this->createMock(TagManagerInterface::class)
         );
-        $binder->bind(stdClass::class);
+        $binder->set(stdClass::class)->transient();
 
         $descriptor = $binder->getDescriptor(stdClass::class);
 
         $this->assertInstanceOf(ServiceDescriptor::class, $descriptor);
-        $this->assertFalse($descriptor->isSingleton());
+        $this->assertFalse($descriptor->isShared());
     }
 
     public function testBindThrowsForInvalidConcreteString(): void
@@ -75,7 +75,7 @@ class ServiceBinderTest extends TestCase
         $binder = new ServiceBinder(
             $this->createMock(TagManagerInterface::class)
         );
-        $binder->bind('fake-service', 'TotallyFakeClass');
+        $binder->set('fake-service', 'TotallyFakeClass');
     }
 
     /**
@@ -86,7 +86,7 @@ class ServiceBinderTest extends TestCase
         $binder = new ServiceBinder(
             $this->createMock(TagManagerInterface::class)
         );
-        $binder->singleton('thing', fn() => new stdClass());
+        $binder->set('thing', fn() => new stdClass());
 
         $this->assertTrue($binder->has('thing'));
     }
@@ -117,8 +117,8 @@ class ServiceBinderTest extends TestCase
         $binder = new ServiceBinder(
             $this->createMock(TagManagerInterface::class)
         );
-        $binder->bind(stdClass::class);
-        $binder->singleton('singleton', fn() => new stdClass());
+        $binder->set(stdClass::class)->transient();
+        $binder->set('singleton', fn() => new stdClass());
 
         $all = $binder->getDescriptors();
 
@@ -138,7 +138,7 @@ class ServiceBinderTest extends TestCase
 
         $descriptor = $binder->getDescriptor('factory-service');
         $this->assertInstanceOf(ServiceDescriptor::class, $descriptor);
-        $this->assertTrue($descriptor->isSingleton());
+        $this->assertTrue($descriptor->isShared());
 
         $wrapped = $descriptor->getConcrete();
         $this->assertInstanceOf(Closure::class, $wrapped);
@@ -158,6 +158,6 @@ class ServiceBinderTest extends TestCase
 
         $descriptor = $binder->getDescriptor('non-single-factory');
         $this->assertInstanceOf(ServiceDescriptor::class, $descriptor);
-        $this->assertFalse($descriptor->isSingleton());
+        $this->assertFalse($descriptor->isShared());
     }
 }
