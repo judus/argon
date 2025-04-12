@@ -168,9 +168,6 @@ $container->set(ClockInterface::class)
     ->factory(ClockFactory::class, 'create');
 ```
 
-The factory class is fully integrated — it can depend on other services, parameters, or even contextual bindings.
-
-
 ### Contextual Bindings
 
 Contextual bindings allow different consumers to receive different implementations of the same interface.
