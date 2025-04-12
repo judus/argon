@@ -46,7 +46,7 @@ $ composer check
 
 ## Usage
 
-### 1. Binding and Resolving Services
+### Binding and Resolving Services
 
 ```php
 // Register shared services (default)
@@ -67,7 +67,7 @@ $cache = $container->get(CacheInterface::class);
 $logger = $container->get(LoggerInterface::class);
 ```
 
-### 2. Automatic Dependency Resolution
+### Automatic Dependency Resolution
 
 ```php
 class Logger {}
@@ -80,7 +80,7 @@ class UserService
 $container->get(UserService::class); // Works out of the box
 ```
 
-### 3. Binding Arguments
+### Binding Arguments
 
 When registering a service, you can provide **constructor arguments** using an associative array.  
 These arguments are matched by **name** to the constructor’s parameter list — no need for full signatures or complex configuration.
@@ -114,7 +114,7 @@ $client = $container->get(ApiClient::class, args: [
 
 This works only for **transient** services. Shared services are constructed once, and cannot be reconfigured at runtime.
 
-### 4. Parameter Registry
+### Parameter Registry
 
 The **parameter registry** is a built-in key/value store used to centralize application configuration. It is fully 
 compatible with the **compiled container** — values are embedded directly into the generated service code.
@@ -171,7 +171,7 @@ $container->set(ClockInterface::class)
 The factory class is fully integrated — it can depend on other services, parameters, or even contextual bindings.
 
 
-### 4. Contextual Bindings
+### Contextual Bindings
 
 Contextual bindings allow different consumers to receive different implementations of the same interface.
 
@@ -198,7 +198,7 @@ $container->for(ServiceB::class)
     ->set(LoggerInterface::class, FileLogger::class);
 ```
 
-### 5. Service Providers
+### Service Providers
 
 Service providers allow grouping service bindings and optional boot-time logic.
 
@@ -223,7 +223,7 @@ $container->register(AppServiceProvider::class);
 $container->boot();
 ```
 
-### 6. Interceptors
+### Interceptors
 
 Interceptors allow you to hook into the service resolution lifecycle. They are automatically called either **before** or **after** a service is constructed.
 
@@ -310,7 +310,7 @@ $container->registerInterceptor(StubInterceptor::class);
 - Interceptors are resolved lazily and only when matched
 - You can register as many interceptors as you want. They're evaluated in the order they were added.
 
-### 7. Extending Services
+### Extending Services
 
 Extends an already-resolved service instance during runtime. Useful for wrapping, decorating, or modifying an existing service after resolution.
 
@@ -327,7 +327,7 @@ public function boot(ArgonContainer $container): void
 From this point on, all calls to `get(LoggerInterface::class)` will return the wrapped instance.
 
 
-### 8. Tags
+### Tags
 
 ```php
 $container->tag(FileLogger::class, ['loggers', 'file']);
@@ -341,7 +341,7 @@ foreach ($loggers as $logger) {
 }
 ```
 
-### 9. Conditional Service Access
+### Conditional Service Access
 
 `optional()` returns a proxy if the service is unavailable — safe for optional dependencies.
 
@@ -352,7 +352,7 @@ $container->optional(SomeLogger::class)->log('Only if logger exists');
 // This won't throw, even if SomeLogger wasn't registered
 ```
 
-### 10. Closure Bindings with Autowired Parameters
+### Closure Bindings with Autowired Parameters
 
 Closure bindings are convenient for CLI tools, prototyping, or runtime-only services — but they're not suited for production graphs or compilation. Since closures can't be compiled, you must either:
 - Register them during the boot() phase of a ServiceProvider, after compilation
@@ -373,7 +373,7 @@ $container->set(LoggerInterface::class, fn (Config $config) => {
 })->skipCompilation();
 ```
 
-### 11. Compiling the Container
+### Compiling the Container
 
 ```php
 $file = __DIR__ . '/CompiledContainer.php';
@@ -419,7 +419,6 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 | `isResolvable()`          | `string $id`                                    | `bool`                                     | Checks if a service can be resolved, even if not explicitly bound.                |
 | `optional()`              | `string $id`                                    | `object`                                   | Resolves a service or returns a NullServiceProxy if not found.                    |
 
----
 ## 🧩 `BindingBuilder` API
 
 When you call `set()`, it returns a `BindingBuilder`, which lets you **configure** the binding fluently.
