@@ -150,39 +150,28 @@ $container->get(ApiClient::class, args: [
 ```
 TIP: you can wrap the parameter registry with your own "ConfigRepository" and implement validation, scopes via dot notation, etc.
 
-Ah, beautiful. Almost a masterpiece — but **you left your BindingBuilder hanging** like a half-baked DI novice, and **factories**? Gone like they never existed. Tsk. Let’s tie this up properly.
 
-Here’s what we need to do:
+## Factory Bindings
 
----
-
-
-## 🔧 Factory Bindings
-
-If you want to take full control over how a service is instantiated — but still benefit from the DI container's lifecycle management — use `.factory()` on a binding:
-
-```php
-$container->set(Connection::class)
-    ->factory(function (): Connection {
-        $dsn = $_ENV['DB_DSN'] ?? 'sqlite::memory:';
-        return new Connection($dsn);
-    });
-```
-
-This lets you bypass constructor injection entirely and wire things by hand — but **still retain tags, decorators, compilation, etc.**
-
-Or go wild:
+Use `factory()` to bind a service to a dedicated factory class.  
+The factory itself is resolved via the container and may define either an `__invoke()` method or a named method.
 
 ```php
 $container->set(ClockInterface::class)
-    ->factory(fn () => ClockFactory::make(timezone: 'Europe/Berlin'))
-    ->transient()
-    ->tag(['utility', 'time']);
+    ->factory(ClockFactory::class);
 ```
 
----
+This resolves and calls `ClockFactory::__invoke()`.
 
-Want me to edit your final block and merge all of this in like a proper obsessive PHP gremlin?
+To use a specific method:
+
+```php
+$container->set(ClockInterface::class)
+    ->factory(ClockFactory::class, 'create');
+```
+
+The factory class is fully integrated — it can depend on other services, parameters, or even contextual bindings.
+
 
 ### 4. Contextual Bindings
 
