@@ -114,16 +114,14 @@ $client = $container->get(ApiClient::class, args: [
 
 This works only for **transient** services. Shared services are constructed once, and cannot be reconfigured at runtime.
 
----
-
-## 4. Parameter Registry
+### 4. Parameter Registry
 
 The **parameter registry** is a built-in key/value store used to centralize application configuration. It is fully 
 compatible with the **compiled container** — values are embedded directly into the generated service code.
 
 Use it to define reusable values, inject environment settings.
 
-### 🔹 Set and retrieve values
+####🔹 Set and retrieve values
 
 ```php
 $parameters = $container->getParameters();
@@ -134,7 +132,7 @@ $parameters->set('apiUrl', 'https://api.example.com');
 $apiKey = $parameters->get('apiKey');
 ```
 
-### 🔹 Use parameters in bindings or at resolution
+####🔹 Use parameters in bindings or at resolution
 
 ```php
 $container->set(ApiClient::class, args: [
@@ -151,7 +149,7 @@ $container->get(ApiClient::class, args: [
 TIP: you can wrap the parameter registry with your own "ConfigRepository" and implement validation, scopes via dot notation, etc.
 
 
-## Factory Bindings
+### Factory Bindings
 
 Use `factory()` to bind a service to a dedicated factory class.  
 The factory itself is resolved via the container and may define either an `__invoke()` method or a named method.
