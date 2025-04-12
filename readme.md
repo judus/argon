@@ -394,7 +394,7 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 
 ---
 
-## 🧩 `ArgonContainer` API
+## `ArgonContainer` API
 
 | ArgonContainer            | Parameters                                      | Return                                     | Description                                                                       |
 |---------------------------|-------------------------------------------------|--------------------------------------------|-----------------------------------------------------------------------------------|
@@ -419,7 +419,7 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 | `isResolvable()`          | `string $id`                                    | `bool`                                     | Checks if a service can be resolved, even if not explicitly bound.                |
 | `optional()`              | `string $id`                                    | `object`                                   | Resolves a service or returns a NullServiceProxy if not found.                    |
 
-## 🧩 `BindingBuilder` API
+## `BindingBuilder` API
 
 When you call `set()`, it returns a `BindingBuilder`, which lets you **configure** the binding fluently.
 
