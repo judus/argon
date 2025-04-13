@@ -109,27 +109,19 @@ final class ServiceDescriptor implements ServiceDescriptorInterface
         return $this->arguments[$name];
     }
 
-    /** @inheritDoc */
+    /** @inheritDoc
+     * @throws ContainerException
+     */
     public function setFactory(string $class, ?string $method = null): void
     {
-        if (!class_exists($class)) {
+        if (!class_exists($class) && !interface_exists($class)) {
             throw new ContainerException(
-                sprintf('Factory class "%s" does not exist.', $class)
-            );
-        }
-
-        if ($method === null) {
-            $method = '__invoke';
-        }
-
-        if (!method_exists($class, $method)) {
-            throw new ContainerException(
-                sprintf('Factory method "%s" not found on class "%s".', $method, $class)
+                sprintf('Factory class or interface "%s" does not exist.', $class)
             );
         }
 
         $this->factoryClass = $class;
-        $this->factoryMethod = $method;
+        $this->factoryMethod = $method ?? '__invoke';
     }
 
     /** @inheritDoc */

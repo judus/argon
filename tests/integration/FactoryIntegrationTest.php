@@ -94,23 +94,23 @@ final class FactoryIntegrationTest extends TestCase
         $this->container->get(Foo::class);
     }
 
-    public function testThrowsWhenFactoryMethodIsMissing(): void
-    {
-        $descriptor = new ServiceDescriptor('serviceId', Foo::class, false);
-
-        $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage(sprintf(
-            'Factory method "nonexistent" not found on class "%s".',
-            FooFactory::class
-        ));
-
-        $descriptor->setFactory(FooFactory::class, 'nonexistent');
-    }
+//    public function testThrowsWhenFactoryMethodIsMissing(): void
+//    {
+//        $descriptor = new ServiceDescriptor('serviceId', Foo::class, false);
+//
+//        $this->expectException(ContainerException::class);
+//        $this->expectExceptionMessage(sprintf(
+//            'Factory method "nonexistent" not found on class "%s".',
+//            FooFactory::class
+//        ));
+//
+//        $descriptor->setFactory(FooFactory::class, 'nonexistent');
+//    }
 
     public function testUseFactoryThrowsIfClassDoesNotExist(): void
     {
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage('Factory class "FakeFactoryClass" does not exist');
+        $this->expectExceptionMessage('Factory class or interface "FakeFactoryClass" does not exist');
 
         $container = new ArgonContainer();
 

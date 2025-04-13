@@ -13,6 +13,8 @@ use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use ReflectionException;
+use ReflectionMethod;
 use ReflectionParameter;
 use Throwable;
 
@@ -111,6 +113,7 @@ final class ServiceResolver implements ServiceResolverInterface
     /**
      * @throws ContainerException
      * @throws NotFoundException
+     * @throws ReflectionException
      */
     private function resolveFromFactory(string $id, ServiceDescriptorInterface $descriptor, array $args): object
     {
@@ -121,16 +124,17 @@ final class ServiceResolver implements ServiceResolverInterface
             throw ContainerException::fromServiceId($id, 'Factory class not defined.');
         }
 
-        if (!method_exists($factoryClass, $method)) {
-            throw ContainerException::fromServiceId($id, sprintf(
+        $factoryInstance = $this->resolve($factoryClass, $args);
+
+        if (!method_exists($factoryInstance, $method)) {
+            throw new ContainerException(sprintf(
                 'Factory method "%s" not found on class "%s".',
                 $method,
                 $factoryClass
             ));
         }
 
-        $reflection = new \ReflectionMethod($factoryClass, $method);
-        $factoryInstance = $this->resolveClass($factoryClass);
+        $reflection = new ReflectionMethod($factoryInstance, $method);
 
         if ($reflection->isStatic()) {
             // Even though we resolved it, static methods don't need the instance

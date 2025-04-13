@@ -104,7 +104,7 @@ final class ContainerCompiler
 
         $method->setBody(<<<PHP
             if (\$this->{$singletonProperty} === null) {
-                \$this->{$singletonProperty} = (new {$fqFactory}(\$this))->{$factoryMethod}();
+                \$this->{$singletonProperty} = \$this->get({$fqFactory}::class, \$args)->{$factoryMethod}(...\$args);
             }
             return \$this->{$singletonProperty};
         PHP);
