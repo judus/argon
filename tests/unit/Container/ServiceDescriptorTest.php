@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Container;
 
+use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\ArgumentMap;
 use Maduser\Argon\Container\ArgumentResolver;
 use Maduser\Argon\Container\ContextualBindings;
@@ -14,15 +15,18 @@ use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
+use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\InterceptorRegistry;
 use Maduser\Argon\Container\ReflectionCache;
 use Maduser\Argon\Container\ServiceBinder;
 use Maduser\Argon\Container\ServiceDescriptor;
 use Maduser\Argon\Container\ServiceResolver;
+use Maduser\Argon\Container\TagManager;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionException;
 use stdClass;
+use Tests\Unit\Container\Mocks\BrokenFactory;
 use Tests\Unit\Container\Mocks\Foo;
 use Tests\Unit\Container\Mocks\FooFactory;
 
@@ -115,23 +119,23 @@ class ServiceDescriptorTest extends TestCase
     /**
      * @throws ContainerException
      */
-    public function testSetFactoryThrowsForMissingMethod(): void
-    {
-        $factoryClass = FooFactory::class;
-        $method = 'nonexistent';
-
-        $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage(
-            sprintf(
-                'Factory method "%s" not found on class "%s".',
-                $method,
-                $factoryClass
-            ),
-        );
-
-        $descriptor = new ServiceDescriptor('serviceId', Foo::class, true);
-        $descriptor->setFactory($factoryClass, $method);
-    }
+//    public function testSetFactoryThrowsForMissingMethod(): void
+//    {
+//        $factoryClass = FooFactory::class;
+//        $method = 'nonexistent';
+//
+//        $this->expectException(ContainerException::class);
+//        $this->expectExceptionMessage(
+//            sprintf(
+//                'Factory method "%s" not found on class "%s".',
+//                $method,
+//                $factoryClass
+//            ),
+//        );
+//
+//        $descriptor = new ServiceDescriptor('serviceId', Foo::class, true);
+//        $descriptor->setFactory($factoryClass, $method);
+//    }
 
     /**
      * @throws ReflectionException
@@ -164,34 +168,21 @@ class ServiceDescriptorTest extends TestCase
     }
 
     /**
-     * @throws ReflectionException
      * @throws ContainerException
+     * @throws NotFoundException
      */
     public function testResolveFromFactoryThrowsWhenMethodMissing(): void
     {
-        $resolver = new ServiceResolver(
-            binder: $this->createMock(ServiceBinderInterface::class),
-            reflectionCache: $this->createMock(ReflectionCacheInterface::class),
-            interceptors: $this->createMock(InterceptorRegistryInterface::class),
-            argumentResolver: $this->createMock(ArgumentResolverInterface::class),
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage(
+            'Factory method "nonexistentMethod" not found on class "' . BrokenFactory::class . '"'
         );
 
-        $descriptor = new ServiceDescriptor('serviceId', Foo::class, false);
-        $descriptor->setFactory(FooFactory::class);
+        $container = new ArgonContainer();
+        $container->set(Foo::class)
+            ->factory(BrokenFactory::class, 'nonexistentMethod');
 
-        // Sabotage factoryMethod
-        $ref = new ReflectionClass($descriptor);
-        $methodProp = $ref->getProperty('factoryMethod');
-        $methodProp->setValue($descriptor, 'nonexistent');
-
-        // Trigger private resolveFromFactory via reflection
-        $resolverRef = new ReflectionClass($resolver);
-        $method = $resolverRef->getMethod('resolveFromFactory');
-
-        $this->expectException(ContainerException::class);
-        $this->expectExceptionMessageMatches('/Factory method "nonexistent" not found/');
-
-        $method->invoke($resolver, Foo::class, $descriptor, []);
+        $container->get(Foo::class);
     }
 
     /**
