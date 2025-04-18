@@ -15,7 +15,7 @@ final class ParameterStore implements ParameterStoreInterface
         $this->store = $store;
     }
 
-    public function set(string $key, mixed $value): void
+    public function set(string $key, string|int|bool|null $value): void
     {
         $this->store[$key] = $value;
     }
@@ -26,7 +26,7 @@ final class ParameterStore implements ParameterStoreInterface
      *
      * @return mixed
      */
-    public function get(string $key, string|int|null $default = null): mixed
+    public function get(string $key, string|int|bool|null $default = null): mixed
     {
         return $this->store[$key] ?? $default;
     }

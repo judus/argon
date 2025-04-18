@@ -10,11 +10,11 @@ interface ParameterStoreInterface
 
     /**
      * @param string $key
-     * @param int|string $value
+     * @param int|string|bool|null $value
      */
-    public function set(string $key, int|string $value): void;
+    public function set(string $key, int|string|bool|null $value): void;
 
-    public function get(string $key, string|null $default = null): mixed;
+    public function get(string $key, string|int|bool|null $default = null): mixed;
 
     public function has(string $key): bool;
 
