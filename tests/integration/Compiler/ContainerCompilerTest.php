@@ -248,6 +248,13 @@ class ContainerCompilerTest extends TestCase
         $this->assertSame(['priority' => 50], $tags['loggers'][Mailer::class]);
         $this->assertSame(['priority' => 10, 'group' => 'email'], $tags['mailers'][Mailer::class]);
 
+        $loggersMeta = $container->getTaggedMeta('loggers');
+        $mailersMeta = $container->getTaggedMeta('mailers');
+
+        $this->assertSame(['priority' => 100], $loggersMeta[Logger::class]);
+        $this->assertSame(['priority' => 50], $loggersMeta[Mailer::class]);
+        $this->assertSame(['priority' => 10, 'group' => 'email'], $mailersMeta[Mailer::class]);
+
         // Compile
         $compiled = $this->compileAndLoadContainer($container, 'testTaggedServicesWithMetadata');
 
