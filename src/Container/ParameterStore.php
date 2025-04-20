@@ -22,7 +22,7 @@ final class ParameterStore implements ParameterStoreInterface
 
     /**
      * @param string $key
-     * @param string|int|null $default
+     * @param string|int|bool|null $default
      *
      * @return mixed
      */
