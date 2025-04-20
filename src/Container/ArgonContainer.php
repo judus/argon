@@ -220,7 +220,7 @@ class ArgonContainer implements ContainerInterface
 
     /**
      * @param string $id
-     * @param list<string> $tags
+     * @param array<int|string, string|array<string, mixed>> $tags
      * @return ArgonContainer
      */
     public function tag(string $id, array $tags): ArgonContainer
@@ -231,11 +231,11 @@ class ArgonContainer implements ContainerInterface
     }
 
     /**
-     * @return array<string, list<string>>
+     * @return array<string, list<string>|array<string, array<string, mixed>>>
      */
-    public function getTags(): array
+    public function getTags(bool $detailed = false): array
     {
-        return $this->tags->all();
+        return $this->tags->all($detailed);
     }
 
     /**

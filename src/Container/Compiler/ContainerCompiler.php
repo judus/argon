@@ -51,6 +51,7 @@ final class ContainerCompiler
         $this->generateGetMethod($class);
         $this->generateGetTaggedMethod($class);
         $this->generateGetTaggedIdsMethod($class);
+        $this->generateGetTaggedMetaMethod($class);
         $this->generateInterceptorMethods($class);
         $this->generateInvokeMethod($class);
         $this->generateInvokeServiceMethod($class);
@@ -136,7 +137,7 @@ final class ContainerCompiler
 
     private function generateCoreProperties(ClassType $class): void
     {
-        $class->addProperty('tagMap')->setPrivate()->setValue($this->container->getTags());
+        $class->addProperty('tagMap')->setPrivate()->setValue($this->container->getTags(true));
         $class->addProperty('parameters')->setPrivate()->setValue($this->container->getParameters()->all());
 
         $class->addProperty('preInterceptors')->setPrivate()->setValue(array_map(
@@ -216,16 +217,17 @@ final class ContainerCompiler
         $class->addMethod('getTagged')
             ->setReturnType('array')
             ->setBody(<<<'PHP'
-                if (!isset($this->tagMap[$tag])) {
-                    return [];
-                }
-                
-                $results = [];
-                foreach ($this->tagMap[$tag] as $id) {
-                    $results[] = $this->get($id);
-                }
-                return $results;
-            PHP)
+            if (!isset($this->tagMap[$tag])) {
+                return [];
+            }
+
+            $results = [];
+            foreach (array_keys($this->tagMap[$tag]) as $id) {
+                $results[] = $this->get($id);
+            }
+
+            return $results;
+        PHP)
             ->addParameter('tag')->setType('string');
     }
 
@@ -236,6 +238,16 @@ final class ContainerCompiler
             ->setBody('return $this->tagMap[$tag] ?? [];')
             ->addParameter('tag')->setType('string')
         ;
+    }
+
+    private function generateGetTaggedMetaMethod(ClassType $class): void
+    {
+        $class->addMethod('getTaggedMeta')
+            ->setReturnType('array')
+            ->setBody(<<<'PHP'
+            return $this->tagMap[$tag] ?? [];
+        PHP)
+            ->addParameter('tag')->setType('string');
     }
 
     private function generateHasMethod(ClassType $class): void

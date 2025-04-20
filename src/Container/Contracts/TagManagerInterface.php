@@ -14,9 +14,9 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 interface TagManagerInterface
 {
     /**
-     * @return array<string, list<string>>
+     * @return array<string, list<string>|array<string, array<string, mixed>>>
      */
-    public function all(): array;
+    public function all(bool $detailed = false): array;
 
     public function has(string $tag): bool;
 
@@ -24,7 +24,7 @@ interface TagManagerInterface
      * Tags a service with one or more tags.
      *
      * @param string $id
-     * @param list<string> $tags
+     * @param array<int|string, string|array<string, mixed>> $tags
      */
     public function tag(string $id, array $tags): void;
 

@@ -221,6 +221,59 @@ class ContainerCompilerTest extends TestCase
 
     /**
      * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testTaggedServicesWithMetadata(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(Logger::class);
+        $container->set(Mailer::class);
+
+        // Tag using new metadata format
+        $container->tag(Logger::class, ['loggers' => ['priority' => 100]]);
+        $container->tag(Mailer::class, [
+            'loggers' => ['priority' => 50],
+            'mailers' => ['priority' => 10, 'group' => 'email']
+        ]);
+
+        // Verify pre-compile metadata
+        $tags = $container->getTags(true);
+
+        $this->assertArrayHasKey('loggers', $tags);
+        $this->assertArrayHasKey('mailers', $tags);
+        $this->assertArrayHasKey(Logger::class, $tags['loggers']);
+        $this->assertSame(['priority' => 100], $tags['loggers'][Logger::class]);
+        $this->assertSame(['priority' => 50], $tags['loggers'][Mailer::class]);
+        $this->assertSame(['priority' => 10, 'group' => 'email'], $tags['mailers'][Mailer::class]);
+
+        // Compile
+        $compiled = $this->compileAndLoadContainer($container, 'testTaggedServicesWithMetadata');
+
+        // Post-compile: make sure instances still work
+        $loggers = $compiled->getTagged('loggers');
+        $mailers = $compiled->getTagged('mailers');
+
+        $this->assertCount(2, $loggers);
+        $this->assertCount(1, $mailers);
+
+        $this->assertInstanceOf(Logger::class, $loggers[0]);
+        $this->assertInstanceOf(Mailer::class, $loggers[1]);
+        $this->assertInstanceOf(Mailer::class, $mailers[0]);
+
+        // Metadata after compilation
+        $loggersMeta = $compiled->getTaggedMeta('loggers');
+        $mailersMeta = $compiled->getTaggedMeta('mailers');
+
+        $this->assertSame(['priority' => 100], $loggersMeta[Logger::class]);
+        $this->assertSame(['priority' => 50], $loggersMeta[Mailer::class]);
+        $this->assertSame(['priority' => 10, 'group' => 'email'], $mailersMeta[Mailer::class]);
+    }
+
+
+    /**
+     * @throws ContainerException
      * @throws ReflectionException
      */
     public function testCompiledContainerAppliesPostInterceptor(): void
