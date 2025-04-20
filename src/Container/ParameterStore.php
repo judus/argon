@@ -20,12 +20,6 @@ final class ParameterStore implements ParameterStoreInterface
         $this->store[$key] = $value;
     }
 
-    /**
-     * @param string $key
-     * @param string|int|bool|null $default
-     *
-     * @return mixed
-     */
     public function get(string $key, int|string|bool|null $default = null): mixed
     {
         return $this->store[$key] ?? $default;
