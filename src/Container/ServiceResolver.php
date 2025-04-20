@@ -49,6 +49,7 @@ final class ServiceResolver implements ServiceResolverInterface
      *
      * @throws ContainerException
      * @throws NotFoundException
+     * @throws ReflectionException
      *
      * We're going to make one single exception here,
      * IMAO this more likely PossiblyPsalmsProblem
@@ -82,6 +83,7 @@ final class ServiceResolver implements ServiceResolverInterface
     /**
      * @throws ContainerException
      * @throws NotFoundException
+     * @throws ReflectionException
      */
     private function resolveFromDescriptor(string $id, ServiceDescriptorInterface $descriptor, array $args): object
     {
