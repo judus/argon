@@ -10,7 +10,7 @@ interface ParameterStoreInterface
 
     public function set(string $key, int|string|bool|null $value): void;
 
-    public function get(string $key, string|int|bool|null $default = null): mixed;
+    public function get(string $key, int|string|bool|null $default = null): mixed;
 
     public function has(string $key): bool;
 
