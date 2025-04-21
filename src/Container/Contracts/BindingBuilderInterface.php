@@ -44,7 +44,7 @@ interface BindingBuilderInterface
      * Accepts a string or a list of strings. Services with tags can be resolved
      * later using `$container->getTagged($tag)`.
      *
-     * @param list<string>|string $tags
+     * @param array<int|string, string|array<string, mixed> $tags
      * @return BindingBuilderInterface Fluent chain
      */
     public function tag(array|string $tags): BindingBuilderInterface;

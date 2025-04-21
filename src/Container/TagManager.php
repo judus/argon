@@ -99,6 +99,10 @@ final class TagManager implements TagManagerInterface
         return array_keys($this->tags[$tag] ?? []);
     }
 
+    /**
+     * @param string $tag
+     * @return array<string, array<string, mixed>>
+     */
     public function getTaggedMeta(string $tag): array
     {
         return $this->tags[$tag] ?? [];

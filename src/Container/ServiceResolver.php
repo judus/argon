@@ -136,16 +136,29 @@ final class ServiceResolver implements ServiceResolverInterface
             ));
         }
 
-        $reflection = new ReflectionMethod($factoryInstance, $method);
+        $reflection = $this->reflectionCache
+            ->get(get_class($factoryInstance))
+            ->getMethod($method);
 
-        if ($reflection->isStatic()) {
-            // Even though we resolved it, static methods don't need the instance
-            $instance = (object) call_user_func_array([$factoryClass, $method], $args);
-        } else {
-            $instance = (object) $factoryInstance->$method(...$args);
+        $mergedArgs = array_merge($descriptor->getArguments(), $args);
+
+        $orderedArgs = [];
+
+        foreach ($reflection->getParameters() as $param) {
+            $name = $param->getName();
+
+            if (array_key_exists($name, $mergedArgs)) {
+                $orderedArgs[] = $mergedArgs[$name];
+            } elseif ($param->isDefaultValueAvailable()) {
+                $orderedArgs[] = $param->getDefaultValue();
+            } else {
+                throw ContainerException::fromServiceId($id, "Missing required argument '$name'");
+            }
         }
 
-        return $instance;
+        return $reflection->isStatic()
+            ? (object) $factoryClass::$method(...$orderedArgs)
+            : (object) $factoryInstance->$method(...$orderedArgs);
     }
 
     /**

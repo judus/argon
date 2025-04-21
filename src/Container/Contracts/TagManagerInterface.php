@@ -42,5 +42,9 @@ interface TagManagerInterface
      */
     public function getTaggedIds(string $tag): array;
 
+    /**
+     * @param string $tag
+     * @return array<string, array<string, mixed>>
+     */
     public function getTaggedMeta(string $tag): array;
 }

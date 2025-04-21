@@ -65,6 +65,8 @@ final class ContainerCompiler
     }
 
     /**
+     * @throws ReflectionException
+     * @throws ContainerException
      */
     private function compileFactoryService(
         PhpNamespace $namespace,
@@ -76,9 +78,22 @@ final class ContainerCompiler
     ): void {
         $factoryClass = $descriptor->getFactoryClass();
         $factoryMethod = $descriptor->getFactoryMethod();
+        $args = [];
 
         /** We would never get here if it was null, but it makes Psalm happy */
         assert($factoryClass !== null);
+
+        $factoryReflection = new ReflectionClass($factoryClass);
+
+        if ($factoryReflection->hasMethod($factoryMethod)) {
+            $methodReflection = $factoryReflection->getMethod($factoryMethod);
+
+            foreach ($methodReflection->getParameters() as $param) {
+                $args[] = $this->resolveParameter($param, $id, '$args');
+            }
+        }
+
+        $argString = implode(",\n", $args);
 
         $fqFactory = '\\' . ltrim($factoryClass, '\\');
         $returnType = class_exists($id) ? '\\' . ltrim($id, '\\') : 'object';
@@ -105,7 +120,10 @@ final class ContainerCompiler
 
         $method->setBody(<<<PHP
             if (\$this->{$singletonProperty} === null) {
-                \$this->{$singletonProperty} = \$this->get({$fqFactory}::class, \$args)->{$factoryMethod}(...\$args);
+                \$factory = \$this->get({$fqFactory}::class, \$args);
+                \$this->{$singletonProperty} = \$factory->{$factoryMethod}(
+                    {$argString}
+                );
             }
             return \$this->{$singletonProperty};
         PHP);
@@ -235,7 +253,7 @@ final class ContainerCompiler
     {
         $class->addMethod('getTaggedIds')
             ->setReturnType('array')
-            ->setBody('return $this->tagMap[$tag] ?? [];')
+            ->setBody('return array_keys($this->tagMap[$tag] ?? []);')
             ->addParameter('tag')->setType('string')
         ;
     }

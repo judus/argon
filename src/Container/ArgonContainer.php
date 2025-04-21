@@ -329,6 +329,10 @@ class ArgonContainer implements ContainerInterface
         return $this->tags->getTaggedIds($tag);
     }
 
+    /**
+     * @param string $tag
+     * @return array<string, array<string, mixed>>
+     */
     public function getTaggedMeta(string $tag): array
     {
         return $this->tags->getTaggedMeta($tag);
