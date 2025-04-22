@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler;
 
+use ErrorException;
 use Maduser\Argon\Container\ArgumentMap;
 use Maduser\Argon\Container\Compiler\ContainerCompiler;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
@@ -37,7 +38,7 @@ class ContainerCompilerTest extends TestCase
      * @throws ContainerException
      * @throws ReflectionException
      */
-    private function compileAndLoadContainer(ArgonContainer $container, string $className): object
+    private function compileAndLoadContainer(ArgonContainer $container, string $className): ArgonContainer
     {
         $namespace = 'Tests\\Integration\\Compiler';
         $file = __DIR__ . "/../../resources/cache/{$className}.php";
@@ -56,6 +57,7 @@ class ContainerCompilerTest extends TestCase
             throw new \RuntimeException("Failed to load compiled container class: $fqcn");
         }
 
+        /** @var ArgonContainer $fqcn */
         return new $fqcn();
     }
 
@@ -181,7 +183,6 @@ class ContainerCompilerTest extends TestCase
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesWithPrimitiveOverrides');
 
         // Resolve and assert
-        /** @var TestServiceWithMultipleParams $service */
         $service = $compiled->get(TestServiceWithMultipleParams::class);
 
         $this->assertEquals('compiled-override', $service->getParam1());
@@ -221,7 +222,68 @@ class ContainerCompilerTest extends TestCase
 
     /**
      * @throws ContainerException
+     * @throws NotFoundException
      * @throws ReflectionException
+     */
+    public function testTaggedServicesWithMetadata(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(Logger::class);
+        $container->set(Mailer::class);
+
+        // Tag using new metadata format
+        $container->tag(Logger::class, ['loggers' => ['priority' => 100]]);
+        $container->tag(Mailer::class, [
+            'loggers' => ['priority' => 50],
+            'mailers' => ['priority' => 10, 'group' => 'email']
+        ]);
+
+        // Verify pre-compile metadata
+        $tags = $container->getTags(true);
+
+        $this->assertArrayHasKey('loggers', $tags);
+        $this->assertArrayHasKey('mailers', $tags);
+        $this->assertArrayHasKey(Logger::class, $tags['loggers']);
+        $this->assertSame(['priority' => 100], $tags['loggers'][Logger::class]);
+        $this->assertSame(['priority' => 50], $tags['loggers'][Mailer::class]);
+        $this->assertSame(['priority' => 10, 'group' => 'email'], $tags['mailers'][Mailer::class]);
+
+        $loggersMeta = $container->getTaggedMeta('loggers');
+        $mailersMeta = $container->getTaggedMeta('mailers');
+
+        $this->assertSame(['priority' => 100], $loggersMeta[Logger::class]);
+        $this->assertSame(['priority' => 50], $loggersMeta[Mailer::class]);
+        $this->assertSame(['priority' => 10, 'group' => 'email'], $mailersMeta[Mailer::class]);
+
+        // Compile
+        $compiled = $this->compileAndLoadContainer($container, 'testTaggedServicesWithMetadata');
+
+        // Post-compile: make sure instances still work
+        $loggers = $compiled->getTagged('loggers');
+        $mailers = $compiled->getTagged('mailers');
+
+        $this->assertCount(2, $loggers);
+        $this->assertCount(1, $mailers);
+
+        $this->assertInstanceOf(Logger::class, $loggers[0]);
+        $this->assertInstanceOf(Mailer::class, $loggers[1]);
+        $this->assertInstanceOf(Mailer::class, $mailers[0]);
+
+        // Metadata after compilation
+        $loggersMeta = $compiled->getTaggedMeta('loggers');
+        $mailersMeta = $compiled->getTaggedMeta('mailers');
+
+        $this->assertSame(['priority' => 100], $loggersMeta[Logger::class]);
+        $this->assertSame(['priority' => 50], $loggersMeta[Mailer::class]);
+        $this->assertSame(['priority' => 10, 'group' => 'email'], $mailersMeta[Mailer::class]);
+    }
+
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     * @throws NotFoundException
      */
     public function testCompiledContainerAppliesPostInterceptor(): void
     {
@@ -231,7 +293,6 @@ class ContainerCompilerTest extends TestCase
 
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerAppliesPostInterceptor');
 
-        /** @var Logger $logger */
         $logger = $compiled->get(Logger::class);
 
         $this->assertInstanceOf(Logger::class, $logger);
@@ -307,6 +368,8 @@ class ContainerCompilerTest extends TestCase
 
     /**
      * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
      */
     public function testContextualBindingIsHardcoded(): void
     {
@@ -319,7 +382,6 @@ class ContainerCompilerTest extends TestCase
 
         $compiled = $this->compileAndLoadContainer($container, 'CompiledContainerWithContextual');
 
-        /** @var NeedsLogger $needsLogger */
         $needsLogger = $compiled->get(NeedsLogger::class);
 
         $this->assertInstanceOf(NeedsLogger::class, $needsLogger);
@@ -345,7 +407,6 @@ class ContainerCompilerTest extends TestCase
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerInjectsParameterStoreValues');
 
         // Grab the instance from the compiled container
-        /** @var SimpleService $instance */
         $instance = $compiled->get(SimpleService::class, [
             'value' => $compiled->getParameters()->get('config.value')
         ]);
@@ -377,6 +438,7 @@ class ContainerCompilerTest extends TestCase
     /**
      * @throws ReflectionException
      * @throws ContainerException
+     * @throws NotFoundException
      */
     public function testCompileHandlesFactoryBinding(): void
     {
@@ -391,6 +453,71 @@ class ContainerCompilerTest extends TestCase
 
         $this->assertInstanceOf(Mailer::class, $mailer);
         $this->assertInstanceOf(Logger::class, $mailer->logger);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
+    public function testCompiledFactoryUsesDefaultValue(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createWithDefault');
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryUsesDefaultValue');
+
+        $service = $compiled->get(DefaultValueService::class);
+
+        $this->assertInstanceOf(DefaultValueService::class, $service);
+        $this->assertSame('default-label', $service->label);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     */
+    public function testCompiledFactoryAllowsRuntimeArguments(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createWithRequired');
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryAllowsRuntimeArguments');
+
+        // Provide required arg at runtime
+        $instance = $compiled->get(DefaultValueService::class, ['label' => 'runtime-supplied']);
+
+        $this->assertInstanceOf(DefaultValueService::class, $instance);
+        $this->assertSame('runtime-supplied', $instance->label);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws ErrorException
+     * @throws NotFoundException
+     */
+    public function testCompiledFactoryThrowsIfRequiredArgumentMissing(): void
+    {
+        set_error_handler(function ($severity, $message, $file, $line) {
+            throw new ErrorException($message, 0, $severity, $file, $line);
+        });
+
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage('Undefined array key "label"');
+
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createWithRequired');
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryThrowsIfRequiredArgumentMissing');
+
+        $compiled->get(DefaultValueService::class);
+
+        restore_error_handler(); // Clean up
     }
 
     /**

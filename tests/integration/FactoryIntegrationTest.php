@@ -71,6 +71,34 @@ final class FactoryIntegrationTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
+    public function testFactoryUsesDefaultValueIfNoArgumentProvided(): void
+    {
+        $this->container->set(Foo::class)->factory(FooFactory::class, 'makeWithDefault');
+
+        $foo = $this->container->get(Foo::class);
+
+        $this->assertInstanceOf(Foo::class, $foo);
+        $this->assertSame('default-label', $foo->label);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testFactoryThrowsIfRequiredArgumentIsMissing(): void
+    {
+        $this->container->set(Foo::class)->factory(FooFactory::class, 'makeWithArgs');
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage("Missing required argument 'label'");
+
+        $this->container->get(Foo::class);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testUseFactoryWithStaticMethod(): void
     {
         $this->container->set(Foo::class)->factory(StaticFooFactory::class, 'createStatic');

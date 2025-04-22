@@ -14,7 +14,8 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 final class TagManager implements TagManagerInterface
 {
     /**
-     * @var array<string, list<string>>
+     * @var array<string, array<string, array<string, mixed>>>
+     * Format: tag => [serviceId => [metaKey => metaValue]]
      */
     private array $tags = [];
 
@@ -24,11 +25,20 @@ final class TagManager implements TagManagerInterface
     }
 
     /**
-     * @return array<string, list<string>>
+     * Returns all tags with their associated service IDs.
+     *
+     * @param bool $detailed If true, includes metadata.
+     * @return array<string, list<string>|array<string, array<string, mixed>>>
      */
-    public function all(): array
+    public function all(bool $detailed = false): array
     {
-        return $this->tags;
+        if ($detailed) {
+            return $this->tags;
+        }
+
+        return array_map(function ($services) {
+            return array_keys($services);
+        }, $this->tags);
     }
 
     public function has(string $tag): bool
@@ -40,18 +50,25 @@ final class TagManager implements TagManagerInterface
      * Tags a service with one or more tags.
      *
      * @param string $id
-     * @param list<string> $tags
+     * @param array<int|string, string|array<string, mixed>> $tags
      */
     public function tag(string $id, array $tags): void
     {
-        foreach ($tags as $tag) {
-            if (!isset($this->tags[$tag])) {
-                $this->tags[$tag] = [];
+        foreach ($tags as $tag => $meta) {
+            if (is_int($tag)) {
+                /** @var string $realTag */
+                $realTag = $meta;
+                $meta = [];
+            } else {
+                $realTag = $tag;
+                $meta = is_array($meta) ? $meta : [];
             }
 
-            if (!in_array($id, $this->tags[$tag], true)) {
-                $this->tags[$tag][] = $id;
+            if (!isset($this->tags[$realTag])) {
+                $this->tags[$realTag] = [];
             }
+
+            $this->tags[$realTag][$id] = $meta;
         }
     }
 
@@ -78,6 +95,15 @@ final class TagManager implements TagManagerInterface
      * @return list<string>
      */
     public function getTaggedIds(string $tag): array
+    {
+        return array_keys($this->tags[$tag] ?? []);
+    }
+
+    /**
+     * @param string $tag
+     * @return array<string, array<string, mixed>>
+     */
+    public function getTaggedMeta(string $tag): array
     {
         return $this->tags[$tag] ?? [];
     }

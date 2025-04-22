@@ -51,6 +51,7 @@ final class ContainerCompiler
         $this->generateGetMethod($class);
         $this->generateGetTaggedMethod($class);
         $this->generateGetTaggedIdsMethod($class);
+        $this->generateGetTaggedMetaMethod($class);
         $this->generateInterceptorMethods($class);
         $this->generateInvokeMethod($class);
         $this->generateInvokeServiceMethod($class);
@@ -64,6 +65,8 @@ final class ContainerCompiler
     }
 
     /**
+     * @throws ReflectionException
+     * @throws ContainerException
      */
     private function compileFactoryService(
         PhpNamespace $namespace,
@@ -75,9 +78,22 @@ final class ContainerCompiler
     ): void {
         $factoryClass = $descriptor->getFactoryClass();
         $factoryMethod = $descriptor->getFactoryMethod();
+        $args = [];
 
         /** We would never get here if it was null, but it makes Psalm happy */
         assert($factoryClass !== null);
+
+        $factoryReflection = new ReflectionClass($factoryClass);
+
+        if ($factoryReflection->hasMethod($factoryMethod)) {
+            $methodReflection = $factoryReflection->getMethod($factoryMethod);
+
+            foreach ($methodReflection->getParameters() as $param) {
+                $args[] = $this->resolveParameter($param, $id, '$args');
+            }
+        }
+
+        $argString = implode(",\n", $args);
 
         $fqFactory = '\\' . ltrim($factoryClass, '\\');
         $returnType = class_exists($id) ? '\\' . ltrim($id, '\\') : 'object';
@@ -104,7 +120,10 @@ final class ContainerCompiler
 
         $method->setBody(<<<PHP
             if (\$this->{$singletonProperty} === null) {
-                \$this->{$singletonProperty} = \$this->get({$fqFactory}::class, \$args)->{$factoryMethod}(...\$args);
+                \$factory = \$this->get({$fqFactory}::class, \$args);
+                \$this->{$singletonProperty} = \$factory->{$factoryMethod}(
+                    {$argString}
+                );
             }
             return \$this->{$singletonProperty};
         PHP);
@@ -136,7 +155,7 @@ final class ContainerCompiler
 
     private function generateCoreProperties(ClassType $class): void
     {
-        $class->addProperty('tagMap')->setPrivate()->setValue($this->container->getTags());
+        $class->addProperty('tagMap')->setPrivate()->setValue($this->container->getTags(true));
         $class->addProperty('parameters')->setPrivate()->setValue($this->container->getParameters()->all());
 
         $class->addProperty('preInterceptors')->setPrivate()->setValue(array_map(
@@ -216,16 +235,17 @@ final class ContainerCompiler
         $class->addMethod('getTagged')
             ->setReturnType('array')
             ->setBody(<<<'PHP'
-                if (!isset($this->tagMap[$tag])) {
-                    return [];
-                }
-                
-                $results = [];
-                foreach ($this->tagMap[$tag] as $id) {
-                    $results[] = $this->get($id);
-                }
-                return $results;
-            PHP)
+            if (!isset($this->tagMap[$tag])) {
+                return [];
+            }
+
+            $results = [];
+            foreach (array_keys($this->tagMap[$tag]) as $id) {
+                $results[] = $this->get($id);
+            }
+
+            return $results;
+        PHP)
             ->addParameter('tag')->setType('string');
     }
 
@@ -233,9 +253,19 @@ final class ContainerCompiler
     {
         $class->addMethod('getTaggedIds')
             ->setReturnType('array')
-            ->setBody('return $this->tagMap[$tag] ?? [];')
+            ->setBody('return array_keys($this->tagMap[$tag] ?? []);')
             ->addParameter('tag')->setType('string')
         ;
+    }
+
+    private function generateGetTaggedMetaMethod(ClassType $class): void
+    {
+        $class->addMethod('getTaggedMeta')
+            ->setReturnType('array')
+            ->setBody(<<<'PHP'
+            return $this->tagMap[$tag] ?? [];
+        PHP)
+            ->addParameter('tag')->setType('string');
     }
 
     private function generateHasMethod(ClassType $class): void
@@ -392,32 +422,29 @@ final class ContainerCompiler
         $typeName = $type instanceof ReflectionNamedType ? $type->getName() : null;
 
         $runtime = "{$argsVar}[" . var_export($name, true) . "]";
-
         $fallbacks = [];
         $declaringClass = $parameter->getDeclaringClass();
-        $className = $declaringClass?->getName() ?? $serviceId;
+        $context = $declaringClass?->getName() ?? $serviceId;
 
-        if ($typeName !== null) {
-            // Contextual bindings
-            if ($this->contextualBindings->has($className, $typeName)) {
-                $target = $this->contextualBindings->get($className, $typeName);
-                if (is_string($target)) {
-                    $fallbacks[] = "\$this->get('{$target}')";
-                }
-            }
-
-            // Registered service in container
-            if ($this->container->has($typeName) && !$type?->allowsNull()) {
-                $fallbacks[] = "\$this->get('{$typeName}')";
-            }
-
-            // Last-resort: autowiring for instantiable classes
-            if (class_exists($typeName)) {
-                $fallbacks[] = "\$this->get('{$typeName}')";
+        // Contextual bindings
+        if ($typeName !== null && $this->contextualBindings->has($context, $typeName)) {
+            $target = $this->contextualBindings->get($context, $typeName);
+            if (is_string($target)) {
+                $fallbacks[] = "\$this->get('{$target}')";
             }
         }
 
-        // From descriptor
+        // Registered service
+        if ($typeName !== null && $this->container->has($typeName) && !$type?->allowsNull()) {
+            $fallbacks[] = "\$this->get('{$typeName}')";
+        }
+
+        // Last-resort autowiring
+        if ($typeName !== null && class_exists($typeName)) {
+            $fallbacks[] = "\$this->get('{$typeName}')";
+        }
+
+        // Explicitly defined in descriptor
         if ($this->container->getDescriptor($serviceId)?->hasArgument($name)) {
             $fallbacks[] = var_export(
                 $this->container->getDescriptor($serviceId)?->getArgument($name),
@@ -425,13 +452,18 @@ final class ContainerCompiler
             );
         }
 
-        // Default value
+        // Method default
         if ($parameter->isDefaultValueAvailable()) {
             $fallbacks[] = var_export($parameter->getDefaultValue(), true);
         }
 
-        return $runtime . ($fallbacks ? ' ?? ' . implode(' ?? ', $fallbacks) : '');
+        if (!empty($fallbacks)) {
+            return $runtime . ' ?? ' . implode(' ?? ', $fallbacks);
+        }
+
+        return $runtime;
     }
+
 
     /**
      * @param PhpNamespace $namespaceGen
