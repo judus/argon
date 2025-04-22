@@ -19,4 +19,5 @@ class FooFactory
     public function makeWithDefault(string $label = 'default-label'): Foo
     {
         return new Foo($label);
-    }}
+    }
+}

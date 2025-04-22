@@ -57,6 +57,7 @@ class ContainerCompilerTest extends TestCase
             throw new \RuntimeException("Failed to load compiled container class: $fqcn");
         }
 
+        /** @var ArgonContainer $fqcn */
         return new $fqcn();
     }
 
@@ -182,7 +183,6 @@ class ContainerCompilerTest extends TestCase
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesWithPrimitiveOverrides');
 
         // Resolve and assert
-        /** @var TestServiceWithMultipleParams $service */
         $service = $compiled->get(TestServiceWithMultipleParams::class);
 
         $this->assertEquals('compiled-override', $service->getParam1());
@@ -283,6 +283,7 @@ class ContainerCompilerTest extends TestCase
     /**
      * @throws ContainerException
      * @throws ReflectionException
+     * @throws NotFoundException
      */
     public function testCompiledContainerAppliesPostInterceptor(): void
     {
@@ -292,7 +293,6 @@ class ContainerCompilerTest extends TestCase
 
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerAppliesPostInterceptor');
 
-        /** @var Logger $logger */
         $logger = $compiled->get(Logger::class);
 
         $this->assertInstanceOf(Logger::class, $logger);
