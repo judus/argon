@@ -10,4 +10,14 @@ class MailerFactory
     {
         return new Mailer(new Logger());
     }
+
+    public function createWithDefault(string $label = 'default-label'): DefaultValueService
+    {
+        return new DefaultValueService($label);
+    }
+
+    public function createWithRequired(string $label): DefaultValueService
+    {
+        return new DefaultValueService($label);
+    }
 }

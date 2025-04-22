@@ -142,23 +142,28 @@ final class ServiceResolver implements ServiceResolverInterface
 
         $mergedArgs = array_merge($descriptor->getArguments(), $args);
 
+        /** @var list<null|bool|int|float|string|array|object> $orderedArgs */
         $orderedArgs = [];
 
         foreach ($reflection->getParameters() as $param) {
             $name = $param->getName();
 
             if (array_key_exists($name, $mergedArgs)) {
-                $orderedArgs[] = $mergedArgs[$name];
+                /** @var null|bool|int|float|string|array|object $arg */
+                $arg = $mergedArgs[$name];
+                $orderedArgs[] = $arg;
             } elseif ($param->isDefaultValueAvailable()) {
-                $orderedArgs[] = $param->getDefaultValue();
+                /** @var null|bool|int|float|string|array|object $arg */
+                $arg = $param->getDefaultValue();
+                $orderedArgs[] = $arg;
             } else {
                 throw ContainerException::fromServiceId($id, "Missing required argument '$name'");
             }
         }
 
         return $reflection->isStatic()
-            ? (object) $factoryClass::$method(...$orderedArgs)
-            : (object) $factoryInstance->$method(...$orderedArgs);
+            ? (object) (call_user_func([$factoryClass, $method], ...$orderedArgs))
+            : (object) (call_user_func([$factoryInstance, $method], ...$orderedArgs));
     }
 
     /**

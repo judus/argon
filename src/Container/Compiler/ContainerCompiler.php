@@ -422,32 +422,29 @@ final class ContainerCompiler
         $typeName = $type instanceof ReflectionNamedType ? $type->getName() : null;
 
         $runtime = "{$argsVar}[" . var_export($name, true) . "]";
-
         $fallbacks = [];
         $declaringClass = $parameter->getDeclaringClass();
-        $className = $declaringClass?->getName() ?? $serviceId;
+        $context = $declaringClass?->getName() ?? $serviceId;
 
-        if ($typeName !== null) {
-            // Contextual bindings
-            if ($this->contextualBindings->has($className, $typeName)) {
-                $target = $this->contextualBindings->get($className, $typeName);
-                if (is_string($target)) {
-                    $fallbacks[] = "\$this->get('{$target}')";
-                }
-            }
-
-            // Registered service in container
-            if ($this->container->has($typeName) && !$type?->allowsNull()) {
-                $fallbacks[] = "\$this->get('{$typeName}')";
-            }
-
-            // Last-resort: autowiring for instantiable classes
-            if (class_exists($typeName)) {
-                $fallbacks[] = "\$this->get('{$typeName}')";
+        // Contextual bindings
+        if ($typeName !== null && $this->contextualBindings->has($context, $typeName)) {
+            $target = $this->contextualBindings->get($context, $typeName);
+            if (is_string($target)) {
+                $fallbacks[] = "\$this->get('{$target}')";
             }
         }
 
-        // From descriptor
+        // Registered service
+        if ($typeName !== null && $this->container->has($typeName) && !$type?->allowsNull()) {
+            $fallbacks[] = "\$this->get('{$typeName}')";
+        }
+
+        // Last-resort autowiring
+        if ($typeName !== null && class_exists($typeName)) {
+            $fallbacks[] = "\$this->get('{$typeName}')";
+        }
+
+        // Explicitly defined in descriptor
         if ($this->container->getDescriptor($serviceId)?->hasArgument($name)) {
             $fallbacks[] = var_export(
                 $this->container->getDescriptor($serviceId)?->getArgument($name),
@@ -455,13 +452,18 @@ final class ContainerCompiler
             );
         }
 
-        // Default value
+        // Method default
         if ($parameter->isDefaultValueAvailable()) {
             $fallbacks[] = var_export($parameter->getDefaultValue(), true);
         }
 
-        return $runtime . ($fallbacks ? ' ?? ' . implode(' ?? ', $fallbacks) : '');
+        if (!empty($fallbacks)) {
+            return $runtime . ' ?? ' . implode(' ?? ', $fallbacks);
+        }
+
+        return $runtime;
     }
+
 
     /**
      * @param PhpNamespace $namespaceGen

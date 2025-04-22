@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler;
 
+use ErrorException;
 use Maduser\Argon\Container\ArgumentMap;
 use Maduser\Argon\Container\Compiler\ContainerCompiler;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
@@ -37,7 +38,7 @@ class ContainerCompilerTest extends TestCase
      * @throws ContainerException
      * @throws ReflectionException
      */
-    private function compileAndLoadContainer(ArgonContainer $container, string $className): object
+    private function compileAndLoadContainer(ArgonContainer $container, string $className): ArgonContainer
     {
         $namespace = 'Tests\\Integration\\Compiler';
         $file = __DIR__ . "/../../resources/cache/{$className}.php";
@@ -367,6 +368,8 @@ class ContainerCompilerTest extends TestCase
 
     /**
      * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
      */
     public function testContextualBindingIsHardcoded(): void
     {
@@ -379,7 +382,6 @@ class ContainerCompilerTest extends TestCase
 
         $compiled = $this->compileAndLoadContainer($container, 'CompiledContainerWithContextual');
 
-        /** @var NeedsLogger $needsLogger */
         $needsLogger = $compiled->get(NeedsLogger::class);
 
         $this->assertInstanceOf(NeedsLogger::class, $needsLogger);
@@ -405,7 +407,6 @@ class ContainerCompilerTest extends TestCase
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerInjectsParameterStoreValues');
 
         // Grab the instance from the compiled container
-        /** @var SimpleService $instance */
         $instance = $compiled->get(SimpleService::class, [
             'value' => $compiled->getParameters()->get('config.value')
         ]);
@@ -437,6 +438,7 @@ class ContainerCompilerTest extends TestCase
     /**
      * @throws ReflectionException
      * @throws ContainerException
+     * @throws NotFoundException
      */
     public function testCompileHandlesFactoryBinding(): void
     {
@@ -451,6 +453,71 @@ class ContainerCompilerTest extends TestCase
 
         $this->assertInstanceOf(Mailer::class, $mailer);
         $this->assertInstanceOf(Logger::class, $mailer->logger);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
+    public function testCompiledFactoryUsesDefaultValue(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createWithDefault');
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryUsesDefaultValue');
+
+        $service = $compiled->get(DefaultValueService::class);
+
+        $this->assertInstanceOf(DefaultValueService::class, $service);
+        $this->assertSame('default-label', $service->label);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     */
+    public function testCompiledFactoryAllowsRuntimeArguments(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createWithRequired');
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryAllowsRuntimeArguments');
+
+        // Provide required arg at runtime
+        $instance = $compiled->get(DefaultValueService::class, ['label' => 'runtime-supplied']);
+
+        $this->assertInstanceOf(DefaultValueService::class, $instance);
+        $this->assertSame('runtime-supplied', $instance->label);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws ErrorException
+     * @throws NotFoundException
+     */
+    public function testCompiledFactoryThrowsIfRequiredArgumentMissing(): void
+    {
+        set_error_handler(function ($severity, $message, $file, $line) {
+            throw new ErrorException($message, 0, $severity, $file, $line);
+        });
+
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage('Undefined array key "label"');
+
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createWithRequired');
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryThrowsIfRequiredArgumentMissing');
+
+        $compiled->get(DefaultValueService::class);
+
+        restore_error_handler(); // Clean up
     }
 
     /**
