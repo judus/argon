@@ -12,9 +12,14 @@ final class FakeResolver
     public DummyContainer $container;
     public DummyBindings $contextualBindings;
 
-    public function __construct(array $bindings = [])
-    {
+    /**
+     * @param  array<array-key, array<array-key, string>> $bindings
+     */
+    public function __construct(
+        array $bindings = []
+    ) {
         $this->container = new DummyContainer();
+
         $this->contextualBindings = new DummyBindings($bindings);
     }
 
@@ -35,9 +40,7 @@ final class FakeResolver
         // Contextual binding
         if ($typeName !== null && $this->contextualBindings->has($context, $typeName)) {
             $target = $this->contextualBindings->get($context, $typeName);
-            if (is_string($target)) {
-                $fallbacks[] = "\$this->get('{$target}')";
-            }
+            $fallbacks[] = "\$this->get('{$target}')";
         }
 
         // Registered service
@@ -46,7 +49,10 @@ final class FakeResolver
         }
 
         // Explicit descriptor argument
-        if ($this->container->getDescriptor($serviceId)?->hasArgument($name)) {
+        $descriptor = $this->container->getDescriptor($serviceId);
+
+
+        if ($descriptor !== null && $descriptor->hasArgument($name)) {
             /**
              * @var null|bool|int|float|string|array|object $value
              */

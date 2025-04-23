@@ -14,11 +14,18 @@ final class DummyContainer
         return in_array($id, $this->hasServices, true);
     }
 
+    /**
+     * @psalm-suppress UnusedParam $serviceId
+     */
     public function getDescriptor(string $serviceId): ?object
     {
         return new class ($this->descriptorArgs) {
-            public function __construct(private array $args)
-            {
+            public function __construct(
+                /**
+                 * @var array<array-key, mixed>
+                 */
+                private readonly array $args
+            ) {
             }
 
             public function hasArgument(string $key): bool
@@ -33,7 +40,7 @@ final class DummyContainer
         };
     }
 
-    public function get(string $id): object
+    public function get(): object
     {
         return new \stdClass();
     }
