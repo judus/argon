@@ -36,4 +36,9 @@ final class ReflectionCache implements ReflectionCacheInterface
 
         return $this->reflectionCache[$className];
     }
+
+    public function all(): array
+    {
+        return $this->reflectionCache;
+    }
 }

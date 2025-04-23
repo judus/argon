@@ -337,4 +337,18 @@ class ArgonContainer implements ContainerInterface
     {
         return $this->tags->getTaggedMeta($tag);
     }
+
+    public function toArray(): array
+    {
+        return [
+            'parameters' => $this->parameterStore->all(),
+            'tags' => $this->tags->all(),
+            'services' => $this->binder->getDescriptors(),
+            'reflection' => $this->serviceResolver->getReflectionCache()->all(),
+            'interceptors' => [
+                'pre' => $this->interceptors->allPre(),
+                'post' => $this->interceptors->allPost(),
+            ],
+        ];
+    }
 }

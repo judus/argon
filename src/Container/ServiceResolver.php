@@ -47,6 +47,11 @@ final class ServiceResolver implements ServiceResolverInterface
     ) {
     }
 
+    public function getReflectionCache(): ReflectionCacheInterface
+    {
+        return $this->reflectionCache;
+    }
+
     /**
      * Resolves a service by ID or class name.
      *
