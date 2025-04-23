@@ -464,7 +464,7 @@ class ServiceContainerTest extends TestCase
 
         // Expect a NotFoundException for the missing dependency class
         $this->expectException(NotFoundException::class);
-        $this->expectExceptionMessage("Service 'Tests\\Mocks\\NonExistentDependency' not found.");
+        $this->expectExceptionMessageMatches('/Service .* not found./');
 
         // Trigger the exception by attempting to resolve the service
         $container->get(TestServiceWithNonExistentDependency::class);

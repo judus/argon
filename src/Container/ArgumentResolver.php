@@ -11,6 +11,7 @@ use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\DebugTrace;
 use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionType;
@@ -56,7 +57,27 @@ final class ArgumentResolver implements ArgumentResolverInterface
         $merged = array_merge($this->arguments->get($context), $overrides);
 
         if (array_key_exists($paramName, $merged)) {
-            return $merged[$paramName];
+            /** @var null|bool|int|float|string|array|object $value */
+            $value = $merged[$paramName];
+            $paramType = $param->getType();
+
+            DebugTrace::add(
+                $context,
+                $paramName,
+                $paramType instanceof ReflectionNamedType ? $paramType->getName() : 'mixed',
+                is_scalar($value) ? (string) $value : gettype($value)
+            );
+
+            if (
+                $paramType instanceof ReflectionNamedType &&
+                !$paramType->isBuiltin() &&
+                is_string($value) &&
+                is_a($value, $paramType->getName(), true)
+            ) {
+                return $this->resolveTypeName($value, $context);
+            }
+
+            return $value;
         }
 
         return $this->resolveByType($param, $context, $paramName);
@@ -84,6 +105,7 @@ final class ArgumentResolver implements ArgumentResolverInterface
             // mixed is allowed *only* if default or optional (PHP's reflection is flaky here)
             && !$param->isOptional()
         ) {
+            DebugTrace::fail($className, $paramName, 'mixed');
             throw ContainerException::fromServiceId(
                 $className,
                 sprintf(
@@ -96,7 +118,19 @@ final class ArgumentResolver implements ArgumentResolverInterface
         }
 
         if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
-            return $this->resolveTypeName($type->getName(), $className);
+            $typeName = $type->getName();
+
+            // 👇 If it's nullable and no contextual or argument binding exists, back off!
+            if (
+                $param->allowsNull()
+                && !$this->contextualBindings->has($className, $typeName)
+                && !$this->arguments->has($className, $paramName)
+            ) {
+                DebugTrace::add($className, $paramName, $typeName, null);
+                return null;
+            }
+
+            return $this->resolveTypeName($typeName, $className);
         }
 
         if ($type instanceof ReflectionUnionType) {
@@ -104,13 +138,32 @@ final class ArgumentResolver implements ArgumentResolverInterface
         }
 
         if ($param->isDefaultValueAvailable()) {
-            return $param->getDefaultValue();
+            /** @var null|bool|int|float|string|object|array $value */
+            $value = $param->getDefaultValue();
+            DebugTrace::add(
+                $className,
+                $paramName,
+                $type instanceof ReflectionNamedType ? $type->getName() : 'mixed',
+                is_scalar($value) ? (string) $value : gettype($value)
+            );
+            return $value;
         }
 
         if ($param->allowsNull()) {
+            DebugTrace::add(
+                $className,
+                $paramName,
+                $type instanceof ReflectionNamedType ? $type->getName() : 'mixed',
+                null
+            );
             return null;
         }
 
+        DebugTrace::fail(
+            $className,
+            $paramName,
+            $type instanceof ReflectionNamedType ? $type->getName() : 'mixed'
+        );
         throw ContainerException::forUnresolvedPrimitive($className, $paramName);
     }
 
@@ -164,6 +217,8 @@ final class ArgumentResolver implements ArgumentResolverInterface
                 fn(ReflectionType $t): bool => $t instanceof ReflectionNamedType
             )
         ));
+
+        DebugTrace::fail($className, $paramName, $typeList);
 
         throw ContainerException::fromServiceId(
             $className,

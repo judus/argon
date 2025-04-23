@@ -426,7 +426,7 @@ final class ContainerCompiler
         $declaringClass = $parameter->getDeclaringClass();
         $context = $declaringClass?->getName() ?? $serviceId;
 
-        // Contextual bindings
+        // Contextual binding
         if ($typeName !== null && $this->contextualBindings->has($context, $typeName)) {
             $target = $this->contextualBindings->get($context, $typeName);
             if (is_string($target)) {
@@ -435,35 +435,51 @@ final class ContainerCompiler
         }
 
         // Registered service
-        if ($typeName !== null && $this->container->has($typeName) && !$type?->allowsNull()) {
+        if ($typeName !== null && $this->container->has($typeName)) {
             $fallbacks[] = "\$this->get('{$typeName}')";
         }
 
-        // Last-resort autowiring
-        if ($typeName !== null && class_exists($typeName)) {
-            $fallbacks[] = "\$this->get('{$typeName}')";
-        }
-
-        // Explicitly defined in descriptor
+        // Explicit descriptor argument
         if ($this->container->getDescriptor($serviceId)?->hasArgument($name)) {
-            $fallbacks[] = var_export(
-                $this->container->getDescriptor($serviceId)?->getArgument($name),
-                true
-            );
+            /**
+             * @var null|bool|int|float|string|array|object $value
+             */
+            $value = $this->container->getDescriptor($serviceId)?->getArgument($name);
+
+            if (
+                is_string($value) &&
+                $type instanceof ReflectionNamedType &&
+                !$type->isBuiltin() &&
+                class_exists($value)
+            ) {
+                $fallbacks[] = "\$this->get('{$value}')";
+            } else {
+                $fallbacks[] = var_export($value, true);
+            }
         }
 
-        // Method default
+        // Method default value
         if ($parameter->isDefaultValueAvailable()) {
             $fallbacks[] = var_export($parameter->getDefaultValue(), true);
         }
 
+        // Implicit nullable
+        if (
+            empty($fallbacks) &&
+            $type instanceof ReflectionNamedType &&
+            $type->allowsNull()
+        ) {
+            $fallbacks[] = 'null';
+        }
+
+        // Final fallback chain
         if (!empty($fallbacks)) {
             return $runtime . ' ?? ' . implode(' ?? ', $fallbacks);
         }
 
+        // No fallbacks—return raw
         return $runtime;
     }
-
 
     /**
      * @param PhpNamespace $namespaceGen

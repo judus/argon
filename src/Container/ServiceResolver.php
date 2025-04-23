@@ -13,8 +13,10 @@ use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\DebugTrace;
 use ReflectionException;
 use ReflectionMethod;
+use ReflectionNamedType;
 use ReflectionParameter;
 use Throwable;
 
@@ -29,6 +31,13 @@ final class ServiceResolver implements ServiceResolverInterface
      * @var array<string, true>
      */
     private array $resolving = [];
+
+    /**
+     * Static stack of current resolution path, for debugging/contextual error reporting.
+     *
+     * @var string[]
+     */
+    private static array $resolutionStack = [];
 
     public function __construct(
         private readonly ServiceBinderInterface $binder,
@@ -57,27 +66,35 @@ final class ServiceResolver implements ServiceResolverInterface
      */
     public function resolve(string $id, array $args = []): object
     {
+        DebugTrace::reset();
+
         $this->checkCircularDependency($id);
+        self::$resolutionStack[] = $id;
 
-        $result = $this->interceptors->matchPre($id, $args);
-        if ($result !== null) {
+        try {
+            $result = $this->interceptors->matchPre($id, $args);
+            if ($result !== null) {
+                $this->removeFromResolving($id);
+                array_pop(self::$resolutionStack);
+                return $result;
+            }
+
+            $descriptor = $this->binder->getDescriptor($id);
+
+            if ($descriptor !== null) {
+                $instance = $this->resolveFromDescriptor($id, $descriptor, $args);
+            } elseif (class_exists($id)) {
+                $instance = $this->resolveUnregistered($id, $args);
+            } else {
+                $requestedBy = self::$resolutionStack[count(self::$resolutionStack) - 2] ?? 'unknown';
+                throw new NotFoundException($id, $requestedBy);
+            }
+
             $this->removeFromResolving($id);
-            return $result;
+            return $instance;
+        } finally {
+            array_pop(self::$resolutionStack);
         }
-
-        $descriptor = $this->binder->getDescriptor($id);
-
-        if ($descriptor !== null) {
-            $instance = $this->resolveFromDescriptor($id, $descriptor, $args);
-        } elseif (class_exists($id)) {
-            $instance = $this->resolveUnregistered($id, $args);
-        } else {
-            throw new NotFoundException($id);
-        }
-
-        $this->removeFromResolving($id);
-
-        return $instance;
     }
 
     /**
@@ -110,7 +127,6 @@ final class ServiceResolver implements ServiceResolverInterface
 
         return $instance;
     }
-
 
     /**
      * @throws ContainerException
@@ -151,12 +167,29 @@ final class ServiceResolver implements ServiceResolverInterface
             if (array_key_exists($name, $mergedArgs)) {
                 /** @var null|bool|int|float|string|array|object $arg */
                 $arg = $mergedArgs[$name];
+                DebugTrace::add(
+                    $id,
+                    $name,
+                    $param->getType() instanceof ReflectionNamedType ? $param->getType()->getName() : 'mixed',
+                    is_scalar($arg) ? (string) $arg : gettype($arg)
+                );
                 $orderedArgs[] = $arg;
             } elseif ($param->isDefaultValueAvailable()) {
                 /** @var null|bool|int|float|string|array|object $arg */
                 $arg = $param->getDefaultValue();
+                DebugTrace::add(
+                    $id,
+                    $name,
+                    $param->getType() instanceof ReflectionNamedType ? $param->getType()->getName() : 'mixed',
+                    is_scalar($arg) ? (string) $arg : gettype($arg)
+                );
                 $orderedArgs[] = $arg;
             } else {
+                DebugTrace::fail(
+                    $id,
+                    $name,
+                    $param->getType() instanceof ReflectionNamedType ? $param->getType()->getName() : 'mixed'
+                );
                 throw ContainerException::fromServiceId($id, "Missing required argument '$name'");
             }
         }
@@ -186,7 +219,6 @@ final class ServiceResolver implements ServiceResolverInterface
 
         return $this->interceptors->matchPost($instance);
     }
-
 
     /**
      * Resolves a concrete class by analyzing its constructor dependencies.

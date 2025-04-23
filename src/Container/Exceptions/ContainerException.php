@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container\Exceptions;
 
 use Exception;
+use Maduser\Argon\Container\Support\DebugTrace;
 use Psr\Container\ContainerExceptionInterface;
 use Throwable;
 
@@ -15,20 +16,20 @@ final class ContainerException extends Exception implements ContainerExceptionIn
 {
     public static function fromServiceId(string $id, string $message): self
     {
-        return new self("Error with service '$id': $message");
+        return new self("Error with service '$id': $message" . self::appendTrace());
     }
 
     public static function forNonInstantiableClass(string $serviceId, string $className): self
     {
         return new self(
-            "Class '$className' (requested as '$serviceId') is not instantiable."
+            "Class '$className' (requested as '$serviceId') is not instantiable." . self::appendTrace()
         );
     }
 
     public static function forUnresolvedPrimitive(string $className, string $paramName): self
     {
         return new self(
-            "Cannot resolve primitive parameter '$paramName' in service '$className'."
+            "Cannot resolve primitive parameter '$paramName' in service '$className'." . self::appendTrace()
         );
     }
 
@@ -41,21 +42,21 @@ final class ContainerException extends Exception implements ContainerExceptionIn
     {
         $chain = implode(' -> ', $dependencyChain);
         return new self(
-            "Circular dependency detected for service '$serviceId'. Chain: $chain"
+            "Circular dependency detected for service '$serviceId'. Chain: $chain" . self::appendTrace()
         );
     }
 
     public static function forUnresolvableDependency(string $className, string $paramName): self
     {
         return new self(
-            "Unresolvable dependency '$paramName' in service '$className'."
+            "Unresolvable dependency '$paramName' in service '$className'." . self::appendTrace()
         );
     }
 
-    public static function forInstantiationFailure(string $className, \Throwable $previous): self
+    public static function forInstantiationFailure(string $className, Throwable $previous): self
     {
         return new self(
-            "Failed to instantiate '$className' with resolved dependencies.",
+            "Failed to instantiate '$className' with resolved dependencies." . self::appendTrace(),
             0,
             $previous
         );
@@ -63,6 +64,12 @@ final class ContainerException extends Exception implements ContainerExceptionIn
 
     public static function fromInterceptor(string $interceptor, string $message): self
     {
-        return new self("[$interceptor] $message");
+        return new self("[$interceptor] $message" . self::appendTrace());
+    }
+
+    private static function appendTrace(): string
+    {
+        $trace = DebugTrace::toJson();
+        return $trace !== '{}' ? "\n\nDebugTrace:\n$trace" : '';
     }
 }
