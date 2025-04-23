@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler\Mocks;
 
-class Logger
+use Tests\Integration\Mocks\LoggerInterface;
+
+class Logger implements LoggerInterface
 {
     public bool $intercepted = false;
 

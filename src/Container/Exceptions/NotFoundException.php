@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container\Exceptions;
 
 use Exception;
+use Maduser\Argon\Container\Support\DebugTrace;
 use Psr\Container\NotFoundExceptionInterface;
 
 /**
@@ -12,8 +13,9 @@ use Psr\Container\NotFoundExceptionInterface;
  */
 final class NotFoundException extends Exception implements NotFoundExceptionInterface
 {
-    public function __construct(string $serviceId)
+    public function __construct(string $serviceId, string $requestedBy = 'unknown')
     {
-        parent::__construct("Service '$serviceId' not found.", 404);
+        $message = "Service '$serviceId' not found (requested by $requestedBy).";
+        parent::__construct($message, 404);
     }
 }

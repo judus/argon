@@ -17,6 +17,7 @@ use ReflectionException;
 use stdClass;
 use Tests\Integration\Compiler\Mocks\ClassWithParamWithoutDefault;
 use Tests\Integration\Compiler\Mocks\DefaultValueService;
+use Tests\Integration\Compiler\Mocks\ImplicitNullable;
 use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
@@ -24,9 +25,12 @@ use Tests\Integration\Compiler\Mocks\MailerFactory;
 use Tests\Integration\Compiler\Mocks\ServiceWithDependency;
 use Tests\Integration\Compiler\Mocks\SomeInterface;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
+use Tests\Integration\Compiler\Mocks\WithOptionalInterface;
+use Tests\Integration\Compiler\Mocks\WithOptionalService;
 use Tests\Integration\Mocks\CustomLogger;
 use Tests\Integration\Mocks\LoggerInterface;
 use Tests\Integration\Mocks\NeedsLogger;
+use Tests\Integration\Mocks\NeedsNullable;
 use Tests\Integration\Mocks\PreArgOverride;
 use Tests\Integration\Mocks\SimpleService;
 use Tests\Mocks\DummyProvider;
@@ -153,6 +157,7 @@ class ContainerCompilerTest extends TestCase
     /**
      * @throws ReflectionException
      * @throws ContainerException
+     * @throws NotFoundException
      */
     public function testCompiledContainerResolvesSelf(): void
     {
@@ -162,6 +167,121 @@ class ContainerCompilerTest extends TestCase
 
         $this->assertInstanceOf(ArgonContainer::class, $compiled->get(ArgonContainer::class));
         $this->assertSame($compiled, $compiled->get(ArgonContainer::class));
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testDoesNotResolveNullableServiceIfNotBound(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(WithOptionalService::class);
+
+        $compiled = $this->compileAndLoadContainer($container, 'testDoesNotResolveNullableServiceIfNotBound');
+
+        $instance = $compiled->get(WithOptionalService::class);
+
+        $this->assertNull($instance->logger);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testDoesNotResolveNullableInterfaceIfNotBound(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(WithOptionalInterface::class);
+
+        $compiled = $this->compileAndLoadContainer($container, 'testDoesNotResolveNullableInterfaceIfNotBound');
+
+        $instance = $compiled->get(WithOptionalInterface::class);
+
+        $this->assertNull($instance->logger);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testCompiledInjectsOptionalServiceWhenBound(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(Logger::class);
+        $container->set(WithOptionalService::class, args: [
+            'logger' => Logger::class,
+        ]);
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledInjectsOptionalServiceWhenBound');
+
+        $instance = $compiled->get(WithOptionalService::class);
+
+        $this->assertInstanceOf(Logger::class, $instance->logger);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testCompiledInjectsOptionalServiceAtRuntime(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(WithOptionalService::class);
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledInjectsOptionalServiceAtRuntime');
+
+        $instance = $compiled->get(WithOptionalService::class, args: [
+            'logger' => $compiled->get(Logger::class),
+        ]);
+
+        $this->assertInstanceOf(Logger::class, $instance->logger);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testCompiledInjectsOptionalInterfaceWhenBound(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(Logger::class);
+        $container->set(WithOptionalInterface::class, args: [
+            'logger' => Logger::class,
+        ]);
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledInjectsOptionalInterfaceWhenBound');
+
+        $instance = $compiled->get(WithOptionalInterface::class);
+
+        $this->assertInstanceOf(Logger::class, $instance->logger);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testNullableDependencyWithoutDefaultGetsNull(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(ImplicitNullable::class);
+
+        $compiled = $this->compileAndLoadContainer($container, 'testNullableDependencyWithoutDefaultGetsNull');
+
+        $instance = $compiled->get(ImplicitNullable::class);
+
+        $this->assertNull($instance->logger, 'Expected nullable LoggerInterface to resolve to null');
     }
 
     /**

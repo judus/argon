@@ -85,10 +85,26 @@ final class AutowiringTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function testNullableDependencyGetsResolvedIfResolvable(): void
+    public function testOptionalNullableDependencyStaysNull(): void
     {
         $container = new ArgonContainer();
+
         $instance = $container->get(NeedsNullable::class);
+
+        $this->assertNull($instance->logger);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testNullableDependencyGetsResolvedWhenBound(): void
+    {
+        $container = new ArgonContainer();
+
+        $instance = $container->get(NeedsNullable::class, args: [
+            'logger' => Logger::class,
+        ]);
 
         $this->assertInstanceOf(Logger::class, $instance->logger);
     }
