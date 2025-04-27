@@ -165,14 +165,18 @@ class ArgonContainer implements ContainerInterface
     }
 
     /**
-     * @param class-string<ServiceProviderInterface> $className
+     * @param class-string<ServiceProviderInterface>|list<class-string<ServiceProviderInterface>> $providers
+     * @return ArgonContainer
      * @throws ContainerException
      * @throws NotFoundException
      */
-    public function register(string $className): ArgonContainer
+    public function register(string|array $providers): self
     {
-        $this->providers->register($className);
+        $providers = is_string($providers) ? [$providers] : $providers;
 
+        foreach ($providers as $provider) {
+            $this->providers->register($provider);
+        }
         return $this;
     }
 
