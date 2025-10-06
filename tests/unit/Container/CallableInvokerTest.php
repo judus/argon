@@ -11,6 +11,7 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Support\CallableInvoker;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use ReflectionParameter;
 use RuntimeException;
 use TypeError;
 
@@ -102,6 +103,26 @@ class CallableInvokerTest extends TestCase
 
         // This string won't resolve to a valid service or callable
         $this->invoker->call('not_a_callable_string', []);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testResolvesPlainStringFunctionCallable(): void
+    {
+        $this->parameterResolver->method('resolve')->willReturnCallback(
+            static function (ReflectionParameter $param, array $overrides = []): mixed {
+                $name = $param->getName();
+
+                /** @var array<string, mixed> $overrides */
+                return array_key_exists($name, $overrides) ? $overrides[$name] : null;
+            }
+        );
+
+        $result = $this->invoker->call('strtoupper', ['string' => 'foo']);
+
+        $this->assertSame('FOO', $result);
     }
 
     /**

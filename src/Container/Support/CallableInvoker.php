@@ -96,13 +96,18 @@ readonly class CallableInvoker
                 return new CallableWrapper($target, new ReflectionMethod($target, '__invoke'));
             }
 
-            // 4. String class → resolve and use __invoke
+            // 4. Plain string function name
+            if (is_string($target) && function_exists($target)) {
+                return new CallableWrapper(null, new ReflectionFunction($target));
+            }
+
+            // 5. String class → resolve and use __invoke
             if (is_string($target) && class_exists($target)) {
                 $resolved = $this->serviceResolver->resolve($target);
                 return new CallableWrapper($resolved, new ReflectionMethod($resolved, '__invoke'));
             }
 
-            // 5. String "Class::method"
+            // 6. String "Class::method"
             if (is_string($target) && str_contains($target, '::')) {
                 $parts = explode('::', $target, 2);
                 if (count($parts) === 2) {
