@@ -11,6 +11,7 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Support\CallableInvoker;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use ReflectionParameter;
 use RuntimeException;
 use TypeError;
 
@@ -111,7 +112,12 @@ class CallableInvokerTest extends TestCase
     public function testResolvesPlainStringFunctionCallable(): void
     {
         $this->parameterResolver->method('resolve')->willReturnCallback(
-            static fn($param, array $overrides = [], ?string $contextId = null) => $overrides[$param->getName()] ?? null
+            static function (ReflectionParameter $param, array $overrides = []): mixed {
+                $name = $param->getName();
+
+                /** @var array<string, mixed> $overrides */
+                return array_key_exists($name, $overrides) ? $overrides[$name] : null;
+            }
         );
 
         $result = $this->invoker->call('strtoupper', ['string' => 'foo']);
