@@ -107,6 +107,29 @@ final class ServiceContainerTest extends TestCase
     /**
      * @throws ContainerException
      */
+    public function testStrictModeDisallowsUnregisteredAutowiring(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+
+        $this->expectException(NotFoundException::class);
+        $container->get(Logger::class);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testStrictModeResolvesRegisteredService(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+        $container->set(Logger::class);
+
+        $this->assertInstanceOf(Logger::class, $container->get(Logger::class));
+    }
+
+    /**
+     * @throws ContainerException
+     */
     public function testInvokeThrowsWhenResolutionFails(): void
     {
         $this->expectException(NotFoundException::class);

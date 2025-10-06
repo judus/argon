@@ -45,6 +45,7 @@ class ArgonContainer implements ContainerInterface
     private readonly ServiceBinderInterface $binder;
     private readonly ParameterStoreInterface $parameterStore;
     private readonly InterceptorRegistryInterface $interceptors;
+    private bool $strictMode = false;
 
     /**
      * @throws ContainerException
@@ -61,8 +62,10 @@ class ArgonContainer implements ContainerInterface
         ?ServiceProviderRegistryInterface $providers = null,
         ?ServiceResolverInterface $serviceResolver = null,
         ?ArgumentResolverInterface $argumentResolver = null,
-        ?ServiceBinderInterface $binder = null
+        ?ServiceBinderInterface $binder = null,
+        bool $strictMode = false
     ) {
+        $this->strictMode = $strictMode;
         $argumentMap = $argumentMap ?? new ArgumentMap();
         $this->parameterStore = $parameters ?? new ParameterStore();
         $this->interceptors = $interceptors ?? new InterceptorRegistry();
@@ -84,8 +87,15 @@ class ArgonContainer implements ContainerInterface
             $this->binder,
             $reflectionCache,
             $this->interceptors,
-            $argumentResolver
+            $argumentResolver,
+            $strictMode
         );
+
+        if ($serviceResolver instanceof ServiceResolverInterface && $serviceResolver !== $this->serviceResolver) {
+            if (method_exists($serviceResolver, 'setStrictMode')) {
+                $serviceResolver->setStrictMode($strictMode);
+            }
+        }
 
         $argumentResolver->setServiceResolver($this->serviceResolver);
 
@@ -105,6 +115,11 @@ class ArgonContainer implements ContainerInterface
     public function getContextualBindings(): ContextualBindingsInterface
     {
         return $this->contextualBindings;
+    }
+
+    public function isStrictMode(): bool
+    {
+        return $this->strictMode;
     }
 
     /**

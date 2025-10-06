@@ -39,9 +39,17 @@ final class ContainerCompiler
      * @throws ContainerException
      * @throws ReflectionException
      */
-    public function compile(string $filePath, string $className, string $namespace = 'App\\Compiled'): void
-    {
-        $context = $this->contextFactory->create($this->container, $namespace, $className);
+    public function compile(
+        string $filePath,
+        string $className,
+        string $namespace = 'App\\Compiled',
+        ?bool $strictMode = null
+    ): void {
+        $strictMode ??= method_exists($this->container, 'isStrictMode')
+            ? $this->container->isStrictMode()
+            : false;
+
+        $context = $this->contextFactory->create($this->container, $namespace, $className, $strictMode);
 
         $this->coreGenerator->generate($context);
         $this->serviceDefinitionGenerator->generate($context);

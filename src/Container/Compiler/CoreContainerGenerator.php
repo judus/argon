@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container\Compiler;
 
 use Maduser\Argon\Container\ArgonContainer;
+use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Nette\PhpGenerator\ClassType;
 
 final class CoreContainerGenerator
 {
+    private bool $strictMode = false;
+
     public function __construct(private readonly ArgonContainer $container)
     {
     }
 
     public function generate(CompilationContext $context): void
     {
+        $this->strictMode = $context->strictMode;
         $class = $context->class;
 
         $this->generateConstructor($class);
@@ -33,7 +37,11 @@ final class CoreContainerGenerator
     private function generateConstructor(ClassType $class): void
     {
         $constructor = $class->addMethod('__construct')->setPublic();
-        $constructor->addBody('parent::__construct();');
+        if ($this->strictMode) {
+            $constructor->addBody('parent::__construct(strictMode: true);');
+        } else {
+            $constructor->addBody('parent::__construct();');
+        }
 
         $parameterStore = $this->container->getParameters()->all();
         if (!empty($parameterStore)) {
@@ -105,19 +113,37 @@ final class CoreContainerGenerator
     private function generateGetMethod(ClassType $class): void
     {
         $method = $class->addMethod('get')
-            ->setReturnType('object')
-            ->setBody(<<<'PHP'
+            ->setReturnType('object');
+
+        $strictBody = <<<'PHP'
                 $instance = $this->applyPreInterceptors($id, $args);
                 if ($instance !== null) {
                     return $instance;
                 }
-                
+
+                if (!isset($this->serviceMap[$id])) {
+                    throw new NotFoundException($id, 'compiled');
+                }
+
+                $instance = $this->{$this->serviceMap[$id]}($args);
+
+                return $this->applyPostInterceptors($instance);
+        PHP;
+
+        $lenientBody = <<<'PHP'
+                $instance = $this->applyPreInterceptors($id, $args);
+                if ($instance !== null) {
+                    return $instance;
+                }
+
                 $instance = isset($this->serviceMap[$id])
                     ? $this->{$this->serviceMap[$id]}($args)
                     : parent::get($id, $args);
-                
+
                 return $this->applyPostInterceptors($instance);
-            PHP);
+        PHP;
+
+        $method->setBody($this->strictMode ? $strictBody : $lenientBody);
 
         $method->addParameter('id')->setType('string');
         $method->addParameter('args')->setType('array')->setDefaultValue([]);
@@ -162,9 +188,13 @@ final class CoreContainerGenerator
 
     private function generateHasMethod(ClassType $class): void
     {
+        $body = $this->strictMode
+            ? 'return isset($this->serviceMap[$id]);'
+            : 'return isset($this->serviceMap[$id]) || parent::has($id);';
+
         $class->addMethod('has')
             ->setReturnType('bool')
-            ->setBody('return isset($this->serviceMap[$id]) || parent::has($id);')
+            ->setBody($body)
             ->addParameter('id')->setType('string');
     }
 
@@ -177,7 +207,7 @@ final class CoreContainerGenerator
         $invoke->addParameter('target')->setType('callable|object|array|string');
         $invoke->addParameter('arguments')->setType('array')->setDefaultValue([]);
 
-        $invoke->setBody(<<<'PHP'
+        $lenientBody = <<<'PHP'
         if (is_callable($target) && !is_array($target)) {
             $reflection = new \ReflectionFunction($target);
             $instance = null;
@@ -230,7 +260,54 @@ final class CoreContainerGenerator
         }
 
         return $reflection->invokeArgs($instance, $params);
-    PHP);
+    PHP;
+
+        $strictBody = <<<'PHP'
+        if (is_callable($target) && !is_array($target)) {
+            $reflection = new \ReflectionFunction($target);
+            $instance = null;
+        } elseif (is_array($target) && count($target) === 2) {
+            [$controller, $method] = $target;
+            $instance = is_object($controller) ? $controller : $this->get($controller);
+            $reflection = new \ReflectionMethod($instance, $method);
+        } else {
+            $instance = is_object($target) ? $target : $this->get($target);
+            $reflection = new \ReflectionMethod($instance, '__invoke');
+        }
+
+        $params = [];
+
+        foreach ($reflection->getParameters() as $param) {
+            $name = $param->getName();
+            $type = $param->getType()?->getName();
+
+            if (array_key_exists($name, $arguments)) {
+                $params[] = $arguments[$name];
+                continue;
+            }
+
+            if ($type && $this->has($type)) {
+                $params[] = $this->get($type);
+                continue;
+            }
+
+            if ($param->isDefaultValueAvailable()) {
+                $params[] = $param->getDefaultValue();
+                continue;
+            }
+
+            if ($param->allowsNull()) {
+                $params[] = null;
+                continue;
+            }
+
+            throw new NotFoundException($name, 'compiled invoke');
+        }
+
+        return $reflection->invokeArgs($instance, $params);
+    PHP;
+
+        $invoke->setBody($this->strictMode ? $strictBody : $lenientBody);
     }
 
     private function generateInvokeServiceMethod(ClassType $class): void
@@ -238,7 +315,17 @@ final class CoreContainerGenerator
         $method = $class->addMethod('invokeServiceMethod')
             ->setPrivate()
             ->setReturnType('mixed')
-            ->setBody(<<<'PHP'
+            ->setBody($this->strictMode
+                ? <<<'PHP'
+            $compiledMethod = $this->buildCompiledInvokerMethodName($serviceId, $method);
+
+            if (method_exists($this, $compiledMethod)) {
+                return $this->{$compiledMethod}($args);
+            }
+
+            throw new NotFoundException($serviceId, 'compiled invoke');
+        PHP
+                : <<<'PHP'
             $compiledMethod = $this->buildCompiledInvokerMethodName($serviceId, $method);
 
             if (method_exists($this, $compiledMethod)) {
@@ -246,7 +333,8 @@ final class CoreContainerGenerator
             }
 
             return $this->invoke([$serviceId, $method], $args);
-        PHP);
+        PHP
+            );
 
         $method->addParameter('serviceId')->setType('string');
         $method->addParameter('method')->setType('string');

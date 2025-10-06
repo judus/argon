@@ -46,8 +46,11 @@ class ContainerCompilerTest extends TestCase
      * @throws ContainerException
      * @throws ReflectionException
      */
-    private function compileAndLoadContainer(ArgonContainer $container, string $className): ArgonContainer
-    {
+    private function compileAndLoadContainer(
+        ArgonContainer $container,
+        string $className,
+        ?bool $strictMode = null
+    ): ArgonContainer {
         $namespace = 'Tests\\Integration\\Compiler';
         $file = __DIR__ . "/../../resources/cache/{$className}.php";
 
@@ -56,7 +59,7 @@ class ContainerCompilerTest extends TestCase
         }
 
         $compiler = new ContainerCompiler($container);
-        $compiler->compile($file, $className, $namespace);
+        $compiler->compile($file, $className, $namespace, $strictMode);
 
         require_once $file;
 
@@ -486,6 +489,51 @@ class ContainerCompilerTest extends TestCase
 
         $this->assertSame('[custom] interceptor', $logger->note);
         $this->assertTrue($logger->intercepted);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testStrictCompiledContainerDisallowsUnregisteredServices(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+
+        $compiled = $this->compileAndLoadContainer($container, 'StrictDisallowsAutowiring', strictMode: true);
+
+        $this->expectException(NotFoundException::class);
+        $compiled->get(Logger::class);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testStrictCompiledContainerResolvesRegisteredServices(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+        $container->set(Logger::class);
+
+        $compiled = $this->compileAndLoadContainer($container, 'StrictResolvesRegistered', strictMode: true);
+
+        $this->assertInstanceOf(Logger::class, $compiled->get(Logger::class));
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testStrictCompiledInvokeThrowsForMissingDependency(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+
+        $compiled = $this->compileAndLoadContainer($container, 'StrictInvokeFails', strictMode: true);
+
+        $this->expectException(NotFoundException::class);
+        $compiled->invoke([ServiceWithDependency::class, 'doSomething']);
     }
 
     /**

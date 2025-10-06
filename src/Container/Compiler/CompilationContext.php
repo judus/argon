@@ -15,7 +15,8 @@ final class CompilationContext
         public readonly ArgonContainer $container,
         public readonly PhpFile $file,
         public readonly PhpNamespace $namespace,
-        public readonly ClassType $class
+        public readonly ClassType $class,
+        public readonly bool $strictMode
     ) {
     }
 }

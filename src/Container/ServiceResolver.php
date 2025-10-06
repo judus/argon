@@ -43,8 +43,14 @@ final class ServiceResolver implements ServiceResolverInterface
         private readonly ServiceBinderInterface $binder,
         private readonly ReflectionCacheInterface $reflectionCache,
         private readonly InterceptorRegistryInterface $interceptors,
-        private readonly ArgumentResolverInterface $argumentResolver
+        private readonly ArgumentResolverInterface $argumentResolver,
+        private bool $strictMode = false
     ) {
+    }
+
+    public function setStrictMode(bool $strict): void
+    {
+        $this->strictMode = $strict;
     }
 
     /**
@@ -83,7 +89,7 @@ final class ServiceResolver implements ServiceResolverInterface
 
             if ($descriptor !== null) {
                 $instance = $this->resolveFromDescriptor($id, $descriptor, $args);
-            } elseif (class_exists($id)) {
+            } elseif (!$this->strictMode && class_exists($id)) {
                 $instance = $this->resolveUnregistered($id, $args);
             } else {
                 $requestedBy = self::$resolutionStack[count(self::$resolutionStack) - 2] ?? 'unknown';
