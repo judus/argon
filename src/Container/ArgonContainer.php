@@ -89,6 +89,10 @@ class ArgonContainer implements ContainerInterface
 
         $argumentResolver->setServiceResolver($this->serviceResolver);
 
+        if (method_exists($this->interceptors, 'setResolver')) {
+            $this->interceptors->setResolver($this->serviceResolver);
+        }
+
         $this->invoker = $invoker ?? new CallableInvoker(
             $this->serviceResolver,
             $argumentResolver

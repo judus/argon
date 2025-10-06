@@ -7,6 +7,7 @@ namespace Maduser\Argon\Container;
 use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
+use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 
 /**
@@ -14,22 +15,24 @@ use Maduser\Argon\Container\Exceptions\ContainerException;
  */
 final class InterceptorRegistry implements InterceptorRegistryInterface
 {
-    /** @var array<class-string<PostResolutionInterceptorInterface>> */
+    /** @var list<class-string<PostResolutionInterceptorInterface>> */
     private array $post = [];
 
-    /** @var array<class-string<PreResolutionInterceptorInterface>> */
+    /** @var list<class-string<PreResolutionInterceptorInterface>> */
     private array $pre = [];
 
-    /**
-     * @var PostResolutionInterceptorInterface[]
-     */
+    /** @var array<class-string<PostResolutionInterceptorInterface>, PostResolutionInterceptorInterface> */
     private array $postInstances = [];
 
-    /**
-     * @var PreResolutionInterceptorInterface[]
-     */
+    /** @var array<class-string<PreResolutionInterceptorInterface>, PreResolutionInterceptorInterface> */
     private array $preInstances = [];
 
+    private ?ServiceResolverInterface $resolver = null;
+
+    public function setResolver(ServiceResolverInterface $resolver): void
+    {
+        $this->resolver = $resolver;
+    }
 
     /**
      * @throws ContainerException
@@ -76,7 +79,7 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
     }
 
     /**
-     * @return array<class-string<PostResolutionInterceptorInterface>>
+     * @return list<class-string<PostResolutionInterceptorInterface>>
      */
     public function allPost(): array
     {
@@ -84,58 +87,112 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
     }
 
     /**
-     * @return array<class-string<PreResolutionInterceptorInterface>>
+     * @return list<class-string<PreResolutionInterceptorInterface>>
      */
     public function allPre(): array
     {
         return $this->pre;
     }
 
-    /**
-     * Applies all supported interceptors to the given instance.
-     *
-     * @param object $instance
-     * @return object
-     */
     public function matchPost(object $instance): object
     {
         foreach ($this->post as $interceptorClass) {
-            if (!isset($this->postInstances[$interceptorClass])) {
-                $this->postInstances[$interceptorClass] = new $interceptorClass();
+            if (!$interceptorClass::supports($instance)) {
+                continue;
             }
 
-            $interceptor = $this->postInstances[$interceptorClass];
+            $interceptor = $this->getPostInstance($interceptorClass);
+            $interceptor->intercept($instance);
+        }
 
-            if ($interceptorClass::supports($instance)) {
-                $interceptor->intercept($instance);
+        return $instance;
+    }
+
+    public function matchPre(string $id, array &$parameters = []): ?object
+    {
+        foreach ($this->pre as $interceptorClass) {
+            if (!$interceptorClass::supports($id)) {
+                continue;
             }
+
+            $interceptor = $this->getPreInstance($interceptorClass);
+            $instance = $interceptor->intercept($id, $parameters);
+
+            if ($instance !== null) {
+                return $instance;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param class-string<PostResolutionInterceptorInterface> $interceptorClass
+     * @throws ContainerException
+     */
+    private function getPostInstance(string $interceptorClass): PostResolutionInterceptorInterface
+    {
+        if (!isset($this->postInstances[$interceptorClass])) {
+            $resolved = $this->resolvePostInterceptor($interceptorClass);
+
+            $this->postInstances[$interceptorClass] = $resolved;
+        }
+
+        return $this->postInstances[$interceptorClass];
+    }
+
+    /**
+     * @param class-string<PreResolutionInterceptorInterface> $interceptorClass
+     * @throws ContainerException
+     */
+    private function getPreInstance(string $interceptorClass): PreResolutionInterceptorInterface
+    {
+        if (!isset($this->preInstances[$interceptorClass])) {
+            $resolved = $this->resolvePreInterceptor($interceptorClass);
+
+            $this->preInstances[$interceptorClass] = $resolved;
+        }
+
+        return $this->preInstances[$interceptorClass];
+    }
+
+    /**
+     * @param class-string<PostResolutionInterceptorInterface> $interceptorClass
+     * @return PostResolutionInterceptorInterface
+     */
+    private function resolvePostInterceptor(string $interceptorClass): PostResolutionInterceptorInterface
+    {
+        $instance = $this->resolver !== null
+            ? $this->resolver->resolve($interceptorClass)
+            : new $interceptorClass();
+
+        if (!$instance instanceof PostResolutionInterceptorInterface) {
+            throw ContainerException::fromInterceptor(
+                $interceptorClass,
+                "Resolved interceptor must implement PostResolutionInterceptorInterface."
+            );
         }
 
         return $instance;
     }
 
     /**
-     * @param string $id
-     * @param array &$parameters
-     *
-     * @return object|null
+     * @param class-string<PreResolutionInterceptorInterface> $interceptorClass
+     * @return PreResolutionInterceptorInterface
      */
-    public function matchPre(string $id, array &$parameters = []): ?object
+    private function resolvePreInterceptor(string $interceptorClass): PreResolutionInterceptorInterface
     {
-        foreach ($this->pre as $interceptorClass) {
-            if (!isset($this->preInstances[$interceptorClass])) {
-                $this->preInstances[$interceptorClass] = new $interceptorClass();
-            }
+        $instance = $this->resolver !== null
+            ? $this->resolver->resolve($interceptorClass)
+            : new $interceptorClass();
 
-            if ($interceptorClass::supports($id)) {
-                $instance = $this->preInstances[$interceptorClass]->intercept($id, $parameters);
-
-                if ($instance !== null) {
-                    return $instance;
-                }
-            }
+        if (!$instance instanceof PreResolutionInterceptorInterface) {
+            throw ContainerException::fromInterceptor(
+                $interceptorClass,
+                "Resolved interceptor must implement PreResolutionInterceptorInterface."
+            );
         }
 
-        return null;
+        return $instance;
     }
 }
