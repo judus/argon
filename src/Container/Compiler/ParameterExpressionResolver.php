@@ -73,8 +73,12 @@ final class ParameterExpressionResolver
             }
         }
 
-        if ($typeName !== null && $this->container->has($typeName)) {
-            $fallbacks[] = "\$this->get('{$typeName}')";
+        if ($typeName !== null) {
+            if ($this->container->has($typeName)) {
+                $fallbacks[] = "\$this->get('{$typeName}')";
+            } elseif (class_exists($typeName) && !$parameter->allowsNull()) {
+                $fallbacks[] = "\$this->get('{$typeName}')";
+            }
         }
 
         $descriptor = $this->container->getDescriptor($serviceId);

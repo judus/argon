@@ -194,6 +194,8 @@ final class CoreContainerGenerator
                 $params[] = $arguments[$name];
             } elseif ($type && $this->has($type)) {
                 $params[] = $this->get($type);
+            } elseif ($type && class_exists($type)) {
+                $params[] = $this->get($type);
             } elseif ($param->isDefaultValueAvailable()) {
                 $params[] = $param->getDefaultValue();
             } else {

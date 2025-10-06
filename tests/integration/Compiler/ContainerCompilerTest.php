@@ -28,6 +28,9 @@ use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
 use Tests\Integration\Compiler\Mocks\WithOptionalInterface;
 use Tests\Integration\Compiler\Mocks\WithOptionalService;
 use Tests\Integration\Mocks\CustomLogger;
+use Tests\Integration\Mocks\DeepGraph;
+use Tests\Integration\Mocks\MidLevel;
+use Tests\Integration\Mocks\Logger as AutowireLogger;
 use Tests\Integration\Mocks\LoggerInterface;
 use Tests\Integration\Mocks\NeedsLogger;
 use Tests\Integration\Mocks\NeedsNullable;
@@ -397,6 +400,41 @@ class ContainerCompilerTest extends TestCase
         $this->assertSame(['priority' => 100], $loggersMeta[Logger::class]);
         $this->assertSame(['priority' => 50], $loggersMeta[Mailer::class]);
         $this->assertSame(['priority' => 10, 'group' => 'email'], $mailersMeta[Mailer::class]);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledContainerResolvesUnregisteredConcreteDependencies(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(DeepGraph::class);
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesUnregisteredConcreteDependencies');
+
+        $resolved = $compiled->get(DeepGraph::class);
+
+        $this->assertInstanceOf(DeepGraph::class, $resolved);
+        $this->assertInstanceOf(MidLevel::class, $resolved->mid);
+        $this->assertInstanceOf(AutowireLogger::class, $resolved->mid->logger);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledInvokeResolvesUnregisteredConcreteParameters(): void
+    {
+        $container = new ArgonContainer();
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledInvokeResolvesUnregisteredConcreteParameters');
+
+        $result = $compiled->invoke([ServiceWithDependency::class, 'doSomething']);
+
+        $this->assertSame('from-invoker', $result);
     }
 
 
