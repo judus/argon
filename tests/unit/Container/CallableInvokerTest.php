@@ -105,6 +105,21 @@ class CallableInvokerTest extends TestCase
     }
 
     /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testResolvesPlainStringFunctionCallable(): void
+    {
+        $this->parameterResolver->method('resolve')->willReturnCallback(
+            static fn($param, array $overrides = [], ?string $contextId = null) => $overrides[$param->getName()] ?? null
+        );
+
+        $result = $this->invoker->call('strtoupper', ['string' => 'foo']);
+
+        $this->assertSame('FOO', $result);
+    }
+
+    /**
      * @throws NotFoundException
      * @throws ContainerException
      */
