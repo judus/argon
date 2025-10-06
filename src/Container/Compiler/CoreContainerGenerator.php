@@ -70,11 +70,14 @@ final class CoreContainerGenerator
 
         $pre->setBody(<<<'PHP'
             foreach ($this->preInterceptors as $interceptor) {
-                if ($interceptor::supports($id)) {
-                    $result = (new $interceptor())->intercept($id, $args);
-                    if ($result !== null) {
-                        return $result;
-                    }
+                if (!$interceptor::supports($id)) {
+                    continue;
+                }
+
+                $resolved = $this->get($interceptor);
+                $result = $resolved->intercept($id, $args);
+                if ($result !== null) {
+                    return $result;
                 }
             }
             return null;
@@ -88,9 +91,12 @@ final class CoreContainerGenerator
 
         $post->setBody(<<<'PHP'
             foreach ($this->postInterceptors as $interceptor) {
-                if ($interceptor::supports($instance)) {
-                    (new $interceptor())->intercept($instance);
+                if (!$interceptor::supports($instance)) {
+                    continue;
                 }
+
+                $resolved = $this->get($interceptor);
+                $resolved->intercept($instance);
             }
             return $instance;
         PHP);
@@ -192,15 +198,35 @@ final class CoreContainerGenerator
 
             if (array_key_exists($name, $arguments)) {
                 $params[] = $arguments[$name];
-            } elseif ($type && $this->has($type)) {
-                $params[] = $this->get($type);
-            } elseif ($type && class_exists($type)) {
-                $params[] = $this->get($type);
-            } elseif ($param->isDefaultValueAvailable()) {
-                $params[] = $param->getDefaultValue();
-            } else {
-                throw new \RuntimeException("Unable to resolve parameter '{$name}' for '{$reflection->getName()}'");
+                continue;
             }
+
+            if ($type && $this->has($type)) {
+                $params[] = $this->get($type);
+                continue;
+            }
+
+            if ($type && class_exists($type)) {
+                if ($param->allowsNull()) {
+                    $params[] = null;
+                    continue;
+                }
+
+                $params[] = $this->get($type);
+                continue;
+            }
+
+            if ($param->isDefaultValueAvailable()) {
+                $params[] = $param->getDefaultValue();
+                continue;
+            }
+
+            if ($param->allowsNull()) {
+                $params[] = null;
+                continue;
+            }
+
+            throw new \RuntimeException("Unable to resolve parameter '{$name}' for '{$reflection->getName()}'");
         }
 
         return $reflection->invokeArgs($instance, $params);

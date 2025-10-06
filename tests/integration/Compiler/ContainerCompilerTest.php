@@ -18,6 +18,7 @@ use stdClass;
 use Tests\Integration\Compiler\Mocks\ClassWithParamWithoutDefault;
 use Tests\Integration\Compiler\Mocks\DefaultValueService;
 use Tests\Integration\Compiler\Mocks\ImplicitNullable;
+use Tests\Integration\Compiler\Mocks\DependentLoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
@@ -461,6 +462,30 @@ class ContainerCompilerTest extends TestCase
 
         $this->assertInstanceOf(Logger::class, $logger);
         $this->assertTrue($logger->intercepted, 'Logger instance should be intercepted.');
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledInterceptorsResolveDependenciesViaContainer(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(Logger::class);
+        $container->set(CustomLogger::class);
+
+        $container->registerInterceptor(DependentLoggerInterceptor::class);
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledInterceptorsResolveDependenciesViaContainer'
+        );
+
+        $logger = $compiled->get(Logger::class);
+
+        $this->assertSame('[custom] interceptor', $logger->note);
+        $this->assertTrue($logger->intercepted);
     }
 
     /**

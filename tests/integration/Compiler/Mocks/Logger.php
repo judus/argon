@@ -9,6 +9,7 @@ use Tests\Integration\Mocks\LoggerInterface;
 class Logger implements LoggerInterface
 {
     public bool $intercepted = false;
+    public ?string $note = null;
 
     public function log(string $msg): string
     {
