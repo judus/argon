@@ -21,6 +21,25 @@ When no binding exists, it seamlessly falls back to autowiring constructors, clo
 - **Feature-rich**: lifecycle hooks, contextual bindings, decorators, and more.
 - **Predictable**: clear and consistent API, no annotations, no attributes, no YAML. Just PHP.
 
+### Strict vs. Magic
+
+Every `ArgonContainer` instance can be created in **strict mode**:
+
+```php
+$container = new ArgonContainer(strictMode: true);
+```
+
+- **Strict mode** only resolves services you have explicitly registered. Requests for unbound classes throw `NotFoundException` (both at runtime and in compiled containers).
+- **Magic mode** (default) still prefers explicit bindings, but will autowire instantiable classes, invoke closures, and fall back to the dynamic resolver when compiled code doesn’t have a pre-generated method.
+
+When you compile the container, strict mode is baked into the generated class:
+
+```php
+$compiler->compile($file, 'ProdContainer', namespace: 'App\\Compiled', strictMode: true);
+```
+
+or simply let the compiler mirror the runtime flag if you instantiate with `strictMode: true`.
+
 ---
 ## Installation
 
@@ -111,10 +130,16 @@ class UserService
 }
 
 $container->get(UserService::class); // Works out of the box
-```
-Argon will resolve Logger by class name, and skip env because it's optional. 
 
-What will **NOT** work:
+$strict = new ArgonContainer(strictMode: true);
+$strict->set(Logger::class);
+$strict->get(UserService::class); // OK
+
+$strict->get(Logger::class); // ✅ registered binding
+```
+Argon will resolve `Logger` by class name, and skip `env` because it's optional. In **strict mode**, autowiring only works when you bind the dependency (as shown above); otherwise a `NotFoundException` is thrown.
+
+What will **NOT** work in either mode:
 ```php
 interface LoggerInterface {}
 
@@ -391,16 +416,21 @@ $file = __DIR__ . '/CompiledContainer.php';
 
 if (file_exists($file) && !$_ENV['DEV']) {
     require_once $file;
-    $container = new CompiledContainer();
+    $container = new App\Compiled\ProdContainer();
 } else {
-    $container = new ArgonContainer();
+    $container = new ArgonContainer(strictMode: true);
     // configure $container...
 
     $compiler = new ContainerCompiler($container);
-    $compiler->compileToFile($file);
+    $compiler->compile(
+        $file,
+        className: 'ProdContainer',
+        namespace: 'App\\Compiled',
+        strictMode: true
+    );
 }
 ```
-The compiled container is a pure PHP class with zero runtime resolution logic for standard bindings. It eliminates reflections and parameter lookups by generating dedicated methods for each service. All bindings, tags, parameters, and interceptors are statically resolved and written as native PHP code.
+The compiled container is a pure PHP class with zero runtime resolution logic for standard bindings. In **strict mode** the generated class omits the dynamic fallback entirely—missing registrations fail fast with `NotFoundException`. In magic mode it continues to fall back to the runtime resolver when needed.
 
 
 ---
@@ -429,6 +459,7 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 | `invoke()`                | `callable $target`, `array $params = []`        | `mixed`                                    | Calls a method or closure with injected dependencies.                             |
 | `isResolvable()`          | `string $id`                                    | `bool`                                     | Checks if a service can be resolved, even if not explicitly bound.                |
 | `optional()`              | `string $id`                                    | `object`                                   | Resolves a service or returns a NullServiceProxy if not found.                    |
+| `isStrictMode()`          | –                                               | `bool`                                     | Indicates whether the container was instantiated in strict mode.                 |
 
 ## `BindingBuilder` API
 
