@@ -465,4 +465,50 @@ class ServiceResolverTest extends TestCase
 
         $this->invokeMethod($this->resolver, 'resolveClass', [$className]);
     }
+
+    /**
+     * @throws NotFoundException
+     */
+    public function testStrictModeThrowsForUnregisteredClass(): void
+    {
+        $resolver = new ServiceResolver(
+            $this->binder,
+            $this->reflectionCache,
+            $this->interceptors,
+            $this->parameterResolver,
+            true
+        );
+
+        $this->binder->method('getDescriptor')->willReturn(null);
+
+        $this->expectException(NotFoundException::class);
+        $resolver->resolve(stdClass::class);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testStrictModeResolvesBoundService(): void
+    {
+        $descriptor = $this->createMock(ServiceDescriptorInterface::class);
+        $descriptor->method('getConcrete')->willReturn(fn() => new stdClass());
+        $descriptor->method('isShared')->willReturn(false);
+        $descriptor->method('getInstance')->willReturn(null);
+
+        $this->binder->method('getDescriptor')->willReturn($descriptor);
+        $this->interceptors->method('matchPost')->willReturnCallback(fn(object $instance): object => $instance);
+
+        $resolver = new ServiceResolver(
+            $this->binder,
+            $this->reflectionCache,
+            $this->interceptors,
+            $this->parameterResolver,
+            true
+        );
+
+        $result = $resolver->resolve('boundService');
+
+        $this->assertInstanceOf(stdClass::class, $result);
+    }
 }
