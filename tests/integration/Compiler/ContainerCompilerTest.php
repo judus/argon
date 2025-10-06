@@ -412,7 +412,10 @@ class ContainerCompilerTest extends TestCase
         $container = new ArgonContainer();
         $container->set(DeepGraph::class);
 
-        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesUnregisteredConcreteDependencies');
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledContainerResolvesUnregisteredConcreteDependencies'
+        );
 
         $resolved = $compiled->get(DeepGraph::class);
 
@@ -430,7 +433,10 @@ class ContainerCompilerTest extends TestCase
     {
         $container = new ArgonContainer();
 
-        $compiled = $this->compileAndLoadContainer($container, 'testCompiledInvokeResolvesUnregisteredConcreteParameters');
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledInvokeResolvesUnregisteredConcreteParameters'
+        );
 
         $result = $compiled->invoke([ServiceWithDependency::class, 'doSomething']);
 

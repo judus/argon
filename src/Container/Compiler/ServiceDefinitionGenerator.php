@@ -38,7 +38,8 @@ final class ServiceDefinitionGenerator
 
             if ($concrete instanceof Closure) {
                 throw new ContainerException(
-                    "Cannot compile a container with closures: [$id]. Use skipCompilation() to exclude from compilation."
+                    "Cannot compile a container with closures: [$id]. " .
+                    "Use skipCompilation() to exclude from compilation."
                 );
             }
 
