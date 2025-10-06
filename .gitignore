@@ -9,3 +9,5 @@ compiled.php
 /tests/resources/cache/*.php
 /resources
 /coverage.xml
+/.cache/
+/.psalm/
