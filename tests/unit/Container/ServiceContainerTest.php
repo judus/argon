@@ -11,6 +11,7 @@ use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
+use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ServiceBinder;
@@ -285,6 +286,9 @@ class ServiceContainerTest extends TestCase
     {
         $interceptors = $this->createMock(InterceptorRegistryInterface::class);
         $interceptors->expects($this->once())
+            ->method('setResolver')
+            ->with($this->isInstanceOf(ServiceResolverInterface::class));
+        $interceptors->expects($this->once())
             ->method('allPost')
             ->willReturn(['PostInterceptor']);
 
@@ -296,6 +300,9 @@ class ServiceContainerTest extends TestCase
     public function testGetPreInterceptorsReturnsCorrectList(): void
     {
         $interceptors = $this->createMock(InterceptorRegistryInterface::class);
+        $interceptors->expects($this->once())
+            ->method('setResolver')
+            ->with($this->isInstanceOf(ServiceResolverInterface::class));
         $interceptors->expects($this->once())
             ->method('allPre')
             ->willReturn(['PreInterceptor']);

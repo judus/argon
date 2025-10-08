@@ -23,6 +23,7 @@ use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
 use Tests\Integration\Compiler\Mocks\MailerFactory;
+use Tests\Integration\Compiler\Mocks\PrimitiveService;
 use Tests\Integration\Compiler\Mocks\ServiceWithDependency;
 use Tests\Integration\Compiler\Mocks\SomeInterface;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
@@ -59,7 +60,8 @@ class ContainerCompilerTest extends TestCase
         }
 
         $compiler = new ContainerCompiler($container);
-        $compiler->compile($file, $className, $namespace, $strictMode);
+        $effectiveStrictMode = $strictMode ?? $container->isStrictMode();
+        $compiler->compile($file, $className, $namespace, $effectiveStrictMode);
 
         require_once $file;
 
@@ -534,6 +536,25 @@ class ContainerCompilerTest extends TestCase
 
         $this->expectException(NotFoundException::class);
         $compiled->invoke([ServiceWithDependency::class, 'doSomething']);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledContainerInjectsPrimitiveArguments(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(PrimitiveService::class, args: [
+            'path' => '/tmp/profiles',
+        ]);
+
+        $compiled = $this->compileAndLoadContainer($container, 'PrimitiveServiceCompiled');
+
+        $service = $compiled->get(PrimitiveService::class);
+
+        $this->assertSame('/tmp/profiles', $service->path);
     }
 
     /**

@@ -39,6 +39,11 @@ class CallableInvokerTest extends TestCase
 
                 throw new \RuntimeException("Service not found: $id");
             }
+
+            public function setStrictMode(bool $strict): void
+            {
+                // noop for tests
+            }
         };
 
         $argumentResolver = new class implements ArgumentResolverInterface {

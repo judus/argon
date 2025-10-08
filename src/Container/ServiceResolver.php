@@ -15,7 +15,6 @@ use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Support\DebugTrace;
 use ReflectionException;
-use ReflectionMethod;
 use ReflectionNamedType;
 use ReflectionParameter;
 use Throwable;
@@ -33,7 +32,7 @@ final class ServiceResolver implements ServiceResolverInterface
     private array $resolving = [];
 
     /**
-     * Static stack of current resolution path, for debugging/contextual error reporting.
+     * Static stack of the current resolution path, for debugging/contextual error reporting.
      *
      * @var string[]
      */
@@ -48,11 +47,6 @@ final class ServiceResolver implements ServiceResolverInterface
     ) {
     }
 
-    public function setStrictMode(bool $strict): void
-    {
-        $this->strictMode = $strict;
-    }
-
     /**
      * Resolves a service by ID or class name.
      *
@@ -64,11 +58,9 @@ final class ServiceResolver implements ServiceResolverInterface
      *
      * @throws ContainerException
      * @throws NotFoundException
-     * @throws ReflectionException
      *
      * We're going to make one single exception here,
      * IMAO this more likely PossiblyPsalmsProblem
-     * @psalm-suppress PossiblyUnusedReturnValue
      */
     public function resolve(string $id, array $args = []): object
     {
@@ -81,7 +73,6 @@ final class ServiceResolver implements ServiceResolverInterface
             $result = $this->interceptors->matchPre($id, $args);
             if ($result !== null) {
                 $this->removeFromResolving($id);
-                array_pop(self::$resolutionStack);
                 return $result;
             }
 
@@ -98,6 +89,12 @@ final class ServiceResolver implements ServiceResolverInterface
 
             $this->removeFromResolving($id);
             return $instance;
+        } catch (ReflectionException $e) {
+            $this->removeFromResolving($id);
+            throw ContainerException::fromServiceId(
+                $id,
+                'Reflection error: ' . $e->getMessage()
+            );
         } finally {
             array_pop(self::$resolutionStack);
         }
@@ -206,7 +203,7 @@ final class ServiceResolver implements ServiceResolverInterface
     }
 
     /**
-     * Resolves a class that is not registered in the container.
+     * Resolves a class not registered in the container.
      *
      * @param class-string $id
      *

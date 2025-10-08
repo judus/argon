@@ -43,11 +43,11 @@ final class ContainerCompiler
         string $filePath,
         string $className,
         string $namespace = 'App\\Compiled',
-        ?bool $strictMode = null
+        bool $strictMode = false
     ): void {
-        $strictMode ??= method_exists($this->container, 'isStrictMode')
-            ? $this->container->isStrictMode()
-            : false;
+        if (!$strictMode) {
+            $strictMode = $this->container->isStrictMode();
+        }
 
         $context = $this->contextFactory->create($this->container, $namespace, $className, $strictMode);
 
