@@ -13,9 +13,29 @@ use Psr\Container\NotFoundExceptionInterface;
  */
 final class NotFoundException extends Exception implements NotFoundExceptionInterface
 {
-    public function __construct(string $serviceId, string $requestedBy = 'unknown')
+    /**
+     * @api
+     *
+     * @param string $contextKey
+     * @return self
+     */
+    public static function forMissingCompiledInvoker(string $contextKey): self
     {
-        $message = "Service '$serviceId' not found (requested by $requestedBy).";
-        parent::__construct($message, 404);
+        return new self(
+            $contextKey,
+            'compiled invoke',
+            "No compiled invoker for '{$contextKey}' in strict no-reflection mode."
+        );
+    }
+
+    public function __construct(
+        string $serviceId,
+        string $requestedBy = 'unknown',
+        ?string $message = null
+    ) {
+        parent::__construct(
+            $message ?? "Service '$serviceId' not found (requested by $requestedBy).",
+            404
+        );
     }
 }

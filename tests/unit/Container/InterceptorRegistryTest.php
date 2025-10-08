@@ -151,4 +151,40 @@ class InterceptorRegistryTest extends TestCase
 
         $this->assertNull($result);
     }
+
+    public function testResolvePostInterceptorThrowsIfResolvedIsInvalid(): void
+    {
+        $resolver = $this->createMock(\Maduser\Argon\Container\Contracts\ServiceResolverInterface::class);
+        $resolver->method('resolve')->willReturn(new \stdClass());
+
+        $registry = new InterceptorRegistry();
+        $registry->setResolver($resolver);
+        $registry->registerPost(StubInterceptor::class);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage(
+            "Resolved interceptor must implement PostResolutionInterceptorInterface."
+        );
+
+        // force instantiation
+        $registry->matchPost(new \stdClass());
+    }
+
+    public function testResolvePreInterceptorThrowsIfResolvedIsInvalid(): void
+    {
+        $resolver = $this->createMock(\Maduser\Argon\Container\Contracts\ServiceResolverInterface::class);
+        $resolver->method('resolve')->willReturn(new \stdClass());
+
+        $registry = new InterceptorRegistry();
+        $registry->setResolver($resolver);
+        $registry->registerPre(StubPreInterceptor::class);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage(
+            "Resolved interceptor must implement PreResolutionInterceptorInterface."
+        );
+
+        // force instantiation
+        $registry->matchPre('StubMatch');
+    }
 }

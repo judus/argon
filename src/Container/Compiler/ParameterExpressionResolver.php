@@ -9,6 +9,7 @@ use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use ReflectionClass;
 use ReflectionException;
+use ReflectionMethod;
 use ReflectionNamedType;
 use ReflectionParameter;
 
@@ -55,7 +56,8 @@ final class ParameterExpressionResolver
     public function resolveParameter(
         ReflectionParameter $parameter,
         string $serviceId,
-        string $argsVar = '$args'
+        string $argsVar = '$args',
+        ?string $contextId = null
     ): string {
         $name = $parameter->getName();
         $type = $parameter->getType();
@@ -64,7 +66,7 @@ final class ParameterExpressionResolver
         $runtime = "{$argsVar}[" . var_export($name, true) . "]";
         $fallbacks = [];
         $declaringClass = $parameter->getDeclaringClass();
-        $context = $declaringClass?->getName() ?? $serviceId;
+        $context = $contextId ?? ($declaringClass?->getName() ?? $serviceId);
 
         if ($typeName !== null && $this->contextualBindings->has($context, $typeName)) {
             $target = $this->contextualBindings->get($context, $typeName);
@@ -115,5 +117,26 @@ final class ParameterExpressionResolver
         }
 
         return $runtime;
+    }
+
+    /**
+     * @param ReflectionMethod $method
+     * @return list<string>
+     *
+     * @throws ContainerException
+     */
+    public function resolveMethodParameters(
+        ReflectionMethod $method,
+        string $serviceId,
+        string $contextId,
+        string $argsVar = '$args'
+    ): array {
+        $resolved = [];
+
+        foreach ($method->getParameters() as $param) {
+            $resolved[] = $this->resolveParameter($param, $serviceId, $argsVar, $contextId);
+        }
+
+        return $resolved;
     }
 }
