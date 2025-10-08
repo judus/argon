@@ -35,6 +35,7 @@ use Tests\Integration\Mocks\MidLevel;
 use Tests\Integration\Mocks\Logger as AutowireLogger;
 use Tests\Integration\Mocks\LoggerInterface;
 use Tests\Integration\Mocks\NeedsLogger;
+use Tests\Integration\Mocks\ContextualLoggerHandler;
 use Tests\Integration\Mocks\NeedsNullable;
 use Tests\Integration\Mocks\PreArgOverride;
 use Tests\Integration\Mocks\SimpleService;
@@ -447,6 +448,34 @@ class ContainerCompilerTest extends TestCase
         $result = $compiled->invoke([ServiceWithDependency::class, 'doSomething']);
 
         $this->assertSame('from-invoker', $result);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledInvokeHonorsMethodLevelContextualBindings(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(CustomLogger::class);
+        $container->set(ContextualLoggerHandler::class);
+
+        $container->for(ContextualLoggerHandler::class . '::handle')
+            ->set(LoggerInterface::class, CustomLogger::class);
+
+        $runtimeResult = $container->invoke([ContextualLoggerHandler::class, 'handle']);
+        $this->assertSame('[custom] invoked', $runtimeResult);
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledInvokeHonorsMethodLevelContextualBindings'
+        );
+
+        $compiledResult = $compiled->invoke([ContextualLoggerHandler::class, 'handle']);
+
+        $this->assertSame('[custom] invoked', $compiledResult);
     }
 
 
