@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container\Compiler;
 
+use Closure;
 use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Nette\PhpGenerator\ClassType;
+use Nette\PhpGenerator\Method;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
@@ -15,14 +17,19 @@ use ReflectionMethod;
 final class CoreContainerGenerator
 {
     private bool $strictMode = false;
+    private bool $noReflection = false;
 
     public function __construct(private readonly ArgonContainer $container)
     {
     }
 
+    /**
+     * @throws ContainerException
+     */
     public function generate(CompilationContext $context): void
     {
         $this->strictMode = $context->strictMode;
+        $this->noReflection = $context->noReflection;
         $class = $context->class;
 
         $this->generateConstructor($class);
@@ -39,6 +46,9 @@ final class CoreContainerGenerator
         $this->generateBuildCompiledInvokerMethodName($class);
     }
 
+    /**
+     * @throws ContainerException
+     */
     private function generateConstructor(ClassType $class): void
     {
         $constructor = $class->addMethod('__construct')->setPublic();
@@ -55,14 +65,19 @@ final class CoreContainerGenerator
         }
 
         $contextualBindings = $this->container->getContextualBindings()->getBindings();
+
+        /**
+         * @var array<string, array<string, string|Closure>> $contextualBindings
+         */
         if (!empty($contextualBindings)) {
             $constructor->addBody('$contextual = $this->getContextualBindings();');
 
             foreach ($contextualBindings as $consumer => $dependencies) {
                 foreach ($dependencies as $dependency => $concrete) {
-                    if ($concrete instanceof \Closure) {
+                    if ($concrete instanceof Closure) {
                         throw new ContainerException(sprintf(
-                            'Cannot compile contextual binding for "%s" -> "%s": closures are not supported in compiled containers.',
+                            'Cannot compile contextual binding for "%s" -> "%s": ' .
+                            'closures are not supported in compiled containers.',
                             $consumer,
                             $dependency
                         ));
@@ -95,6 +110,9 @@ final class CoreContainerGenerator
         ));
     }
 
+    /**
+     * @throws ContainerException
+     */
     private function generateMethodInvocationMap(ClassType $class): void
     {
         $resolver = new ParameterExpressionResolver(
@@ -102,7 +120,12 @@ final class CoreContainerGenerator
             $this->container->getContextualBindings()
         );
 
+
         $bindings = $this->container->getContextualBindings()->getBindings();
+
+        /**
+         * @var array<string, array<string, string|Closure>> $bindings
+         */
         $methodMap = [];
 
         foreach ($bindings as $consumer => $_) {
@@ -110,7 +133,15 @@ final class CoreContainerGenerator
                 continue;
             }
 
-            [$service, $method] = explode('::', $consumer, 2);
+            /** @var list<string> $parts */
+            $parts = explode('::', $consumer, 2);
+            if (count($parts) !== 2) {
+                // @codeCoverageIgnoreStart
+                continue; // Safety check for Psalm...
+                // @codeCoverageIgnoreEnd
+            }
+
+            [$service, $method] = $parts;
 
             if (!class_exists($service)) {
                 throw new ContainerException(sprintf(
@@ -149,6 +180,9 @@ final class CoreContainerGenerator
             ->setValue($methodMap);
     }
 
+    /**
+     * @throws ContainerException
+     */
     private function generateMethodInvoker(
         ClassType $class,
         ParameterExpressionResolver $resolver,
@@ -183,12 +217,7 @@ final class CoreContainerGenerator
             ->setDefaultValue([]);
 
         if ($method->isStatic()) {
-            $call = '\\' . ltrim($service, '\\') . '::' . $method->getName();
-            $compiled->setBody(sprintf(
-                'return %s(%s);',
-                $call,
-                trim($arguments) === '' ? '' : "\n{$arguments}\n"
-            ));
+            $this->generateStaticInvoker($service, $method, $compiled, $arguments);
             return;
         }
 
@@ -351,6 +380,58 @@ final class CoreContainerGenerator
 
         $invoke->addParameter('target')->setType('callable|object|array|string');
         $invoke->addParameter('arguments')->setType('array')->setDefaultValue([]);
+
+        if ($this->noReflection) {
+            $noReflectionBody = <<<'PHP'
+        if (is_array($target) && count($target) === 2) {
+            [$controller, $method] = $target;
+            $contextKey = (is_object($controller) ? get_class($controller) : $controller) . '::' . $method;
+            $instance = is_object($controller) ? $controller : null;
+
+            if (isset($this->compiledMethodMap[$contextKey])) {
+                return $this->{$this->compiledMethodMap[$contextKey]}($instance, $arguments);
+            }
+
+            throw NotFoundException::forMissingCompiledInvoker($contextKey);
+        }
+
+        if (is_string($target) && str_contains($target, '::')) {
+            [$controller, $method] = explode('::', $target, 2);
+            $contextKey = $controller . '::' . $method;
+
+            if (isset($this->compiledMethodMap[$contextKey])) {
+                return $this->{$this->compiledMethodMap[$contextKey]}(null, $arguments);
+            }
+
+            throw NotFoundException::forMissingCompiledInvoker($contextKey);
+        }
+
+        if (is_object($target)) {
+            $contextKey = get_class($target) . '::__invoke';
+
+            if (isset($this->compiledMethodMap[$contextKey])) {
+                return $this->{$this->compiledMethodMap[$contextKey]}($target, $arguments);
+            }
+
+            throw NotFoundException::forMissingCompiledInvoker($contextKey);
+        }
+
+        if (is_string($target) && class_exists($target)) {
+            $contextKey = $target . '::__invoke';
+
+            if (isset($this->compiledMethodMap[$contextKey])) {
+                return $this->{$this->compiledMethodMap[$contextKey]}(null, $arguments);
+            }
+
+            throw nNotFoundException::forMissingCompiledInvoker($contextKey);
+        }
+
+        throw NotFoundException::forMissingCompiledInvoker($contextKey);
+    PHP;
+
+            $invoke->setBody($noReflectionBody);
+            return;
+        }
 
         $lenientBody = <<<'PHP'
         if (is_array($target) && count($target) === 2) {
@@ -517,8 +598,25 @@ final class CoreContainerGenerator
     {
         $method = $class->addMethod('invokeServiceMethod')
             ->setPrivate()
-            ->setReturnType('mixed')
-            ->setBody($this->strictMode
+            ->setReturnType('mixed');
+
+        if ($this->noReflection) {
+            $method->setBody(<<<'PHP'
+            $compiledMethod = $this->buildCompiledInvokerMethodName($serviceId, $method);
+
+            if (method_exists($this, $compiledMethod)) {
+                return $this->{$compiledMethod}($args);
+            }
+
+            $contextKey = $serviceId . '::' . $method;
+            if (isset($this->compiledMethodMap[$contextKey])) {
+                return $this->{$this->compiledMethodMap[$contextKey]}(null, $args);
+            }
+
+            throw new NotFoundException("No compiled service invoker for '{$contextKey}' in no-reflection mode.");
+        PHP);
+        } else {
+            $method->setBody($this->strictMode
                 ? <<<'PHP'
             $compiledMethod = $this->buildCompiledInvokerMethodName($serviceId, $method);
 
@@ -538,6 +636,7 @@ final class CoreContainerGenerator
             return $this->invoke([$serviceId, $method], $args);
         PHP
             );
+        }
 
         $method->addParameter('serviceId')->setType('string');
         $method->addParameter('method')->setType('string');
@@ -559,5 +658,26 @@ final class CoreContainerGenerator
         
             return 'invoke_' . $sanitizedService . '__' . $sanitizedMethod;
     PHP);
+    }
+
+    /**
+     * @param string $service
+     * @param ReflectionMethod $method
+     * @param Method $compiled
+     * @param string $arguments
+     * @return void
+     */
+    public function generateStaticInvoker(
+        string $service,
+        ReflectionMethod $method,
+        Method $compiled,
+        string $arguments
+    ): void {
+        $call = '\\' . ltrim($service, '\\') . '::' . $method->getName();
+        $compiled->setBody(sprintf(
+            'return %s(%s);',
+            $call,
+            trim($arguments) === '' ? '' : "\n$arguments\n"
+        ));
     }
 }

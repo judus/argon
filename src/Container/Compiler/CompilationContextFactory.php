@@ -15,7 +15,8 @@ final class CompilationContextFactory
         ArgonContainer $container,
         string $namespace,
         string $className,
-        bool $strictMode = false
+        bool $strictMode = false,
+        bool $noReflection = false
     ): CompilationContext {
         $file = new PhpFile();
         $file->setStrictTypes();
@@ -28,6 +29,6 @@ final class CompilationContextFactory
         $class = $namespaceGen->addClass($className);
         $class->setExtends(ArgonContainer::class);
 
-        return new CompilationContext($container, $file, $namespaceGen, $class, $strictMode);
+        return new CompilationContext($container, $file, $namespaceGen, $class, $strictMode, $noReflection);
     }
 }

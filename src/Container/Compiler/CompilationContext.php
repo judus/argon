@@ -16,7 +16,8 @@ final class CompilationContext
         public readonly PhpFile $file,
         public readonly PhpNamespace $namespace,
         public readonly ClassType $class,
-        public readonly bool $strictMode
+        public readonly bool $strictMode,
+        public readonly bool $noReflection
     ) {
     }
 }

@@ -467,6 +467,7 @@ class ServiceResolverTest extends TestCase
     }
 
     /**
+     * @throws ContainerException
      * @throws NotFoundException
      */
     public function testStrictModeThrowsForUnregisteredClass(): void
@@ -510,5 +511,37 @@ class ServiceResolverTest extends TestCase
         $result = $resolver->resolve('boundService');
 
         $this->assertInstanceOf(stdClass::class, $result);
+    }
+
+    public function testThrowsContainerExceptionWhenReflectionThrowsInsideDescriptor(): void
+    {
+        $binder = $this->createMock(ServiceBinderInterface::class);
+        $reflectionCache = $this->createMock(ReflectionCacheInterface::class);
+        $interceptors = $this->createMock(InterceptorRegistryInterface::class);
+        $argumentResolver = $this->createMock(ArgumentResolverInterface::class);
+
+        $descriptor = $this->createMock(ServiceDescriptorInterface::class);
+        $descriptor->method('isShared')->willReturn(false);
+        $descriptor->method('hasFactory')->willReturn(false);
+        $descriptor->method('getConcrete')->willReturn('FakeClassThatExists');
+
+        $binder->method('getDescriptor')->willReturn($descriptor);
+
+        $reflectionCache->method('get')->willThrowException(
+            new \ReflectionException("Mocked reflection failure.")
+        );
+
+        $resolver = new ServiceResolver(
+            $binder,
+            $reflectionCache,
+            $interceptors,
+            $argumentResolver
+        );
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Reflection error: Mocked reflection failure.');
+
+        // This will try to resolve via descriptor → concrete class → reflection = boom
+        $resolver->resolve('SomeServiceId');
     }
 }

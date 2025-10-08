@@ -6,7 +6,9 @@ namespace Tests\Integration\Compiler;
 
 use ErrorException;
 use Maduser\Argon\Container\ArgumentMap;
+use Maduser\Argon\Container\Compiler\CompilationContextFactory;
 use Maduser\Argon\Container\Compiler\ContainerCompiler;
+use Maduser\Argon\Container\Compiler\CoreContainerGenerator;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
@@ -26,6 +28,7 @@ use Tests\Integration\Compiler\Mocks\MailerFactory;
 use Tests\Integration\Compiler\Mocks\PrimitiveService;
 use Tests\Integration\Compiler\Mocks\ServiceWithDependency;
 use Tests\Integration\Compiler\Mocks\SomeInterface;
+use Tests\Integration\Compiler\Mocks\StaticService;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
 use Tests\Integration\Compiler\Mocks\WithOptionalInterface;
 use Tests\Integration\Compiler\Mocks\WithOptionalService;
@@ -40,6 +43,7 @@ use Tests\Integration\Mocks\NeedsNullable;
 use Tests\Integration\Mocks\PreArgOverride;
 use Tests\Integration\Mocks\SimpleService;
 use Tests\Mocks\DummyProvider;
+use Tests\Unit\Container\Mocks\ExistingButIncomplete;
 use Tests\Unit\Container\Mocks\NonInstantiableClass;
 
 class ContainerCompilerTest extends TestCase
@@ -51,7 +55,8 @@ class ContainerCompilerTest extends TestCase
     private function compileAndLoadContainer(
         ArgonContainer $container,
         string $className,
-        ?bool $strictMode = null
+        ?bool $strictMode = null,
+        ?bool $noReflection = null
     ): ArgonContainer {
         $namespace = 'Tests\\Integration\\Compiler';
         $file = __DIR__ . "/../../resources/cache/{$className}.php";
@@ -62,7 +67,8 @@ class ContainerCompilerTest extends TestCase
 
         $compiler = new ContainerCompiler($container);
         $effectiveStrictMode = $strictMode ?? $container->isStrictMode();
-        $compiler->compile($file, $className, $namespace, $effectiveStrictMode);
+        $effectiveNoReflection = $noReflection ?? $effectiveStrictMode;
+        $compiler->compile($file, $className, $namespace, $effectiveStrictMode, $effectiveNoReflection);
 
         require_once $file;
 
@@ -476,6 +482,61 @@ class ContainerCompilerTest extends TestCase
         $compiledResult = $compiled->invoke([ContextualLoggerHandler::class, 'handle']);
 
         $this->assertSame('[custom] invoked', $compiledResult);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
+    public function testStrictCompiledInvokeFailsWithoutMethodBinding(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+
+        $container->set(CustomLogger::class);
+        $container->set(ContextualLoggerHandler::class);
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'StrictInvokeFailsNoBinding',
+            strictMode: true,
+            noReflection: true
+        );
+
+        $this->expectException(NotFoundException::class);
+        $this->expectExceptionMessage(
+            "No compiled invoker for '" . ContextualLoggerHandler::class . "::handle' " .
+            "in strict no-reflection mode."
+        );
+
+        $compiled->invoke([ContextualLoggerHandler::class, 'handle']);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
+    public function testStrictCompiledInvokeHonorsMethodBinding(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+
+        $container->set(CustomLogger::class);
+        $container->set(ContextualLoggerHandler::class);
+
+        $container->for(ContextualLoggerHandler::class . '::handle')
+            ->set(LoggerInterface::class, CustomLogger::class);
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'StrictInvokeHonorsBinding',
+            strictMode: true,
+            noReflection: true
+        );
+
+        $result = $compiled->invoke([ContextualLoggerHandler::class, 'handle']);
+
+        $this->assertSame('[custom] invoked', $result);
     }
 
 
@@ -913,5 +974,87 @@ class ContainerCompilerTest extends TestCase
 
         $compiler = new ContainerCompiler($container);
         $compiler->compile(__DIR__ . '/../../resources/cache/Boom.php', 'Boom');
+    }
+
+    public function testGenerateConstructorThrowsOnClosureContextualBinding(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+        $container->getContextualBindings()->bind('Foo', 'Bar', fn () => 'Baz');
+
+        $contextFactory = new CompilationContextFactory();
+        $context = $contextFactory->create($container, 'Some\\Namespace', 'FakeCompiledClass', true, false);
+
+        $generator = new CoreContainerGenerator($container);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('closures are not supported in compiled containers');
+
+        $generator->generate($context);
+    }
+
+    public function testGenerateMethodInvocationMapThrowsOnMissingClass(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+        $container->getContextualBindings()->bind('Nope\DoesNotExist::method', 'param', 'SomeService');
+
+        $contextFactory = new CompilationContextFactory();
+        $context = $contextFactory->create($container, 'Test\\Ns', 'ClassWithMissingContext', true, false);
+
+        $generator = new CoreContainerGenerator($container);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Contextual binding references missing class');
+
+        $generator->generate($context);
+    }
+
+    public function testGenerateMethodInvocationMapThrowsOnMissingMethod(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+        $container->getContextualBindings()->bind(
+            ExistingButIncomplete::class . '::missingMethod',
+            'param',
+            'ConcreteService'
+        );
+
+        $contextFactory = new CompilationContextFactory();
+        $context = $contextFactory->create($container, 'Test\\Ns', 'FailOnMissingMethod', true, false);
+
+        $generator = new CoreContainerGenerator($container);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Contextual binding references missing method');
+
+        $generator->generate($context);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testStaticMethodCallIsCompiled(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+
+        $container->getContextualBindings()->bind(
+            StaticService::class . '::sayHello',
+            'name',
+            'Steve'
+        );
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'CompiledStaticHello',
+            strictMode: true,
+            noReflection: true
+        );
+
+        $result = $compiled->invoke(
+            [StaticService::class, 'sayHello'],
+            ['name' => 'Steve']
+        );
+
+        $this->assertSame('Hello Steve', $result);
     }
 }
