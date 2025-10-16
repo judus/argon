@@ -527,7 +527,7 @@ class ServiceResolverTest extends TestCase
             ->willThrowException(new ReflectionException('Mocked reflection failure.'));
 
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage('Reflection error: Mocked reflection failure.');
+        $this->expectExceptionMessageMatches('/Reflection error: Mocked reflection failure\\./');
 
         $this->resolver->resolve('serviceWithReflectionFailure');
     }
