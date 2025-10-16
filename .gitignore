@@ -11,3 +11,8 @@ compiled.php
 /coverage.xml
 /.cache/
 /.psalm/
+/coverage-report/
+/resources
+/coverage.xml
+/.cache/
+/.psalm/
