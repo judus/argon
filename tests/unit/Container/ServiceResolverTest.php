@@ -511,4 +511,24 @@ class ServiceResolverTest extends TestCase
 
         $this->assertInstanceOf(stdClass::class, $result);
     }
+
+    public function testResolveWrapsReflectionExceptionFromDescriptor(): void
+    {
+        $descriptor = $this->createMock(ServiceDescriptorInterface::class);
+        $descriptor->method('isShared')->willReturn(false);
+        $descriptor->method('getInstance')->willReturn(null);
+        $descriptor->method('hasFactory')->willReturn(false);
+        $descriptor->method('getConcrete')->willReturn('SomeMissingClass');
+
+        $this->binder->method('getDescriptor')->willReturn($descriptor);
+        $this->interceptors->method('matchPre')->willReturn(null);
+        $this->reflectionCache
+            ->method('get')
+            ->willThrowException(new ReflectionException('Mocked reflection failure.'));
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Reflection error: Mocked reflection failure.');
+
+        $this->resolver->resolve('serviceWithReflectionFailure');
+    }
 }
