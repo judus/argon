@@ -439,7 +439,7 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 
 | ArgonContainer            | Parameters                                      | Return                                     | Description                                                                       |
 |---------------------------|-------------------------------------------------|--------------------------------------------|-----------------------------------------------------------------------------------|
-| `set()`                   | `string $id`, `Closure\|string\|null $concrete` | `ArgonContainer`                           | Registers a service as shared by default (use `->transient()` to override)        |
+| `set()`                   | `string $id`, `Closure\|string\|null $concrete` | `BindingBuilderInterface`                  | Registers a service as shared by default (use `->transient()` to override)        |
 | `get()`                   | `string $id`                                    | `object`                                   | Resolves and returns the service.                                                 |
 | `has()`                   | `string $id`                                    | `bool`                                     | Checks if a service binding exists.                                               |
 | `getBindings()`           | –                                               | `array<string, ServiceDescriptor>`         | Returns all registered service descriptors.                                       |
@@ -447,7 +447,7 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 | `getDescriptor()`         | `string $id`                                    | `ServiceDescriptorInterface`               | Returns the service description associated with the id.                           |
 | `getParameters()`         | –                                               | `ParameterStoreInterface`                  | Access the parameter registry for raw or shared values.                           |
 | `registerInterceptor()`   | `class-string<InterceptorInterface> $class`     | `ArgonContainer`                           | Registers a type interceptor.                                                     |
-| `registerProvider()`      | `class-string<ServiceProviderInterface> $class` | `ArgonContainer`                           | Registers and invokes a service provider.                                         |
+| `register()`              | `class-string<ServiceProviderInterface>\|list<class-string<ServiceProviderInterface>> $providers` | `ArgonContainer`                           | Registers service provider(s) and runs their `register()` hooks.                  |
 | `tag()`                   | `string $id`, `list<string> $tags`              | `ArgonContainer`                           | Tags a service with one or more labels.                                           |
 | `getTags()`               | –                                               | `array<string, list<string>>`              | Returns all tag definitions in the container.                                     |
 | `getTagged()`             | `string $tag`                                   | `list<object>`                             | Resolves all services tagged with the given label.                                |
@@ -467,11 +467,11 @@ When you call `set()`, it returns a `BindingBuilder`, which lets you **configure
 
 | Method               | Parameters                                       | Return                       | Description                                                                              |
 |----------------------|--------------------------------------------------|------------------------------|------------------------------------------------------------------------------------------|
-| `transient()`        | –                                                | `BindingBuilder`             | Marks the service as non-shared. A new instance will be created for each request.        |
-| `skipCompilation()`  | –                                                | `BindingBuilder`             | Excludes this binding from the compiled container. Useful for closures or dynamic logic. |
-| `tag()`              | `string\|list<string> $tags`                     | `BindingBuilder`             | Assigns one or more tags to this service.                                                |
-| `factory()`          | `string $factoryClass`, `?string $method = null` | `BindingBuilder`             | Uses a factory class (optionally a method) to construct the service.                     |
-| `defineInvocation()` | `string $methodName`, `array $args = []`         | `BindingBuilder`             | Pre-defines arguments for a later `invoke()` call. Avoids reflection at runtime.         |
+| `transient()`        | –                                                | `BindingBuilderInterface`    | Marks the service as non-shared. A new instance will be created for each request.        |
+| `skipCompilation()`  | –                                                | `BindingBuilderInterface`    | Excludes this binding from the compiled container. Useful for closures or dynamic logic. |
+| `tag()`              | `string\|list<string> $tags`                     | `BindingBuilderInterface`    | Assigns one or more tags to this service.                                                |
+| `factory()`          | `string $factoryClass`, `?string $method = null` | `BindingBuilderInterface`    | Uses a factory class (optionally a method) to construct the service.                     |
+| `defineInvocation()` | `string $methodName`, `array $args = []`         | `BindingBuilderInterface`    | Pre-defines arguments for a later `invoke()` call. Avoids reflection at runtime.         |
 | `getDescriptor()`    | –                                                | `ServiceDescriptorInterface` | Returns the internal service descriptor for advanced inspection or modification.         |
 
 ---
