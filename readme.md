@@ -261,7 +261,16 @@ $container->boot();
 
 ### Interceptors
 
-Interceptors allow you to hook into the service resolution lifecycle. They are automatically called either **before** or **after** a service is constructed.
+Think of interceptors as a tiny, service-aware middleware pipeline wrapped around the resolver.  
+Each interceptor:
+
+- announces whether it applies by implementing a static `supports()` check (no global pipeline to walk for every service);
+- can run **before** construction to tweak arguments or short-circuit with its own instance;
+- can run **after** construction to decorate, validate, or otherwise finalise the resolved object.
+
+Because they are scoped to specific services (or interfaces), you get the flexibility of middleware without forcing every resolution through a monolithic stack.
+
+Compiled containers embed the same pre/post pipeline: when you call `compile()`, the current interceptors are snapshot and generated into the compiled `get()` method, so short-circuit logic and decorators behave exactly as they do at runtime.
 
 #### Post-Resolution Interceptors
 
@@ -341,9 +350,10 @@ $container->registerInterceptor(EnvOverrideInterceptor::class);
 $container->registerInterceptor(StubInterceptor::class);
 ```
 
-- Interceptors must implement either `PreResolutionInterceptorInterface` or `PostResolutionInterceptorInterface`
-- Both require a static `supports(string $id): bool` method to prevent unnecessary instantiation
-- Interceptors are resolved lazily and only when matched
+- Interceptors must implement either `PreResolutionInterceptorInterface` or `PostResolutionInterceptorInterface`.
+- Both varieties require a static `supports()` method so only matching services trigger them.
+- Pre-interceptors may *short-circuit* by returning an object; leaving `null` continues the pipeline.
+- Interceptors are resolved lazily and only when matched.
 - You can register as many interceptors as you want. They're evaluated in the order they were added.
 
 ### Extending Services
