@@ -118,4 +118,29 @@ final class DebugTraceTest extends TestCase
 
         $this->assertSame([], DebugTrace::get());
     }
+
+    public function testDiffReturnsOnlyNewEntries(): void
+    {
+        DebugTrace::add('InitialClass', 'param', 'string', 'value');
+        $snapshot = DebugTrace::snapshot();
+
+        DebugTrace::add('NewClass', 'param', 'int', 42);
+
+        $diff = DebugTrace::diff($snapshot);
+
+        $this->assertArrayNotHasKey('InitialClass', $diff);
+        $this->assertArrayHasKey('NewClass', $diff);
+    }
+
+    public function testDiffDetectsChangedValues(): void
+    {
+        DebugTrace::add('ChangeClass', 'param', 'int', 42);
+        $snapshot = DebugTrace::snapshot();
+
+        DebugTrace::add('ChangeClass', 'param', 'int', 'foo');
+
+        $diff = DebugTrace::diff($snapshot);
+
+        $this->assertSame('string', $diff['ChangeClass']['param']['received']);
+    }
 }

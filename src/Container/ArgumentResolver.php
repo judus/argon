@@ -56,15 +56,16 @@ final class ArgumentResolver implements ArgumentResolverInterface
 
         $merged = array_merge($this->arguments->get($context), $overrides);
 
+        $paramType = $param->getType();
+        $expectedType = $paramType instanceof ReflectionNamedType ? $paramType->getName() : 'mixed';
+
         if (array_key_exists($paramName, $merged)) {
             /** @var null|bool|int|float|string|array|object $value */
             $value = $merged[$paramName];
-            $paramType = $param->getType();
-
             DebugTrace::add(
                 $context,
                 $paramName,
-                $paramType instanceof ReflectionNamedType ? $paramType->getName() : 'mixed',
+                $expectedType,
                 is_scalar($value) ? (string) $value : gettype($value)
             );
 
@@ -74,7 +75,7 @@ final class ArgumentResolver implements ArgumentResolverInterface
                 is_string($value) &&
                 is_a($value, $paramType->getName(), true)
             ) {
-                return $this->resolveTypeName($value, $context);
+                return $this->resolveTypeName($value, $context, $paramName, $expectedType);
             }
 
             return $value;
@@ -130,7 +131,7 @@ final class ArgumentResolver implements ArgumentResolverInterface
                 return null;
             }
 
-            return $this->resolveTypeName($typeName, $className);
+            return $this->resolveTypeName($typeName, $className, $paramName, $typeName);
         }
 
         if ($type instanceof ReflectionUnionType) {
@@ -233,22 +234,45 @@ final class ArgumentResolver implements ArgumentResolverInterface
 
     /**
      * @template TGet of object
-     * @param string $typeName
+     * @param string $serviceId
      * @param class-string<TGet>|string $className
+     * @param string|null $paramName
+     * @param string|null $expectedType
      * @return object
      * @throws ContainerException
      * @throws NotFoundException
      */
-    private function resolveTypeName(string $typeName, string $className): object
-    {
-        if ($this->contextualBindings->has($className, $typeName)) {
-            return $this->contextualResolver->resolve($className, $typeName);
+    private function resolveTypeName(
+        string $serviceId,
+        string $className,
+        ?string $paramName = null,
+        ?string $expectedType = null
+    ): object {
+        $resolver = null;
+
+        if ($this->contextualBindings->has($className, $serviceId)) {
+            $resolver = fn(): object => $this->contextualResolver->resolve($className, $serviceId);
+        } else {
+            if (!$this->serviceResolver) {
+                throw new RuntimeException('ParameterResolver: missing ServiceResolver.');
+            }
+
+            $resolver = fn(): object => $this->serviceResolver->resolve($serviceId);
         }
 
-        if (!$this->serviceResolver) {
-            throw new RuntimeException('ParameterResolver: missing ServiceResolver.');
+        $snapshot = DebugTrace::snapshot();
+        $instance = $resolver();
+        $nestedTrace = DebugTrace::diff($snapshot);
+
+        if ($paramName !== null) {
+            $type = $expectedType ?? $serviceId;
+            DebugTrace::add($className, $paramName, $type, $instance);
+
+            if ($nestedTrace !== []) {
+                DebugTrace::nest($className, $paramName, $nestedTrace);
+            }
         }
 
-        return $this->serviceResolver->resolve($typeName);
+        return $instance;
     }
 }

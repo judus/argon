@@ -16,6 +16,12 @@ final class NotFoundException extends Exception implements NotFoundExceptionInte
     public function __construct(string $serviceId, string $requestedBy = 'unknown')
     {
         $message = "Service '$serviceId' not found (requested by $requestedBy).";
+        $trace = DebugTrace::toJson();
+
+        if ($trace !== '{}') {
+            $message .= "\n\nDebugTrace:\n$trace";
+        }
+
         parent::__construct($message, 404);
     }
 }

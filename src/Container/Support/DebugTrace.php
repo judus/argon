@@ -55,6 +55,62 @@ final class DebugTrace
         return self::$trace;
     }
 
+    /**
+     * Returns a snapshot of the current trace state.
+     *
+     * @return array<string, array<string, array{expected: string, received?: string, error?: string, resolved?: array}>>
+     */
+    public static function snapshot(): array
+    {
+        return self::$trace;
+    }
+
+    /**
+     * Computes the diff between the current trace and a previous snapshot.
+     *
+     * @param array<string, array<string, array{expected: string, received?: string, error?: string, resolved?: array>>> $previous
+     * @return array<string, array<string, array{expected?: string, received?: string, error?: string, resolved?: array}>>
+     */
+    public static function diff(array $previous): array
+    {
+        return self::diffRecursive(self::$trace, $previous);
+    }
+
+    /**
+     * @param array<string, mixed> $current
+     * @param array<string, mixed> $previous
+     * @return array<string, mixed>
+     */
+    private static function diffRecursive(array $current, array $previous): array
+    {
+        $diff = [];
+
+        foreach ($current as $key => $value) {
+            if (!array_key_exists($key, $previous)) {
+                $diff[$key] = $value;
+                continue;
+            }
+
+            $prevValue = $previous[$key];
+
+            if (is_array($value) && is_array($prevValue)) {
+                $nested = self::diffRecursive($value, $prevValue);
+
+                if ($nested !== []) {
+                    $diff[$key] = $nested;
+                }
+
+                continue;
+            }
+
+            if ($value !== $prevValue) {
+                $diff[$key] = $value;
+            }
+        }
+
+        return $diff;
+    }
+
     public static function hasErrors(): bool
     {
         foreach (self::$trace as $params) {

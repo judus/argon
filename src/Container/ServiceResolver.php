@@ -64,7 +64,11 @@ final class ServiceResolver implements ServiceResolverInterface
      */
     public function resolve(string $id, array $args = []): object
     {
-        DebugTrace::reset();
+        $isRootResolve = empty(self::$resolutionStack);
+
+        if ($isRootResolve) {
+            DebugTrace::reset();
+        }
 
         $this->checkCircularDependency($id);
         self::$resolutionStack[] = $id;
