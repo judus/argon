@@ -6,6 +6,7 @@ namespace Tests\Unit\Container;
 
 use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Maduser\Argon\Container\Contracts\PreResolutionInterceptorInterface;
+use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\InterceptorRegistry;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use PHPUnit\Framework\TestCase;
@@ -150,5 +151,35 @@ class InterceptorRegistryTest extends TestCase
         $result = $registry->matchPre('UnmatchedService');
 
         $this->assertNull($result);
+    }
+
+    public function testMatchPostThrowsWhenResolverReturnsInvalidInstance(): void
+    {
+        $resolver = $this->createMock(ServiceResolverInterface::class);
+        $resolver->method('resolve')->willReturn(new stdClass());
+
+        $registry = new InterceptorRegistry();
+        $registry->setResolver($resolver);
+        $registry->registerPost(StubInterceptor::class);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Resolved interceptor must implement PostResolutionInterceptorInterface.');
+
+        $registry->matchPost(new stdClass());
+    }
+
+    public function testMatchPreThrowsWhenResolverReturnsInvalidInstance(): void
+    {
+        $resolver = $this->createMock(ServiceResolverInterface::class);
+        $resolver->method('resolve')->willReturn(new stdClass());
+
+        $registry = new InterceptorRegistry();
+        $registry->setResolver($resolver);
+        $registry->registerPre(StubPreInterceptor::class);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Resolved interceptor must implement PreResolutionInterceptorInterface.');
+
+        $registry->matchPre('StubMatch');
     }
 }
