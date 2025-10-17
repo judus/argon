@@ -62,6 +62,14 @@ final readonly class BindingBuilder implements BindingBuilderInterface
     }
 
     /** @inheritDoc */
+    public function shared(): BindingBuilderInterface
+    {
+        $this->descriptor->setShared(true);
+
+        return $this;
+    }
+
+    /** @inheritDoc */
     public function getDescriptor(): ServiceDescriptorInterface
     {
         return $this->descriptor;

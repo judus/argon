@@ -46,6 +46,7 @@ class ArgonContainer implements ContainerInterface
     private readonly ParameterStoreInterface $parameterStore;
     private readonly InterceptorRegistryInterface $interceptors;
     private bool $strictMode = false;
+    private bool $sharedByDefault = true;
 
     /**
      * @throws ContainerException
@@ -63,9 +64,11 @@ class ArgonContainer implements ContainerInterface
         ?ServiceResolverInterface $serviceResolver = null,
         ?ArgumentResolverInterface $argumentResolver = null,
         ?ServiceBinderInterface $binder = null,
-        bool $strictMode = false
+        bool $strictMode = false,
+        bool $sharedByDefault = true
     ) {
         $this->strictMode = $strictMode;
+        $this->sharedByDefault = $sharedByDefault;
         $argumentMap = $argumentMap ?? new ArgumentMap();
         $this->parameterStore = $parameters ?? new ParameterStore();
         $this->interceptors = $interceptors ?? new InterceptorRegistry();
@@ -73,7 +76,8 @@ class ArgonContainer implements ContainerInterface
         $this->contextual = $contextual ?? new ContextualResolver($this, $this->contextualBindings);
         $this->tags = $tags ?? new TagManager($this);
         $this->providers = $providers ?? new ServiceProviderRegistry($this);
-        $this->binder = $binder ?? new ServiceBinder($this->tags);
+        $this->binder = $binder ?? new ServiceBinder($this->tags, $sharedByDefault);
+        $this->binder->setDefaultShared($sharedByDefault);
 
         $reflectionCache = $reflectionCache ?? new ReflectionCache();
 
@@ -100,8 +104,8 @@ class ArgonContainer implements ContainerInterface
             $argumentResolver
         );
 
-        $this->binder->set(ArgonContainer::class, fn() => $this)->skipCompilation();
-        $this->binder->set(ContainerInterface::class, fn() => $this)->skipCompilation();
+        $this->binder->set(ArgonContainer::class, fn() => $this)->skipCompilation()->shared();
+        $this->binder->set(ContainerInterface::class, fn() => $this)->skipCompilation()->shared();
     }
 
     public function getContextualBindings(): ContextualBindingsInterface
@@ -112,6 +116,11 @@ class ArgonContainer implements ContainerInterface
     public function isStrictMode(): bool
     {
         return $this->strictMode;
+    }
+
+    public function isSharedByDefault(): bool
+    {
+        return $this->sharedByDefault;
     }
 
     /**

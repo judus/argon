@@ -74,6 +74,18 @@ interface BindingBuilderInterface
     public function transient(): BindingBuilderInterface;
 
     /**
+     * Marks the service as shared (singleton lifecycle).
+     *
+     * Useful to revert a global transient default or to emphasise that a specific
+     * binding should reuse the same instance across resolutions.
+     *
+     * @return BindingBuilderInterface Fluent chain
+     *
+     * @api
+     */
+    public function shared(): BindingBuilderInterface;
+
+    /**
      * Returns the underlying service descriptor for introspection or extension.
      *
      * This can be used to manipulate low-level descriptor metadata, though this

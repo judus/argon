@@ -22,7 +22,8 @@ final class ServiceBinder implements ServiceBinderInterface
     private array $descriptors = [];
 
     public function __construct(
-        private readonly TagManagerInterface $tagManager
+        private readonly TagManagerInterface $tagManager,
+        private bool $defaultShared = true
     ) {
     }
 
@@ -42,6 +43,11 @@ final class ServiceBinder implements ServiceBinderInterface
     public function has(string $id): bool
     {
         return isset($this->descriptors[$id]);
+    }
+
+    public function setDefaultShared(bool $shared): void
+    {
+        $this->defaultShared = $shared;
     }
 
     /**
@@ -64,7 +70,7 @@ final class ServiceBinder implements ServiceBinderInterface
             throw ContainerException::fromServiceId($id, "Class '$concrete' does not exist.");
         }
 
-        $descriptor = new ServiceDescriptor($id, $concrete, true, $args);
+        $descriptor = new ServiceDescriptor($id, $concrete, $this->defaultShared, $args);
         $this->descriptors[$id] = $descriptor;
 
         return new BindingBuilder($descriptor, $this->tagManager);

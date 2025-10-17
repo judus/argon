@@ -24,6 +24,13 @@ interface ServiceBinderInterface
     public function has(string $id): bool;
 
     /**
+     * Configures whether new bindings are shared by default.
+     *
+     * @param bool $shared True to make new services shared (singleton), false for transient.
+     */
+    public function setDefaultShared(bool $shared): void;
+
+    /**
      * Registers a singleton service.
      *
      * @param string $id

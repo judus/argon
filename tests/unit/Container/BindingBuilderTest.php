@@ -45,4 +45,16 @@ class BindingBuilderTest extends TestCase
         $this->assertInstanceOf(ServiceDescriptor::class, $descriptor);
         $this->assertSame(Foo::class, $descriptor->getConcrete());
     }
+
+    public function testSharedMethodMarksDescriptorAsShared(): void
+    {
+        $binder = new ServiceBinder(
+            $this->createMock(TagManagerInterface::class),
+            false
+        );
+
+        $builder = $binder->set(Foo::class)->shared();
+
+        $this->assertTrue($builder->getDescriptor()->isShared());
+    }
 }

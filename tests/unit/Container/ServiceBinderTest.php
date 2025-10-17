@@ -67,6 +67,36 @@ class ServiceBinderTest extends TestCase
         $this->assertFalse($descriptor->isShared());
     }
 
+    public function testDefaultSharedCanBeDisabled(): void
+    {
+        $binder = new ServiceBinder(
+            $this->createMock(TagManagerInterface::class),
+            false
+        );
+
+        $binder->set('transient-service', fn() => new stdClass());
+
+        $descriptor = $binder->getDescriptor('transient-service');
+
+        $this->assertInstanceOf(ServiceDescriptor::class, $descriptor);
+        $this->assertFalse($descriptor->isShared());
+    }
+
+    public function testSharedMethodOverridesDefaultTransient(): void
+    {
+        $binder = new ServiceBinder(
+            $this->createMock(TagManagerInterface::class),
+            false
+        );
+
+        $binder->set('shared-service', fn() => new stdClass())->shared();
+
+        $descriptor = $binder->getDescriptor('shared-service');
+
+        $this->assertInstanceOf(ServiceDescriptor::class, $descriptor);
+        $this->assertTrue($descriptor->isShared());
+    }
+
     public function testBindThrowsForInvalidConcreteString(): void
     {
         $this->expectException(ContainerException::class);

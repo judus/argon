@@ -65,6 +65,34 @@ class ServiceContainerTest extends TestCase
         $this->assertNotSame($instance1, $instance2, 'Transient services should return different instances.');
     }
 
+    public function testContainerCanDefaultToTransientBindings(): void
+    {
+        $container = new ArgonContainer(sharedByDefault: false);
+        $this->assertFalse($container->isSharedByDefault());
+        $container->set('service', fn() => new stdClass());
+
+        $instance1 = $container->get('service');
+        $instance2 = $container->get('service');
+
+        $this->assertNotSame($instance1, $instance2, 'Transient default should create new instances.');
+    }
+
+    public function testSharedOverridesTransientDefault(): void
+    {
+        $container = new ArgonContainer(sharedByDefault: false);
+        $container->set('shared', fn() => new stdClass())->shared();
+
+        $this->assertSame($container->get('shared'), $container->get('shared'));
+    }
+
+    public function testContainerBindingsRemainSharedWithTransientDefault(): void
+    {
+        $container = new ArgonContainer(sharedByDefault: false);
+
+        $this->assertSame($container, $container->get(ArgonContainer::class));
+        $this->assertSame($container, $container->get(\Psr\Container\ContainerInterface::class));
+    }
+
     /**
      * @throws NotFoundException
      * @throws ContainerException
@@ -811,6 +839,16 @@ class ServiceContainerTest extends TestCase
         $bindings = [$id => $mockDescriptor];
 
         $binder = $this->createMock(ServiceBinderInterface::class);
+        $bindingBuilder = $this->createMock(\Maduser\Argon\Container\Contracts\BindingBuilderInterface::class);
+
+        $bindingBuilder->method('skipCompilation')->willReturnSelf();
+        $bindingBuilder->method('shared')->willReturnSelf();
+
+        $binder->expects($this->once())
+            ->method('setDefaultShared')
+            ->with(true);
+
+        $binder->method('set')->willReturn($bindingBuilder);
         $binder->expects($this->once())
             ->method('getDescriptors')
             ->willReturn($bindings);
