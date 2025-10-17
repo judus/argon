@@ -29,7 +29,7 @@ Every `ArgonContainer` instance can be created in **strict mode**:
 $container = new ArgonContainer(strictMode: true);
 ```
 
-- **Strict mode** only resolves services you have explicitly registered. Requests for unbound classes throw `NotFoundException` (both at runtime and in compiled containers).
+- **Strict mode** only resolves services you have explicitly registered. No autowiring. Requests for unbound classes throw `NotFoundException` (both at runtime and in compiled containers).
 - **Magic mode** (default) still prefers explicit bindings, but will autowire instantiable classes, invoke closures, and fall back to the dynamic resolver when compiled code doesn’t have a pre-generated method.
 
 When you compile the container, strict mode is baked into the generated class:
@@ -74,16 +74,32 @@ $container->set(MyService::class, MyService::class); // explicit form
 
 // Register transient (non-shared) services
 $container->set(MyOtherService::class)->transient();
-$container->set(LoggerInterface::class, FileLogger::class)->transient();
+$container->set(ReportGenerator::class, AsyncReportGenerator::class)->transient();
 
 // Register interface to concrete binding
 $container->set(CacheInterface::class, InMemoryCache::class);
+
+// Always bind dependencies before services that consume them
+$container->set(LoggerInterface::class, FileLogger::class);
+$container->set(ServiceNeedingLogger::class);
 
 // Resolve services
 $shared = $container->get(MyService::class);
 $transient = $container->get(MyOtherService::class);
 $cache = $container->get(CacheInterface::class);
 $logger = $container->get(LoggerInterface::class);
+```
+
+> **Tip:** Bind aliases or interfaces *before* registering the services that consume them. Resolution happens immediately, so the container can only error, not infer, when a dependency is missing.
+
+By default, every binding is shared. Prefer transient lifecycles instead? Pass `sharedByDefault: false`
+to the constructor and opt specific services back into shared mode when needed:
+
+```php
+$container = new ArgonContainer(sharedByDefault: false);
+
+$container->set(CacheInterface::class, InMemoryCache::class); // transient baseline
+$container->set(LoggerInterface::class, FileLogger::class)->shared(); // explicit singleton
 ```
 ### Binding Arguments
 
@@ -442,14 +458,11 @@ if (file_exists($file) && !$_ENV['DEV']) {
 ```
 The compiled container is a pure PHP class with zero runtime resolution logic for standard bindings. In **strict mode** the generated class omits the dynamic fallback entirely—missing registrations fail fast with `NotFoundException`. In magic mode it continues to fall back to the runtime resolver when needed.
 
-
----
-
 ## `ArgonContainer` API
 
 | ArgonContainer            | Parameters                                      | Return                                     | Description                                                                       |
 |---------------------------|-------------------------------------------------|--------------------------------------------|-----------------------------------------------------------------------------------|
-| `set()`                   | `string $id`, `Closure\|string\|null $concrete` | `BindingBuilderInterface`                  | Registers a service as shared by default (use `->transient()` to override)        |
+| `set()`                   | `string $id`, `Closure\|string\|null $concrete` | `BindingBuilderInterface`                  | Registers a service using the container's default lifecycle (override with `->transient()` or `->shared()`). |
 | `get()`                   | `string $id`                                    | `object`                                   | Resolves and returns the service.                                                 |
 | `has()`                   | `string $id`                                    | `bool`                                     | Checks if a service binding exists.                                               |
 | `getBindings()`           | –                                               | `array<string, ServiceDescriptor>`         | Returns all registered service descriptors.                                       |
@@ -470,6 +483,7 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 | `isResolvable()`          | `string $id`                                    | `bool`                                     | Checks if a service can be resolved, even if not explicitly bound.                |
 | `optional()`              | `string $id`                                    | `object`                                   | Resolves a service or returns a NullServiceProxy if not found.                    |
 | `isStrictMode()`          | –                                               | `bool`                                     | Indicates whether the container was instantiated in strict mode.                 |
+| `isSharedByDefault()`     | –                                               | `bool`                                     | Reveals whether new bindings default to shared or transient lifecycle.           |
 
 ## `BindingBuilder` API
 
@@ -478,11 +492,24 @@ When you call `set()`, it returns a `BindingBuilder`, which lets you **configure
 | Method               | Parameters                                       | Return                       | Description                                                                              |
 |----------------------|--------------------------------------------------|------------------------------|------------------------------------------------------------------------------------------|
 | `transient()`        | –                                                | `BindingBuilderInterface`    | Marks the service as non-shared. A new instance will be created for each request.        |
+| `shared()`           | –                                                | `BindingBuilderInterface`    | Marks the service as shared, overriding a transient default if configured.              |
 | `skipCompilation()`  | –                                                | `BindingBuilderInterface`    | Excludes this binding from the compiled container. Useful for closures or dynamic logic. |
 | `tag()`              | `string\|list<string> $tags`                     | `BindingBuilderInterface`    | Assigns one or more tags to this service.                                                |
 | `factory()`          | `string $factoryClass`, `?string $method = null` | `BindingBuilderInterface`    | Uses a factory class (optionally a method) to construct the service.                     |
 | `defineInvocation()` | `string $methodName`, `array $args = []`         | `BindingBuilderInterface`    | Pre-defines arguments for a later `invoke()` call. Avoids reflection at runtime.         |
 | `getDescriptor()`    | –                                                | `ServiceDescriptorInterface` | Returns the internal service descriptor for advanced inspection or modification.         |
+
+---
+
+### Troubleshooting
+
+- **Circular dependency detected**: The message `Circular dependency detected for service '...'.` means your dependencies form a loop (e.g., `Foo → Bar → Foo`). Refactor one side to depend on an interface, inject a factory, or defer the dependency until after construction—the container intentionally refuses to pick a side. Argon can’t stop you from wiring a loop; it just halts resolution before PHP spins forever.
+- **Service not found**: A `NotFoundException` signals that no binding or autowireable class exists for the requested ID (or strict mode forbids the fallback). Verify the identifier, register a binding, or disable strict mode for dynamic lookups. The attached JSON `DebugTrace` shows which parameter triggered the lookup.
+- **Primitive parameter unresolved**: Errors such as `Cannot resolve primitive parameter '$env'` happen when constructors require scalars with no default. Provide them when binding (`set(Service::class, args: ['env' => 'prod'])`), supply a contextual override, or make the constructor argument optional.
+- **Union type ambiguity**: Union-typed dependencies are rejected unless a contextual binding points to exactly one concrete. Bind per consumer with `$container->for(Consumer::class)->set(Interface::class, Implementation::class);`.
+- **Factory argument mismatch**: `Missing required argument 'foo'` raised from a factory method means the binding’s arguments didn’t cover the method signature. Pass overrides in `$container->get(Service::class, ['foo' => ...])` or attach them to the binding via `set(..., args: [...])`.
+
+When errors persist, inspect the `DebugTrace::toJson()` output embedded in exceptions—it captures the entire resolution path that led to the failure.
 
 ---
 
