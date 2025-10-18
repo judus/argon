@@ -295,15 +295,18 @@ class ArgonContainer implements ContainerInterface
      * This method only works after the service has been resolved.
      * It should be called during `boot()` or runtime setup — not `register()`.
      *
-     * @param string $id
-     * @param callable(object):object $decorator
+     * @template T of object
+     * @param class-string<T>|string $id
+     * @param callable(T):T $decorator
      * @return ArgonContainer
      * @throws ContainerException
      * @throws NotFoundException
      */
     public function extend(string $id, callable $decorator): ArgonContainer
     {
+        /** @var T $instance */
         $instance = $this->get($id);
+        /** @var T $decorated */
         $decorated = $decorator($instance);
 
         $this->binder->set($id, fn() => $decorated);
