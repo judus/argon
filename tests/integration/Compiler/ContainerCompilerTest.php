@@ -5,20 +5,19 @@ declare(strict_types=1);
 namespace Tests\Integration\Compiler;
 
 use ErrorException;
-use Maduser\Argon\Container\ArgumentMap;
+use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\Compiler\ContainerCompiler;
-use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
+use ReflectionMethod;
+use RuntimeException;
 use stdClass;
-use Tests\Integration\Compiler\Mocks\ClassWithParamWithoutDefault;
 use Tests\Integration\Compiler\Mocks\DefaultValueService;
-use Tests\Integration\Compiler\Mocks\ImplicitNullable;
 use Tests\Integration\Compiler\Mocks\DependentLoggerInterceptor;
+use Tests\Integration\Compiler\Mocks\ImplicitNullable;
 use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
@@ -31,15 +30,13 @@ use Tests\Integration\Compiler\Mocks\WithOptionalInterface;
 use Tests\Integration\Compiler\Mocks\WithOptionalService;
 use Tests\Integration\Mocks\CustomLogger;
 use Tests\Integration\Mocks\DeepGraph;
-use Tests\Integration\Mocks\MidLevel;
 use Tests\Integration\Mocks\Logger as AutowireLogger;
 use Tests\Integration\Mocks\LoggerInterface;
+use Tests\Integration\Mocks\MidLevel;
 use Tests\Integration\Mocks\NeedsLogger;
-use Tests\Integration\Mocks\NeedsNullable;
 use Tests\Integration\Mocks\PreArgOverride;
 use Tests\Integration\Mocks\SimpleService;
 use Tests\Mocks\DummyProvider;
-use Tests\Unit\Container\Mocks\NonInstantiableClass;
 
 final class ContainerCompilerTest extends TestCase
 {
@@ -67,7 +64,7 @@ final class ContainerCompilerTest extends TestCase
 
         $fqcn = "{$namespace}\\{$className}";
         if (!class_exists($fqcn)) {
-            throw new \RuntimeException("Failed to load compiled container class: $fqcn");
+            throw new RuntimeException("Failed to load compiled container class: $fqcn");
         }
 
         /** @var ArgonContainer $fqcn */
@@ -75,10 +72,10 @@ final class ContainerCompilerTest extends TestCase
     }
 
 
-
     /**
      * @throws ContainerException
      * @throws NotFoundException
+     * @throws ReflectionException
      */
     public function testCompiledContainerDoesNotResolveClosures(): void
     {
@@ -119,6 +116,7 @@ final class ContainerCompilerTest extends TestCase
     /**
      * @throws ContainerException
      * @throws ReflectionException
+     * @throws NotFoundException
      */
     public function testCompiledContainerResolvesSingletons(): void
     {
@@ -686,7 +684,7 @@ final class ContainerCompilerTest extends TestCase
 
         $compiled = $this->compileAndLoadContainer($container, 'testInvokeServiceMethodInvokesCompiledMethod');
 
-        $refMethod = new \ReflectionMethod($compiled, 'invokeServiceMethod');
+        $refMethod = new ReflectionMethod($compiled, 'invokeServiceMethod');
 
         $result = $refMethod->invoke($compiled, Logger::class, 'log', ['msg' => 'hello']);
 
@@ -736,6 +734,7 @@ final class ContainerCompilerTest extends TestCase
     /**
      * @throws ContainerException
      * @throws ReflectionException
+     * @throws NotFoundException
      */
     public function testCompiledFactoryAllowsRuntimeArguments(): void
     {
@@ -773,7 +772,10 @@ final class ContainerCompilerTest extends TestCase
             $container->set(DefaultValueService::class)
                 ->factory(MailerFactory::class, 'createWithRequired');
 
-            $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryThrowsIfRequiredArgumentMissing');
+            $compiled = $this->compileAndLoadContainer(
+                $container,
+                'testCompiledFactoryThrowsIfRequiredArgumentMissing'
+            );
 
             $compiled->get(DefaultValueService::class);
         } finally {

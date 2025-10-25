@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container\Support;
 
 use Maduser\Argon\Container\Exceptions\ContainerException;
+
 use function array_filter;
 use function is_array;
 
