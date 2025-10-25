@@ -12,23 +12,19 @@ use Maduser\Argon\Container\ServiceBinder;
 use PHPUnit\Framework\TestCase;
 use Tests\Unit\Container\Mocks\SomeClass;
 
-class AbstractServiceProviderTest extends TestCase
+final class AbstractServiceProviderTest extends TestCase
 {
-    public function testBootDoesNothingByDefault(): void
+    public function testRegisterAndBootDoesNothingByDefault(): void
     {
         $provider = new class extends AbstractServiceProvider {
-            public function register(ArgonContainer $container): void
-            {
-                // No-op for test
-            }
         };
 
         $container = $this->createMock(ArgonContainer::class);
 
-        // No exception = pass
+        $provider->register($container);
         $provider->boot($container);
 
-        $this->assertTrue(true); // Just assert we got here
+        $this->assertTrue(true);
     }
 
     /**
@@ -53,6 +49,7 @@ class AbstractServiceProviderTest extends TestCase
             ->willReturn($bindingBuilder);
 
         $provider = new class extends AbstractServiceProvider {
+            #[\Override]
             public function register(ArgonContainer $container): void
             {
                 $container->set(SomeClass::class);

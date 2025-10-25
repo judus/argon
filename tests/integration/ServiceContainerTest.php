@@ -21,6 +21,7 @@ final class ServiceContainerTest extends TestCase
 {
     private ArgonContainer $container;
 
+    #[\Override]
     protected function setUp(): void
     {
         $this->container = new ArgonContainer();
@@ -144,11 +145,13 @@ final class ServiceContainerTest extends TestCase
     {
         // Define a concrete interceptor class inline for clarity/testing
         $interceptor = new class implements PostResolutionInterceptorInterface {
+            #[\Override]
             public static function supports(object|string $target): bool
             {
                 return $target === stdClass::class || $target instanceof stdClass;
             }
 
+            #[\Override]
             public function intercept(object $instance): void
             {
                 $instance->intercepted = true;

@@ -7,7 +7,7 @@ namespace Tests\Unit\Container\Support;
 use Maduser\Argon\Container\Support\NullServiceProxy;
 use PHPUnit\Framework\TestCase;
 
-class NullServiceProxyTest extends TestCase
+final class NullServiceProxyTest extends TestCase
 {
     public function testCallDoesNothing(): void
     {
@@ -15,6 +15,7 @@ class NullServiceProxyTest extends TestCase
 
         // Should not throw or return anything
         /** @noinspection PhpUndefinedMethodInspection */
+        /** @psalm-suppress UndefinedMagicMethod testing null proxy behavior */
         $this->assertNull($proxy->nonExistentMethod());
     }
 
@@ -23,6 +24,8 @@ class NullServiceProxyTest extends TestCase
         $proxy = new NullServiceProxy();
 
         /** @noinspection PhpUndefinedFieldInspection */
+        /** @psalm-suppress UndefinedMagicPropertyFetch testing null proxy behavior */
+        /** @psalm-suppress TypeDoesNotContainNull annotated return type is null */
         $this->assertNull($proxy->someProperty);
     }
 
@@ -32,8 +35,11 @@ class NullServiceProxyTest extends TestCase
 
         // Set shouldn't throw or persist anything
         /** @noinspection PhpUndefinedFieldInspection */
+        /** @psalm-suppress UndefinedMagicPropertyAssignment testing null proxy behavior */
         $proxy->someProperty = 'value';
 
+        /** @psalm-suppress UndefinedMagicPropertyFetch testing null proxy behavior */
+        /** @psalm-suppress TypeDoesNotContainNull annotated return type is null */
         $this->assertNull($proxy->someProperty);
     }
 
@@ -48,9 +54,12 @@ class NullServiceProxyTest extends TestCase
     {
         $proxy = new NullServiceProxy();
 
+        /** @psalm-suppress UndefinedMagicPropertyFetch testing null proxy behavior */
         unset($proxy->someProperty);
 
         /** @noinspection PhpUndefinedFieldInspection */
+        /** @psalm-suppress UndefinedMagicPropertyFetch testing null proxy behavior */
+        /** @psalm-suppress TypeDoesNotContainNull annotated return type is null */
         $this->assertNull($proxy->someProperty);
     }
 }

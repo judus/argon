@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Mocks;
 
-class NeedsLogger
+final class NeedsLogger
 {
     public function __construct(
         public LoggerInterface $logger

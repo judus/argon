@@ -7,7 +7,7 @@ namespace Tests\Mocks;
 /**
  * Mock service class with multiple parameters for testing overrides.
  */
-class TestServiceWithMultipleParams
+final class TestServiceWithMultipleParams
 {
     private string $param1;
     private string $param2;

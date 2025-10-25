@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler\Mocks;
 
-readonly class TestServiceWithMultipleParams
+final readonly class TestServiceWithMultipleParams
 {
     public function __construct(
         private string $param1,

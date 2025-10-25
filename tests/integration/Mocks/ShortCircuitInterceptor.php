@@ -9,11 +9,13 @@ use Tests\Integration\Mocks\SimpleService;
 
 final class ShortCircuitInterceptor implements PreResolutionInterceptorInterface
 {
+    #[\Override]
     public static function supports(object|string $target): bool
     {
         return $target === SimpleService::class;
     }
 
+    #[\Override]
     public function intercept(string $id, array &$parameters): ?object
     {
         return new SimpleService('intercepted-instance');

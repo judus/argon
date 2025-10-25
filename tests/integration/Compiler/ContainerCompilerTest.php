@@ -5,20 +5,19 @@ declare(strict_types=1);
 namespace Tests\Integration\Compiler;
 
 use ErrorException;
-use Maduser\Argon\Container\ArgumentMap;
+use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\Compiler\ContainerCompiler;
-use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
+use ReflectionMethod;
+use RuntimeException;
 use stdClass;
-use Tests\Integration\Compiler\Mocks\ClassWithParamWithoutDefault;
 use Tests\Integration\Compiler\Mocks\DefaultValueService;
-use Tests\Integration\Compiler\Mocks\ImplicitNullable;
 use Tests\Integration\Compiler\Mocks\DependentLoggerInterceptor;
+use Tests\Integration\Compiler\Mocks\ImplicitNullable;
 use Tests\Integration\Compiler\Mocks\Logger;
 use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
@@ -31,17 +30,15 @@ use Tests\Integration\Compiler\Mocks\WithOptionalInterface;
 use Tests\Integration\Compiler\Mocks\WithOptionalService;
 use Tests\Integration\Mocks\CustomLogger;
 use Tests\Integration\Mocks\DeepGraph;
-use Tests\Integration\Mocks\MidLevel;
 use Tests\Integration\Mocks\Logger as AutowireLogger;
 use Tests\Integration\Mocks\LoggerInterface;
+use Tests\Integration\Mocks\MidLevel;
 use Tests\Integration\Mocks\NeedsLogger;
-use Tests\Integration\Mocks\NeedsNullable;
 use Tests\Integration\Mocks\PreArgOverride;
 use Tests\Integration\Mocks\SimpleService;
 use Tests\Mocks\DummyProvider;
-use Tests\Unit\Container\Mocks\NonInstantiableClass;
 
-class ContainerCompilerTest extends TestCase
+final class ContainerCompilerTest extends TestCase
 {
     /**
      * @throws ContainerException
@@ -67,7 +64,7 @@ class ContainerCompilerTest extends TestCase
 
         $fqcn = "{$namespace}\\{$className}";
         if (!class_exists($fqcn)) {
-            throw new \RuntimeException("Failed to load compiled container class: $fqcn");
+            throw new RuntimeException("Failed to load compiled container class: $fqcn");
         }
 
         /** @var ArgonContainer $fqcn */
@@ -75,10 +72,10 @@ class ContainerCompilerTest extends TestCase
     }
 
 
-
     /**
      * @throws ContainerException
      * @throws NotFoundException
+     * @throws ReflectionException
      */
     public function testCompiledContainerDoesNotResolveClosures(): void
     {
@@ -119,6 +116,7 @@ class ContainerCompilerTest extends TestCase
     /**
      * @throws ContainerException
      * @throws ReflectionException
+     * @throws NotFoundException
      */
     public function testCompiledContainerResolvesSingletons(): void
     {
@@ -621,6 +619,7 @@ class ContainerCompilerTest extends TestCase
         $this->assertFileExists($outputPath);
 
         $contents = file_get_contents($outputPath);
+        $this->assertNotFalse($contents);
         $this->assertStringContainsString("'default-val'", $contents);
     }
 
@@ -685,7 +684,7 @@ class ContainerCompilerTest extends TestCase
 
         $compiled = $this->compileAndLoadContainer($container, 'testInvokeServiceMethodInvokesCompiledMethod');
 
-        $refMethod = new \ReflectionMethod($compiled, 'invokeServiceMethod');
+        $refMethod = new ReflectionMethod($compiled, 'invokeServiceMethod');
 
         $result = $refMethod->invoke($compiled, Logger::class, 'log', ['msg' => 'hello']);
 
@@ -735,6 +734,7 @@ class ContainerCompilerTest extends TestCase
     /**
      * @throws ContainerException
      * @throws ReflectionException
+     * @throws NotFoundException
      */
     public function testCompiledFactoryAllowsRuntimeArguments(): void
     {
@@ -760,22 +760,27 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledFactoryThrowsIfRequiredArgumentMissing(): void
     {
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage('Undefined array key "label"');
+
         set_error_handler(function ($severity, $message, $file, $line) {
             throw new ErrorException($message, 0, $severity, $file, $line);
         });
 
-        $this->expectException(ErrorException::class);
-        $this->expectExceptionMessage('Undefined array key "label"');
+        try {
+            $container = new ArgonContainer();
+            $container->set(DefaultValueService::class)
+                ->factory(MailerFactory::class, 'createWithRequired');
 
-        $container = new ArgonContainer();
-        $container->set(DefaultValueService::class)
-            ->factory(MailerFactory::class, 'createWithRequired');
+            $compiled = $this->compileAndLoadContainer(
+                $container,
+                'testCompiledFactoryThrowsIfRequiredArgumentMissing'
+            );
 
-        $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryThrowsIfRequiredArgumentMissing');
-
-        $compiled->get(DefaultValueService::class);
-
-        restore_error_handler(); // Clean up
+            $compiled->get(DefaultValueService::class);
+        } finally {
+            restore_error_handler(); // Ensure handler restored even on exception
+        }
     }
 
     /**
@@ -856,7 +861,7 @@ class ContainerCompilerTest extends TestCase
         $compiler->compile($output, 'TestClosureSkip');
 
         $compiled = file_get_contents($output);
-
+        $this->assertNotFalse($compiled);
         $this->assertStringNotContainsString('ClosureService', $compiled);
         @unlink($output);
     }

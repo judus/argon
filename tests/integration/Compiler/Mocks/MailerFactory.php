@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler\Mocks;
 
-class MailerFactory
+final class MailerFactory
 {
     public function create(): Mailer
     {

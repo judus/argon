@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Mocks;
 
-class StaticFooFactory
+final class StaticFooFactory
 {
     public static function createStatic(): Foo
     {

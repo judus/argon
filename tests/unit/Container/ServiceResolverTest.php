@@ -24,7 +24,7 @@ use Tests\Unit\Container\Mocks\NonInstantiableClass;
 use Tests\Unit\Container\Mocks\SampleInterface;
 use Tests\Unit\Container\Mocks\SomeClass;
 
-class ServiceResolverTest extends TestCase
+final class ServiceResolverTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ServiceBinderInterface&MockObject $binder;
@@ -37,6 +37,7 @@ class ServiceResolverTest extends TestCase
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ServiceResolverInterface $resolver;
 
+    #[\Override]
     protected function setUp(): void
     {
         $this->binder = $this->createMock(ServiceBinderInterface::class);
@@ -510,5 +511,25 @@ class ServiceResolverTest extends TestCase
         $result = $resolver->resolve('boundService');
 
         $this->assertInstanceOf(stdClass::class, $result);
+    }
+
+    public function testResolveWrapsReflectionExceptionFromDescriptor(): void
+    {
+        $descriptor = $this->createMock(ServiceDescriptorInterface::class);
+        $descriptor->method('isShared')->willReturn(false);
+        $descriptor->method('getInstance')->willReturn(null);
+        $descriptor->method('hasFactory')->willReturn(false);
+        $descriptor->method('getConcrete')->willReturn('SomeMissingClass');
+
+        $this->binder->method('getDescriptor')->willReturn($descriptor);
+        $this->interceptors->method('matchPre')->willReturn(null);
+        $this->reflectionCache
+            ->method('get')
+            ->willThrowException(new ReflectionException('Mocked reflection failure.'));
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessageMatches('/Reflection error: Mocked reflection failure\\./');
+
+        $this->resolver->resolve('serviceWithReflectionFailure');
     }
 }

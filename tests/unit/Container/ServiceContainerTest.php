@@ -33,7 +33,7 @@ use Tests\Mocks\UninstantiableClass;
 use Tests\Unit\Container\Mocks\FooBarService;
 use Tests\Unit\Container\Mocks\UserService;
 
-class ServiceContainerTest extends TestCase
+final class ServiceContainerTest extends TestCase
 {
     /**
      * @throws NotFoundException
@@ -63,6 +63,34 @@ class ServiceContainerTest extends TestCase
         $instance2 = $container->get('service');
 
         $this->assertNotSame($instance1, $instance2, 'Transient services should return different instances.');
+    }
+
+    public function testContainerCanDefaultToTransientBindings(): void
+    {
+        $container = new ArgonContainer(sharedByDefault: false);
+        $this->assertFalse($container->isSharedByDefault());
+        $container->set('service', fn() => new stdClass());
+
+        $instance1 = $container->get('service');
+        $instance2 = $container->get('service');
+
+        $this->assertNotSame($instance1, $instance2, 'Transient default should create new instances.');
+    }
+
+    public function testSharedOverridesTransientDefault(): void
+    {
+        $container = new ArgonContainer(sharedByDefault: false);
+        $container->set('shared', fn() => new stdClass())->shared();
+
+        $this->assertSame($container->get('shared'), $container->get('shared'));
+    }
+
+    public function testContainerBindingsRemainSharedWithTransientDefault(): void
+    {
+        $container = new ArgonContainer(sharedByDefault: false);
+
+        $this->assertSame($container, $container->get(ArgonContainer::class));
+        $this->assertSame($container, $container->get(\Psr\Container\ContainerInterface::class));
     }
 
     /**
@@ -235,11 +263,13 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         $class = new class implements PreResolutionInterceptorInterface {
+            #[\Override]
             public static function supports(object|string $target): bool
             {
                 return true;
             }
 
+            #[\Override]
             public function intercept(string $id, array &$parameters = []): ?object
             {
                 return null;
@@ -263,11 +293,13 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         $interceptor = new class implements PostResolutionInterceptorInterface {
+            #[\Override]
             public static function supports(object|string $target): bool
             {
                 return true;
             }
 
+            #[\Override]
             public function intercept(object $instance): void
             {
                 // noop
@@ -811,6 +843,16 @@ class ServiceContainerTest extends TestCase
         $bindings = [$id => $mockDescriptor];
 
         $binder = $this->createMock(ServiceBinderInterface::class);
+        $bindingBuilder = $this->createMock(\Maduser\Argon\Container\Contracts\BindingBuilderInterface::class);
+
+        $bindingBuilder->method('skipCompilation')->willReturnSelf();
+        $bindingBuilder->method('shared')->willReturnSelf();
+
+        $binder->expects($this->once())
+            ->method('setDefaultShared')
+            ->with(true);
+
+        $binder->method('set')->willReturn($bindingBuilder);
         $binder->expects($this->once())
             ->method('getDescriptors')
             ->willReturn($bindings);

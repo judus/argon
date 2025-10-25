@@ -6,7 +6,7 @@ namespace Tests\Integration\Compiler\Mocks;
 
 use Tests\Integration\Mocks\LoggerInterface;
 
-class ImplicitNullable
+final class ImplicitNullable
 {
     public ?LoggerInterface $logger;
 

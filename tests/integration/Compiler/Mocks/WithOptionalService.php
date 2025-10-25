@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler\Mocks;
 
-class WithOptionalService
+final class WithOptionalService
 {
     public ?Logger $logger = null;
     public function __construct(

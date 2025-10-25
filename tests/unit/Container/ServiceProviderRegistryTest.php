@@ -16,11 +16,12 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 use Tests\Unit\Container\Mocks\SampleProvider;
 
-class ServiceProviderRegistryTest extends TestCase
+final class ServiceProviderRegistryTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ArgonContainer&MockObject $container;
 
+    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();

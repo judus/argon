@@ -7,8 +7,9 @@ namespace Tests\Integration\Interceptors\Mocks;
 use InvalidArgumentException;
 use Maduser\Argon\Container\Interceptors\Post\Contracts\ValidationInterface;
 
-class InvalidRequest implements ValidationInterface
+final class InvalidRequest implements ValidationInterface
 {
+    #[\Override]
     public function validate(): void
     {
         throw new InvalidArgumentException('Title is required.');

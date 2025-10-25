@@ -6,7 +6,7 @@ namespace Tests\Integration\Compiler\Mocks;
 
 use Tests\Integration\Mocks\LoggerInterface;
 
-class Logger implements LoggerInterface
+final class Logger implements LoggerInterface
 {
     public bool $intercepted = false;
     public ?string $note = null;

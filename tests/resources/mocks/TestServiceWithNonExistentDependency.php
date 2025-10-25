@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Mocks;
 
-class TestServiceWithNonExistentDependency
+final class TestServiceWithNonExistentDependency
 {
-    public function __construct(NonExistentDependency $dependency)
+    public function __construct(NonExistentDependency $_dependency)
     {
     }
 }

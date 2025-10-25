@@ -6,7 +6,7 @@ namespace Tests\Integration\Compiler\Mocks;
 
 use Tests\Integration\Mocks\LoggerInterface;
 
-class WithOptionalInterface
+final class WithOptionalInterface
 {
     public ?LoggerInterface $logger = null;
     public function __construct(

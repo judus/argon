@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Interceptors\Mocks;
 
-class Request
+final class Request
 {
     private array $data;
 

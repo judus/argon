@@ -30,7 +30,7 @@ use Tests\Unit\Container\Mocks\BrokenFactory;
 use Tests\Unit\Container\Mocks\Foo;
 use Tests\Unit\Container\Mocks\FooFactory;
 
-class ServiceDescriptorTest extends TestCase
+final class ServiceDescriptorTest extends TestCase
 {
     public function testIdIsSet(): void
     {

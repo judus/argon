@@ -6,7 +6,7 @@ namespace Tests\Integration\Interceptors\Mocks;
 
 use Maduser\Argon\Container\Interceptors\Post\Contracts\ValidationInterface;
 
-class BlogPostRequest implements ValidationInterface
+final class BlogPostRequest implements ValidationInterface
 {
     public bool $wasValidated = false;
 
@@ -14,6 +14,7 @@ class BlogPostRequest implements ValidationInterface
     {
     }
 
+    #[\Override]
     public function validate(): void
     {
         $this->wasValidated = true;
