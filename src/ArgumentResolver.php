@@ -12,11 +12,11 @@ use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Support\DebugTrace;
+use Override;
 use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionType;
 use ReflectionUnionType;
-use RuntimeException;
 
 /**
  * Resolves constructor and method parameters with contextual or container-based resolution.
@@ -32,22 +32,22 @@ final class ArgumentResolver implements ArgumentResolverInterface
     ) {
     }
 
-    #[\Override]
+    #[Override]
     public function setServiceResolver(ServiceResolverInterface $resolver): void
     {
         $this->serviceResolver = $resolver;
     }
 
     /**
-     * @param ReflectionParameter  $param
+     * @param ReflectionParameter $param
      * @param array<array-key, mixed> $overrides
-     *
+     * @param string|null $contextId
      * @return mixed
      *
      * @throws ContainerException
      * @throws NotFoundException
      */
-    #[\Override]
+    #[Override]
     public function resolve(
         ReflectionParameter $param,
         array $overrides = [],

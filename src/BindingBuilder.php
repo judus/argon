@@ -7,6 +7,7 @@ namespace Maduser\Argon\Container;
 use Maduser\Argon\Container\Contracts\BindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Contracts\TagManagerInterface;
+use Override;
 
 /**
  * @inheritDoc
@@ -15,12 +16,12 @@ final readonly class BindingBuilder implements BindingBuilderInterface
 {
     public function __construct(
         private ServiceDescriptorInterface $descriptor,
-        private readonly TagManagerInterface $tagManager,
+        private TagManagerInterface $tagManager,
     ) {
     }
 
     /** @inheritDoc */
-    #[\Override]
+    #[Override]
     public function factory(string $factoryClass, ?string $method = null): BindingBuilderInterface
     {
         $this->descriptor->setFactory($factoryClass, $method);
@@ -29,7 +30,7 @@ final readonly class BindingBuilder implements BindingBuilderInterface
     }
 
     /** @inheritDoc */
-    #[\Override]
+    #[Override]
     public function defineInvocation(string $methodName, array $args = []): BindingBuilderInterface
     {
         $this->descriptor->defineInvocation($methodName, $args);
@@ -38,7 +39,7 @@ final readonly class BindingBuilder implements BindingBuilderInterface
     }
 
     /** @inheritDoc */
-    #[\Override]
+    #[Override]
     public function tag(array|string $tags): BindingBuilderInterface
     {
         $tags = is_array($tags) ? $tags : [$tags];
@@ -49,7 +50,7 @@ final readonly class BindingBuilder implements BindingBuilderInterface
     }
 
     /** @inheritDoc */
-    #[\Override]
+    #[Override]
     public function skipCompilation(): BindingBuilderInterface
     {
         $this->descriptor->skipCompilation();
@@ -58,7 +59,7 @@ final readonly class BindingBuilder implements BindingBuilderInterface
     }
 
     /** @inheritDoc */
-    #[\Override]
+    #[Override]
     public function transient(): BindingBuilderInterface
     {
         $this->descriptor->setShared(false);
@@ -67,7 +68,7 @@ final readonly class BindingBuilder implements BindingBuilderInterface
     }
 
     /** @inheritDoc */
-    #[\Override]
+    #[Override]
     public function shared(): BindingBuilderInterface
     {
         $this->descriptor->setShared(true);
@@ -76,7 +77,7 @@ final readonly class BindingBuilder implements BindingBuilderInterface
     }
 
     /** @inheritDoc */
-    #[\Override]
+    #[Override]
     public function getDescriptor(): ServiceDescriptorInterface
     {
         return $this->descriptor;

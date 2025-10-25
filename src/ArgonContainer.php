@@ -26,6 +26,7 @@ use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Support\CallableInvoker;
 use Maduser\Argon\Container\Support\NullServiceProxy;
+use Override;
 use Psr\Container\ContainerInterface;
 
 /**
@@ -45,8 +46,8 @@ class ArgonContainer implements ContainerInterface
     private readonly ServiceBinderInterface $binder;
     private readonly ParameterStoreInterface $parameterStore;
     private readonly InterceptorRegistryInterface $interceptors;
-    private bool $strictMode = false;
-    private bool $sharedByDefault = true;
+    private bool $strictMode;
+    private bool $sharedByDefault;
 
     /**
      * @throws ContainerException
@@ -132,7 +133,7 @@ class ArgonContainer implements ContainerInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
-    #[\Override]
+    #[Override]
     public function get(string $id, array $args = []): object
     {
         if ($id === self::class || $id === ContainerInterface::class) {
@@ -142,7 +143,7 @@ class ArgonContainer implements ContainerInterface
         return $this->serviceResolver->resolve($id, $args);
     }
 
-    #[\Override]
+    #[Override]
     public function has(string $id): bool
     {
         return $this->binder->has($id);

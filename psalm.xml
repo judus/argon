@@ -30,7 +30,7 @@
             <errorLevel type="suppress">
                 <directory name="tests"/>
                 <!-- Method setStore is only used in the compiled container -->
-                <file name="src/Container/Contracts/ParameterStoreInterface.php"/>
+                <file name="src/Contracts/ParameterStoreInterface.php"/>
             </errorLevel>
         </PossiblyUnusedMethod>
         <UnusedClass>

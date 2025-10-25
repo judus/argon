@@ -14,6 +14,7 @@ use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Support\DebugTrace;
+use Override;
 use ReflectionException;
 use ReflectionNamedType;
 use ReflectionParameter;
@@ -43,7 +44,7 @@ final class ServiceResolver implements ServiceResolverInterface
         private readonly ReflectionCacheInterface $reflectionCache,
         private readonly InterceptorRegistryInterface $interceptors,
         private readonly ArgumentResolverInterface $argumentResolver,
-        private bool $strictMode = false
+        private readonly bool $strictMode = false
     ) {
     }
 
@@ -62,7 +63,7 @@ final class ServiceResolver implements ServiceResolverInterface
      * We're going to make one single exception here,
      * IMAO this more likely PossiblyPsalmsProblem
      */
-    #[\Override]
+    #[Override]
     public function resolve(string $id, array $args = []): object
     {
         $isRootResolve = empty(self::$resolutionStack);
@@ -234,13 +235,13 @@ final class ServiceResolver implements ServiceResolverInterface
      * @template T of object
      * @param class-string<T> $className
      * @param array<array-key, mixed> $args
-     * @return object
+     * @return object|null
      * @psalm-return ($className is class-string<T> ? T : object)
      *
      * @throws ContainerException
      * @throws NotFoundException
      */
-    private function resolveClass(string $className, array $args = []): mixed
+    private function resolveClass(string $className, array $args = []): ?object
     {
         if ($descriptor = $this->binder->getDescriptor($className)) {
             $concrete = $descriptor->getConcrete();

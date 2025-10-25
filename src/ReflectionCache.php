@@ -6,6 +6,7 @@ namespace Maduser\Argon\Container;
 
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
+use Override;
 use ReflectionClass;
 
 /**
@@ -23,7 +24,7 @@ final class ReflectionCache implements ReflectionCacheInterface
      * @return ReflectionClass<object>
      * @throws ContainerException
      */
-    #[\Override]
+    #[Override]
     public function get(string $className): ReflectionClass
     {
         if (!isset($this->reflectionCache[$className])) {

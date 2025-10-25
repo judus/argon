@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Maduser\Argon\Container\Contracts\ArgumentMapInterface;
+use Override;
 
 final class ArgumentMap implements ArgumentMapInterface
 {
     /** @var array<array-key, array<array-key, mixed>> */
-    private array $map = [];
+    private array $map;
 
     /**
      * @param array<array-key, array<string, mixed>> $map
@@ -19,13 +20,13 @@ final class ArgumentMap implements ArgumentMapInterface
         $this->map = $map;
     }
 
-    #[\Override]
+    #[Override]
     public function setArguments(array $arguments): void
     {
         $this->map = $arguments;
     }
 
-    #[\Override]
+    #[Override]
     public function get(string $serviceId): array
     {
         return $this->map[$serviceId] ?? [];
@@ -36,26 +37,26 @@ final class ArgumentMap implements ArgumentMapInterface
      * @param array<array-key, mixed> $arguments
      * @return void
      */
-    #[\Override]
+    #[Override]
     public function set(string $serviceId, array $arguments): void
     {
         $this->map[$serviceId] = $arguments;
     }
 
-    #[\Override]
+    #[Override]
     public function getArgument(string $serviceId, string $key, mixed $default = null): mixed
     {
         return $this->map[$serviceId][$key] ?? $default;
     }
 
-    #[\Override]
+    #[Override]
     public function has(string $serviceId, string $argument): bool
     {
         return isset($this->map[$serviceId][$argument]);
     }
 
     /** @return array<array-key, array<array-key, mixed>> */
-    #[\Override]
+    #[Override]
     public function all(): array
     {
         return $this->map;

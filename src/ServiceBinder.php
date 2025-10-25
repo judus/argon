@@ -10,6 +10,7 @@ use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Contracts\TagManagerInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
+use Override;
 
 /**
  * Handles service registrations into the container.
@@ -30,25 +31,25 @@ final class ServiceBinder implements ServiceBinderInterface
     /**
      * @return array<string, ServiceDescriptor>
      */
-    #[\Override]
+    #[Override]
     public function getDescriptors(): array
     {
         return $this->descriptors;
     }
 
-    #[\Override]
+    #[Override]
     public function getDescriptor(string $id): ?ServiceDescriptorInterface
     {
         return $this->descriptors[$id] ?? null;
     }
 
-    #[\Override]
+    #[Override]
     public function has(string $id): bool
     {
         return isset($this->descriptors[$id]);
     }
 
-    #[\Override]
+    #[Override]
     public function setDefaultShared(bool $shared): void
     {
         $this->defaultShared = $shared;
@@ -63,7 +64,7 @@ final class ServiceBinder implements ServiceBinderInterface
      * @return BindingBuilderInterface
      * @throws ContainerException
      */
-    #[\Override]
+    #[Override]
     public function set(
         string $id,
         Closure|string|null $concrete = null,
@@ -88,7 +89,7 @@ final class ServiceBinder implements ServiceBinderInterface
      * @param callable(): mixed $factory
      * @param bool $shared
      */
-    #[\Override]
+    #[Override]
     public function registerFactory(string $id, callable $factory, bool $shared = true): void
     {
         $this->descriptors[$id] = new ServiceDescriptor(

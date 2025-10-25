@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
+use Override;
 
 /**
  * Base class for service providers.
@@ -16,7 +17,7 @@ abstract class AbstractServiceProvider implements ServiceProviderInterface
     /**
      * Register services in the container.
      */
-    #[\Override]
+    #[Override]
     public function register(ArgonContainer $container): void
     {
         // Optional, override if needed
@@ -25,7 +26,7 @@ abstract class AbstractServiceProvider implements ServiceProviderInterface
     /**
      * Optionally bootstrap services after registration.
      */
-    #[\Override]
+    #[Override]
     public function boot(ArgonContainer $container): void
     {
         // Optional, override if needed

@@ -10,7 +10,7 @@ use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
-use ReflectionException;
+use Override;
 
 /**
  * Resolves contextual bindings or falls back to container resolution.
@@ -29,7 +29,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
      * @param string $target
      * @return ContextualBindingBuilderInterface
      */
-    #[\Override]
+    #[Override]
     public function for(string $target): ContextualBindingBuilderInterface
     {
         return new ContextualBindingBuilder($this->bindings, $target);
@@ -45,7 +45,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
-    #[\Override]
+    #[Override]
     public function resolve(string $consumer, string $dependency): object
     {
         $override = $this->bindings->get($consumer, $dependency);
@@ -68,7 +68,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
      * @param string $dependency
      * @return bool
      */
-    #[\Override]
+    #[Override]
     public function has(string $consumer, string $dependency): bool
     {
         return $this->bindings->has($consumer, $dependency);

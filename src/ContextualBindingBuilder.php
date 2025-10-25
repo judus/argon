@@ -7,6 +7,7 @@ namespace Maduser\Argon\Container;
 use Closure;
 use Maduser\Argon\Container\Contracts\ContextualBindingBuilderInterface;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
+use Override;
 
 /**
  * Facilitates defining contextual bindings for a specific target.
@@ -26,7 +27,7 @@ final readonly class ContextualBindingBuilder implements ContextualBindingBuilde
      * @param string|Closure $concrete The concrete implementation or a Closure factory.
      * @return void
      */
-    #[\Override]
+    #[Override]
     public function set(string $dependency, string|Closure $concrete): void
     {
         $this->registry->bind($this->target, $dependency, $concrete);

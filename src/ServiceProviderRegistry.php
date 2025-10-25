@@ -8,6 +8,7 @@ use Maduser\Argon\Container\Contracts\ServiceProviderInterface;
 use Maduser\Argon\Container\Contracts\ServiceProviderRegistryInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Override;
 
 /**
  * Registers and boots service providers via the container.
@@ -26,7 +27,7 @@ final readonly class ServiceProviderRegistry implements ServiceProviderRegistryI
      * @throws ContainerException
      * @throws NotFoundException
      */
-    #[\Override]
+    #[Override]
     public function register(string $className): void
     {
         if (!class_exists($className)) {
@@ -52,7 +53,7 @@ final readonly class ServiceProviderRegistry implements ServiceProviderRegistryI
      * @throws ContainerException
      * @throws NotFoundException
      */
-    #[\Override]
+    #[Override]
     public function boot(): void
     {
         $providers = $this->container->getTagged('service.provider');
