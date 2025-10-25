@@ -13,7 +13,7 @@
     <!-- Source inclusion for coverage -->
     <source>
         <include>
-            <directory suffix=".php">src/Container</directory>
+            <directory suffix=".php">src</directory>
         </include>
     </source>
 

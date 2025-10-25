@@ -23,7 +23,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Maduser\\Argon\\": "src/"
+      "Maduser\\Argon\\Container\\": "src/"
     },
     "files": [
       "autoload/override-attribute.php"
