@@ -67,6 +67,11 @@ final class ContainerException extends Exception implements ContainerExceptionIn
         return new self("[$interceptor] $message" . self::appendTrace());
     }
 
+    public static function fromInternalError(string $message): self
+    {
+        return new self($message . self::appendTrace());
+    }
+
     private static function appendTrace(): string
     {
         $trace = DebugTrace::toJson();

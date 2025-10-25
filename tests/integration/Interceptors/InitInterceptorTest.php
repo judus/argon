@@ -11,7 +11,7 @@ use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use Tests\Integration\Interceptors\Mocks\NeedsInit;
 
-class InitInterceptorTest extends TestCase
+final class InitInterceptorTest extends TestCase
 {
     /**
      * @throws NotFoundException

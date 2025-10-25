@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Mocks;
 
-class TestConcreteClass
+final class TestConcreteClass
 {
     public function doSomething(): string
     {

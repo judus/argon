@@ -20,6 +20,7 @@ final class ContextualBindings implements ContextualBindingsInterface
     /**
      * @return array
      */
+    #[\Override]
     public function getBindings(): array
     {
         return $this->bindings;
@@ -31,6 +32,7 @@ final class ContextualBindings implements ContextualBindingsInterface
      * @param string|Closure $concrete
      * @return void
      */
+    #[\Override]
     public function bind(string $consumer, string $dependency, string|Closure $concrete): void
     {
         $this->bindings[$consumer][$dependency] = $concrete;
@@ -41,6 +43,7 @@ final class ContextualBindings implements ContextualBindingsInterface
      * @param string $dependency
      * @return string|Closure|null
      */
+    #[\Override]
     public function get(string $consumer, string $dependency): string|Closure|null
     {
         return $this->bindings[$consumer][$dependency] ?? null;
@@ -51,6 +54,7 @@ final class ContextualBindings implements ContextualBindingsInterface
      * @param string $dependency
      * @return bool
      */
+    #[\Override]
     public function has(string $consumer, string $dependency): bool
     {
         return isset($this->bindings[$consumer][$dependency]);

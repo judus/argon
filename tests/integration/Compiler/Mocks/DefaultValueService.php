@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler\Mocks;
 
-class DefaultValueService
+final class DefaultValueService
 {
     public string $label = 'default-label';
 

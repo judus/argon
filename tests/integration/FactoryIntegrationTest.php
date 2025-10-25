@@ -20,6 +20,7 @@ final class FactoryIntegrationTest extends TestCase
 {
     private ArgonContainer $container;
 
+    #[\Override]
     protected function setUp(): void
     {
         $this->container = new ArgonContainer();

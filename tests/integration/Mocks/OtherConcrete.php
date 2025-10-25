@@ -4,6 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Mocks;
 
-class OtherConcrete implements MyInterface
+final class OtherConcrete implements MyInterface
 {
 }

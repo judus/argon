@@ -8,7 +8,7 @@ use Closure;
 use Maduser\Argon\Container\ContextualBindings;
 use PHPUnit\Framework\TestCase;
 
-class ContextualBindingsTest extends TestCase
+final class ContextualBindingsTest extends TestCase
 {
     public function testSetAndGetReturnsStringBinding(): void
     {

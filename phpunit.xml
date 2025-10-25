@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit bootstrap="vendor/autoload.php"
-         colors="true"
-         verbose="true">
+         colors="true">
 
     <!-- The default testsuite -->
     <testsuites>
@@ -11,11 +10,15 @@
         </testsuite>
     </testsuites>
 
-    <!-- Coverage configuration (optional) -->
-    <coverage processUncoveredFiles="true">
+    <!-- Source inclusion for coverage -->
+    <source>
         <include>
             <directory suffix=".php">src/Container</directory>
         </include>
+    </source>
+
+    <!-- Coverage configuration (optional) -->
+    <coverage includeUncoveredFiles="true">
         <report>
             <clover outputFile="build/logs/clover.xml"/>
             <html outputDirectory="build/coverage/html"/>

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler\Mocks;
 
-class Mailer
+final class Mailer
 {
     public Logger $logger;
 

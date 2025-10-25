@@ -12,7 +12,7 @@ use Maduser\Argon\Container\ServiceBinder;
 use PHPUnit\Framework\TestCase;
 use Tests\Unit\Container\Mocks\SomeClass;
 
-class AbstractServiceProviderTest extends TestCase
+final class AbstractServiceProviderTest extends TestCase
 {
     public function testRegisterAndBootDoesNothingByDefault(): void
     {
@@ -49,6 +49,7 @@ class AbstractServiceProviderTest extends TestCase
             ->willReturn($bindingBuilder);
 
         $provider = new class extends AbstractServiceProvider {
+            #[\Override]
             public function register(ArgonContainer $container): void
             {
                 $container->set(SomeClass::class);

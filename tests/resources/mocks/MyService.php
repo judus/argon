@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Mocks;
 
-class MyService
+final class MyService
 {
     public bool $called = false;
 
-    public function doSomething(string $msg): void
+    public function doSomething(string $_msg): void
     {
         $this->called = true;
     }

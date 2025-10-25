@@ -12,12 +12,14 @@ use Maduser\Argon\Container\Interceptors\Post\Contracts\InitInterface;
  */
 final readonly class InitInterceptor implements PostResolutionInterceptorInterface
 {
+    #[\Override]
     public static function supports(object|string $target): bool
     {
         return $target instanceof InitInterface
             || (is_string($target) && is_subclass_of($target, InitInterface::class));
     }
 
+    #[\Override]
     public function intercept(object $instance): void
     {
         if ($instance instanceof InitInterface) {

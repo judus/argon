@@ -26,6 +26,7 @@ final readonly class ServiceProviderRegistry implements ServiceProviderRegistryI
      * @throws ContainerException
      * @throws NotFoundException
      */
+    #[\Override]
     public function register(string $className): void
     {
         if (!class_exists($className)) {
@@ -51,6 +52,7 @@ final readonly class ServiceProviderRegistry implements ServiceProviderRegistryI
      * @throws ContainerException
      * @throws NotFoundException
      */
+    #[\Override]
     public function boot(): void
     {
         $providers = $this->container->getTagged('service.provider');

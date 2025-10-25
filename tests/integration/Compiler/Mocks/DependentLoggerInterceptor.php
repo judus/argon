@@ -13,11 +13,13 @@ final class DependentLoggerInterceptor implements PostResolutionInterceptorInter
     {
     }
 
+    #[\Override]
     public static function supports(object|string $target): bool
     {
         return $target === Logger::class || $target instanceof Logger;
     }
 
+    #[\Override]
     public function intercept(object $instance): void
     {
         if ($instance instanceof Logger) {

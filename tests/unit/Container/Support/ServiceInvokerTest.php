@@ -11,7 +11,7 @@ use Maduser\Argon\Container\Support\ServiceInvoker;
 use Maduser\Argon\Container\Support\StringHelper;
 use PHPUnit\Framework\TestCase;
 
-class ServiceInvokerTest extends TestCase
+final class ServiceInvokerTest extends TestCase
 {
     /**
      * @throws ContainerException
@@ -30,6 +30,7 @@ class ServiceInvokerTest extends TestCase
                 $this->compiledMethod = $compiledMethod;
             }
 
+            #[\Override]
             public function invoke(callable|string|array|object $target, array $arguments = []): mixed
             {
                 return 'dynamic-fallback';
@@ -60,6 +61,7 @@ class ServiceInvokerTest extends TestCase
     public function testFallsBackToDynamicInvocation(): void
     {
         $container = new class extends ArgonContainer {
+            #[\Override]
             public function invoke(callable|string|array|object $target, array $arguments = []): mixed
             {
                 return 'fallback-hit';

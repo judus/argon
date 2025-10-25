@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler\Mocks;
 
-class ServiceWithDependency
+final class ServiceWithDependency
 {
     public function doSomething(Logger $logger): string
     {

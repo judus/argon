@@ -12,7 +12,7 @@ use ReflectionException;
 use Tests\Mocks\MyService;
 use Tests\Mocks\TestService;
 
-class ServiceContainerIfTest extends TestCase
+final class ServiceContainerIfTest extends TestCase
 {
     /**
      * @throws ReflectionException

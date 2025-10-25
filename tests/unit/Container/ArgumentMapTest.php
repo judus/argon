@@ -7,7 +7,7 @@ namespace Tests\Unit\Container;
 use Maduser\Argon\Container\ArgumentMap;
 use PHPUnit\Framework\TestCase;
 
-class ArgumentMapTest extends TestCase
+final class ArgumentMapTest extends TestCase
 {
     public function testConstructorInitializesParameters(): void
     {

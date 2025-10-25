@@ -132,6 +132,7 @@ class ArgonContainer implements ContainerInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
+    #[\Override]
     public function get(string $id, array $args = []): object
     {
         if ($id === self::class || $id === ContainerInterface::class) {
@@ -141,6 +142,7 @@ class ArgonContainer implements ContainerInterface
         return $this->serviceResolver->resolve($id, $args);
     }
 
+    #[\Override]
     public function has(string $id): bool
     {
         return $this->binder->has($id);
@@ -304,9 +306,7 @@ class ArgonContainer implements ContainerInterface
      */
     public function extend(string $id, callable $decorator): ArgonContainer
     {
-        /** @var T $instance */
         $instance = $this->get($id);
-        /** @var T $decorated */
         $decorated = $decorator($instance);
 
         $this->binder->set($id, fn() => $decorated);

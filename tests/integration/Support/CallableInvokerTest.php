@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Container\Support;
+namespace Tests\Integration\Support;
 
 use ArgumentCountError;
 use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
@@ -19,13 +19,15 @@ use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionParameter;
 
-class CallableInvokerTest extends TestCase
+final class CallableInvokerTest extends TestCase
 {
     private CallableInvoker $invoker;
 
+    #[\Override]
     protected function setUp(): void
     {
         $serviceResolver = new class implements ServiceResolverInterface {
+            #[\Override]
             public function resolve(string $id, array $args = []): object
             {
                 if ($id === 'test') {
@@ -47,11 +49,13 @@ class CallableInvokerTest extends TestCase
         };
 
         $argumentResolver = new class implements ArgumentResolverInterface {
+            #[\Override]
             public function resolve(ReflectionParameter $param, array $overrides = [], ?string $contextId = null): mixed
             {
                 return $overrides[$param->getName()] ?? null;
             }
 
+            #[\Override]
             public function setServiceResolver(ServiceResolverInterface $resolver): void
             {
             }

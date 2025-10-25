@@ -62,6 +62,7 @@ final class ServiceResolver implements ServiceResolverInterface
      * We're going to make one single exception here,
      * IMAO this more likely PossiblyPsalmsProblem
      */
+    #[\Override]
     public function resolve(string $id, array $args = []): object
     {
         $isRootResolve = empty(self::$resolutionStack);

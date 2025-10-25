@@ -23,6 +23,7 @@ final class ReflectionCache implements ReflectionCacheInterface
      * @return ReflectionClass<object>
      * @throws ContainerException
      */
+    #[\Override]
     public function get(string $className): ReflectionClass
     {
         if (!isset($this->reflectionCache[$className])) {

@@ -16,7 +16,7 @@ use Tests\Integration\Mocks\ServiceA;
 use Tests\Integration\Mocks\ServiceB;
 use Tests\Integration\Mocks\UnboundConsumer;
 
-class ContextualBindingTest extends TestCase
+final class ContextualBindingTest extends TestCase
 {
     /**
      * @throws ContainerException

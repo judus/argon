@@ -41,7 +41,7 @@ use Tests\Integration\Mocks\SimpleService;
 use Tests\Mocks\DummyProvider;
 use Tests\Unit\Container\Mocks\NonInstantiableClass;
 
-class ContainerCompilerTest extends TestCase
+final class ContainerCompilerTest extends TestCase
 {
     /**
      * @throws ContainerException
@@ -621,6 +621,7 @@ class ContainerCompilerTest extends TestCase
         $this->assertFileExists($outputPath);
 
         $contents = file_get_contents($outputPath);
+        $this->assertNotFalse($contents);
         $this->assertStringContainsString("'default-val'", $contents);
     }
 
@@ -760,22 +761,24 @@ class ContainerCompilerTest extends TestCase
      */
     public function testCompiledFactoryThrowsIfRequiredArgumentMissing(): void
     {
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage('Undefined array key "label"');
+
         set_error_handler(function ($severity, $message, $file, $line) {
             throw new ErrorException($message, 0, $severity, $file, $line);
         });
 
-        $this->expectException(ErrorException::class);
-        $this->expectExceptionMessage('Undefined array key "label"');
+        try {
+            $container = new ArgonContainer();
+            $container->set(DefaultValueService::class)
+                ->factory(MailerFactory::class, 'createWithRequired');
 
-        $container = new ArgonContainer();
-        $container->set(DefaultValueService::class)
-            ->factory(MailerFactory::class, 'createWithRequired');
+            $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryThrowsIfRequiredArgumentMissing');
 
-        $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryThrowsIfRequiredArgumentMissing');
-
-        $compiled->get(DefaultValueService::class);
-
-        restore_error_handler(); // Clean up
+            $compiled->get(DefaultValueService::class);
+        } finally {
+            restore_error_handler(); // Ensure handler restored even on exception
+        }
     }
 
     /**
@@ -856,7 +859,7 @@ class ContainerCompilerTest extends TestCase
         $compiler->compile($output, 'TestClosureSkip');
 
         $compiled = file_get_contents($output);
-
+        $this->assertNotFalse($compiled);
         $this->assertStringNotContainsString('ClosureService', $compiled);
         @unlink($output);
     }

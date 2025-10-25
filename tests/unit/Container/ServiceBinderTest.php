@@ -12,7 +12,7 @@ use Maduser\Argon\Container\ServiceDescriptor;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
-class ServiceBinderTest extends TestCase
+final class ServiceBinderTest extends TestCase
 {
     /**
      * @throws ContainerException

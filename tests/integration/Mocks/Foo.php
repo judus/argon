@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Mocks;
 
-class Foo
+final class Foo
 {
     public string $label;
 

@@ -13,7 +13,7 @@ use stdClass;
 use Tests\Unit\Container\Mocks\SampleInterface;
 use Tests\Unit\Container\Mocks\SampleTrait;
 
-class ReflectionCacheTest extends TestCase
+final class ReflectionCacheTest extends TestCase
 {
     /**
      * @throws ContainerException

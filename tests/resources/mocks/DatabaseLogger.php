@@ -4,6 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Mocks;
 
-class DatabaseLogger implements LoggerInterface
+final class DatabaseLogger implements LoggerInterface
 {
 }

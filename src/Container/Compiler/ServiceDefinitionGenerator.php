@@ -8,6 +8,7 @@ use Closure;
 use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\ServiceDescriptor;
+use Maduser\Argon\Container\Support\StringHelper;
 use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\PhpNamespace;
 use ReflectionClass;
@@ -175,6 +176,10 @@ final class ServiceDefinitionGenerator
 
     private function buildServiceMethodName(string $id): string
     {
-        return 'get_' . preg_replace('/[^A-Za-z0-9_]/', '_', $id);
+        try {
+            return 'get_' . StringHelper::sanitizeIdentifier($id);
+        } catch (ContainerException $exception) {
+            throw ContainerException::fromServiceId($id, $exception->getMessage());
+        }
     }
 }

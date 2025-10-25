@@ -14,7 +14,7 @@ use SlevomatCodingStandard\Sniffs\TestCase;
 use Tests\Unit\Container\Mocks\Foo;
 use Tests\Unit\Container\Mocks\FooFactory;
 
-class BindingBuilderTest extends TestCase
+final class BindingBuilderTest extends TestCase
 {
     /**
      * @throws ContainerException

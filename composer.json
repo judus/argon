@@ -11,20 +11,23 @@
   ],
   "require": {
     "php": "^8.2",
-    "nette/php-generator": "^4.1",
+    "nette/php-generator": "^4.2",
     "psr/container": "^2.0"
   },
   "require-dev": {
-    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
-    "phpunit/phpunit": "^9.6",
-    "slevomat/coding-standard": "^8.16",
-    "squizlabs/php_codesniffer": "^3.8",
-    "vimeo/psalm": "^5.26"
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.1",
+    "phpunit/phpunit": "^11.5",
+    "slevomat/coding-standard": "^8.24",
+    "squizlabs/php_codesniffer": "^4.0",
+    "vimeo/psalm": "^6.13"
   },
   "autoload": {
     "psr-4": {
       "Maduser\\Argon\\": "src/"
-    }
+    },
+    "files": [
+      "autoload/override-attribute.php"
+    ]
   },
   "autoload-dev": {
     "psr-4": {
@@ -34,27 +37,13 @@
     }
   },
   "scripts": {
-    "test": "vendor/bin/phpunit --coverage-clover=coverage.xml",
-    "lint": "vendor/bin/phpcs --standard=phpcs.xml",
-    "analyze": "vendor/bin/psalm --output-format=github",
-    "fix": [
-      "vendor/bin/phpcbf --standard=phpcs.xml",
-      "vendor/bin/psalm --alter --issues=InvalidReturnType,MissingReturnType,UnusedVariable,PossiblyUnusedMethod"
-    ],
-    "coverage": "vendor/bin/phpunit --coverage-html coverage-report && open coverage-report/index.html",
-    "check": [
-      "@test",
-      "@analyze",
-      "@lint"
-    ],
-    "ci": [
-      "@test",
-      "@analyze",
-      "@lint"
-    ],
-    "watch": "find src/ | entr -r composer check",
-    "watch:test": "find src/ | entr -r composer test",
-    "watch:fix": "find src/ | entr -r composer fix"
+    "test": "vendor/bin/phpunit",
+    "test:coverage": "vendor/bin/phpunit  --coverage-clover=coverage.xml --coverage-html coverage-report && open coverage-report/index.html",
+    "phpcs": "vendor/bin/phpcs --standard=phpcs.xml",
+    "psalm": "vendor/bin/psalm --output-format=github",
+    "phpcs:fix": "vendor/bin/phpcbf --standard=phpcs.xml",
+    "check": ["@test", "@psalm", "@phpcs:fix", "@phpcs"],
+    "ci": ["@test", "@test:coverage", "@psalm", "@phpcs"]
   },
   "config": {
     "allow-plugins": {

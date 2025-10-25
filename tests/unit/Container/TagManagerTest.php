@@ -13,11 +13,12 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use stdClass;
 
-class TagManagerTest extends TestCase
+final class TagManagerTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ArgonContainer&MockObject $container;
 
+    #[\Override]
     protected function setUp(): void
     {
         $this->container = $this->createMock(ArgonContainer::class);

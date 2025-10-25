@@ -15,7 +15,7 @@ use Tests\Unit\Container\Stubs\NonMatchingInterceptor;
 use Tests\Unit\Container\Stubs\StubInterceptor;
 use Tests\Unit\Container\Stubs\StubPreInterceptor;
 
-class InterceptorRegistryTest extends TestCase
+final class InterceptorRegistryTest extends TestCase
 {
     public function testAllPostReturnsEmptyArrayInitially(): void
     {

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Mocks;
 
-class CustomLogger implements LoggerInterface
+final class CustomLogger implements LoggerInterface
 {
     public string $label = 'custom';
 

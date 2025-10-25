@@ -28,7 +28,7 @@ use Tests\Unit\Container\Mocks\ServiceX;
 use Tests\Unit\Container\Mocks\SomeClass;
 use Tests\Unit\Container\Mocks\UnionExample;
 
-class ArgumentResolverTest extends TestCase
+final class ArgumentResolverTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ArgumentMapInterface&MockObject $arguments;
@@ -39,6 +39,7 @@ class ArgumentResolverTest extends TestCase
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ArgumentResolver $resolver;
 
+    #[\Override]
     protected function setUp(): void
     {
         $this->arguments = $this->createMock(ArgumentMapInterface::class);
@@ -158,7 +159,7 @@ class ArgumentResolverTest extends TestCase
         $this->arguments->method('get')->willReturn([]);
         $this->contextualBindings->method('has')->willReturn(false);
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(ContainerException::class);
         $this->expectExceptionMessage("ParameterResolver: missing ServiceResolver.");
 
         $this->resolver->resolve($param);

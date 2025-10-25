@@ -14,7 +14,7 @@ use stdClass;
 use Tests\Mocks\DummyProvider;
 use Tests\Mocks\MyService;
 
-class ServiceProviderTest extends TestCase
+final class ServiceProviderTest extends TestCase
 {
     /**
      * @throws ContainerException

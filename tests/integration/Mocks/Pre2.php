@@ -9,11 +9,13 @@ use Tests\Integration\Mocks\InterceptedClass;
 
 final class Pre2 implements PreResolutionInterceptorInterface
 {
+    #[\Override]
     public static function supports(object|string $target): bool
     {
         return $target === InterceptedClass::class;
     }
 
+    #[\Override]
     public function intercept(string $id, array &$parameters): ?object
     {
         $parameters['value'] = 'from-pre2'; // overrides pre1

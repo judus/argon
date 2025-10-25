@@ -18,6 +18,7 @@ final class InterceptedClass implements Validatable
         $this->value = $value;
     }
 
+    #[\Override]
     public function validate(): void
     {
         self::$validatedCalls++;

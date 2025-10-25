@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Mocks;
 
-class TestServiceWithDependency
+final class TestServiceWithDependency
 {
     private TestDependency $dependency;
 

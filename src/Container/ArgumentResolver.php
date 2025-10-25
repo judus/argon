@@ -32,6 +32,7 @@ final class ArgumentResolver implements ArgumentResolverInterface
     ) {
     }
 
+    #[\Override]
     public function setServiceResolver(ServiceResolverInterface $resolver): void
     {
         $this->serviceResolver = $resolver;
@@ -46,6 +47,7 @@ final class ArgumentResolver implements ArgumentResolverInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
+    #[\Override]
     public function resolve(
         ReflectionParameter $param,
         array $overrides = [],
@@ -248,20 +250,16 @@ final class ArgumentResolver implements ArgumentResolverInterface
         ?string $paramName = null,
         ?string $expectedType = null
     ): object {
-        $resolver = null;
-
+        $snapshot = DebugTrace::snapshot();
         if ($this->contextualBindings->has($className, $serviceId)) {
-            $resolver = fn(): object => $this->contextualResolver->resolve($className, $serviceId);
+            $instance = $this->contextualResolver->resolve($className, $serviceId);
         } else {
-            if (!$this->serviceResolver) {
-                throw new RuntimeException('ParameterResolver: missing ServiceResolver.');
+            if ($this->serviceResolver === null) {
+                throw ContainerException::fromServiceId($serviceId, 'ParameterResolver: missing ServiceResolver.');
             }
 
-            $resolver = fn(): object => $this->serviceResolver->resolve($serviceId);
+            $instance = $this->serviceResolver->resolve($serviceId);
         }
-
-        $snapshot = DebugTrace::snapshot();
-        $instance = $resolver();
         $nestedTrace = DebugTrace::diff($snapshot);
 
         if ($paramName !== null) {

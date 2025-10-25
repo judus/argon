@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 use Tests\Unit\Container\Mocks\MockValidationClass;
 
-class ValidationInterceptorTest extends TestCase
+final class ValidationInterceptorTest extends TestCase
 {
     public function testSupportsReturnsTrueForObjectImplementingInterface(): void
     {

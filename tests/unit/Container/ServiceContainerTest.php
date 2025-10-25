@@ -33,7 +33,7 @@ use Tests\Mocks\UninstantiableClass;
 use Tests\Unit\Container\Mocks\FooBarService;
 use Tests\Unit\Container\Mocks\UserService;
 
-class ServiceContainerTest extends TestCase
+final class ServiceContainerTest extends TestCase
 {
     /**
      * @throws NotFoundException
@@ -263,11 +263,13 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         $class = new class implements PreResolutionInterceptorInterface {
+            #[\Override]
             public static function supports(object|string $target): bool
             {
                 return true;
             }
 
+            #[\Override]
             public function intercept(string $id, array &$parameters = []): ?object
             {
                 return null;
@@ -291,11 +293,13 @@ class ServiceContainerTest extends TestCase
         $container = new ArgonContainer();
 
         $interceptor = new class implements PostResolutionInterceptorInterface {
+            #[\Override]
             public static function supports(object|string $target): bool
             {
                 return true;
             }
 
+            #[\Override]
             public function intercept(object $instance): void
             {
                 // noop

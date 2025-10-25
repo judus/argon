@@ -15,7 +15,7 @@ use Tests\Integration\Interceptors\Mocks\InvalidRequest;
 use Tests\Integration\Interceptors\Mocks\Request;
 use Tests\Integration\Interceptors\Mocks\ValidRequest;
 
-class ValidationInterceptorTest extends TestCase
+final class ValidationInterceptorTest extends TestCase
 {
     /**
      * @throws NotFoundException

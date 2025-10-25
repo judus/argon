@@ -9,6 +9,7 @@ use Maduser\Argon\Container\Support\DebugTrace;
 
 final class DebugTraceTest extends TestCase
 {
+    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();
@@ -76,6 +77,19 @@ final class DebugTraceTest extends TestCase
 
         $this->assertArrayHasKey('resolved', $trace['AnotherClass']['anotherParam']);
         $this->assertSame(['foo' => ['expected' => 'bar']], $trace['AnotherClass']['anotherParam']['resolved']);
+    }
+
+    public function testNestStoresRawDataWhenNotStructured(): void
+    {
+        DebugTrace::add('RawClass', 'param', 'mixed', 'value');
+        DebugTrace::nest('RawClass', 'param', ['custom' => 'payload']);
+
+        $trace = DebugTrace::get();
+
+        $this->assertSame(
+            ['custom' => 'payload'],
+            $trace['RawClass']['param']['resolved']
+        );
     }
 
     public function testHasErrorsReturnsTrueOnError(): void

@@ -14,7 +14,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
-class ContextualResolverTest extends TestCase
+final class ContextualResolverTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ArgonContainer&MockObject $container;
@@ -23,6 +23,7 @@ class ContextualResolverTest extends TestCase
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ContextualResolver $resolver;
 
+    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();

@@ -16,6 +16,7 @@ abstract class AbstractServiceProvider implements ServiceProviderInterface
     /**
      * Register services in the container.
      */
+    #[\Override]
     public function register(ArgonContainer $container): void
     {
         // Optional, override if needed
@@ -24,6 +25,7 @@ abstract class AbstractServiceProvider implements ServiceProviderInterface
     /**
      * Optionally bootstrap services after registration.
      */
+    #[\Override]
     public function boot(ArgonContainer $container): void
     {
         // Optional, override if needed

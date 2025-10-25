@@ -15,7 +15,7 @@ use ReflectionParameter;
 use RuntimeException;
 use TypeError;
 
-class CallableInvokerTest extends TestCase
+final class CallableInvokerTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ServiceResolverInterface&MockObject $resolver;
@@ -24,6 +24,7 @@ class CallableInvokerTest extends TestCase
     /** @psalm-suppress PropertyNotSetInConstructor */
     private CallableInvoker $invoker;
 
+    #[\Override]
     protected function setUp(): void
     {
         $this->resolver = $this->createMock(ServiceResolverInterface::class);

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Mocks;
 
-class FooFactory
+final class FooFactory
 {
     public function make(): Foo
     {

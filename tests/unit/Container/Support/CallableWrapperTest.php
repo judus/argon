@@ -10,7 +10,7 @@ use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
 
-class CallableWrapperTest extends TestCase
+final class CallableWrapperTest extends TestCase
 {
     /**
      * @throws ReflectionException

@@ -12,12 +12,14 @@ use Maduser\Argon\Container\Interceptors\Post\Contracts\ValidationInterface;
  */
 final readonly class ValidationInterceptor implements PostResolutionInterceptorInterface
 {
+    #[\Override]
     public static function supports(object|string $target): bool
     {
         return $target instanceof ValidationInterface
             || (is_string($target) && is_subclass_of($target, ValidationInterface::class));
     }
 
+    #[\Override]
     public function intercept(object $instance): void
     {
         if ($instance instanceof ValidationInterface) {

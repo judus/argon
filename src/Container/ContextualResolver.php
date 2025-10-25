@@ -29,6 +29,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
      * @param string $target
      * @return ContextualBindingBuilderInterface
      */
+    #[\Override]
     public function for(string $target): ContextualBindingBuilderInterface
     {
         return new ContextualBindingBuilder($this->bindings, $target);
@@ -44,6 +45,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
+    #[\Override]
     public function resolve(string $consumer, string $dependency): object
     {
         $override = $this->bindings->get($consumer, $dependency);
@@ -66,6 +68,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
      * @param string $dependency
      * @return bool
      */
+    #[\Override]
     public function has(string $consumer, string $dependency): bool
     {
         return $this->bindings->has($consumer, $dependency);

@@ -9,7 +9,7 @@ use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
-class ContextualBindingBuilderTest extends TestCase
+final class ContextualBindingBuilderTest extends TestCase
 {
     public function testSetDelegatesToRegistryWithString(): void
     {

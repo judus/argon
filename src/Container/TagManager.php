@@ -30,6 +30,7 @@ final class TagManager implements TagManagerInterface
      * @param bool $detailed If true, includes metadata.
      * @return array<string, list<string>|array<string, array<string, mixed>>>
      */
+    #[\Override]
     public function all(bool $detailed = false): array
     {
         if ($detailed) {
@@ -41,6 +42,7 @@ final class TagManager implements TagManagerInterface
         }, $this->tags);
     }
 
+    #[\Override]
     public function has(string $tag): bool
     {
         return isset($this->tags[$tag]) && !empty($this->tags[$tag]);
@@ -52,6 +54,7 @@ final class TagManager implements TagManagerInterface
      * @param string $id
      * @param array<int|string, string|array<string, mixed>> $tags
      */
+    #[\Override]
     public function tag(string $id, array $tags): void
     {
         foreach ($tags as $tag => $meta) {
@@ -80,6 +83,7 @@ final class TagManager implements TagManagerInterface
      * @throws ContainerException
      * @throws NotFoundException
      */
+    #[\Override]
     public function getTagged(string $tag): array
     {
         return array_map(
@@ -94,6 +98,7 @@ final class TagManager implements TagManagerInterface
      * @param string $tag
      * @return list<string>
      */
+    #[\Override]
     public function getTaggedIds(string $tag): array
     {
         return array_keys($this->tags[$tag] ?? []);
@@ -103,6 +108,7 @@ final class TagManager implements TagManagerInterface
      * @param string $tag
      * @return array<string, array<string, mixed>>
      */
+    #[\Override]
     public function getTaggedMeta(string $tag): array
     {
         return $this->tags[$tag] ?? [];

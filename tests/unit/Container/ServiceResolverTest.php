@@ -24,7 +24,7 @@ use Tests\Unit\Container\Mocks\NonInstantiableClass;
 use Tests\Unit\Container\Mocks\SampleInterface;
 use Tests\Unit\Container\Mocks\SomeClass;
 
-class ServiceResolverTest extends TestCase
+final class ServiceResolverTest extends TestCase
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ServiceBinderInterface&MockObject $binder;
@@ -37,6 +37,7 @@ class ServiceResolverTest extends TestCase
     /** @psalm-suppress PropertyNotSetInConstructor */
     private ServiceResolverInterface $resolver;
 
+    #[\Override]
     protected function setUp(): void
     {
         $this->binder = $this->createMock(ServiceBinderInterface::class);

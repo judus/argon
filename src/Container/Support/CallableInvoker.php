@@ -17,7 +17,7 @@ use ReflectionMethod;
 use ReflectionParameter;
 use Throwable;
 
-readonly class CallableInvoker
+final readonly class CallableInvoker
 {
     public function __construct(
         private ServiceResolverInterface $serviceResolver,

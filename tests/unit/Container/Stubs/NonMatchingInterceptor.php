@@ -11,13 +11,15 @@ use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 /**
  * A stub interceptor that never supports anything.
  */
-class NonMatchingInterceptor implements PostResolutionInterceptorInterface
+final class NonMatchingInterceptor implements PostResolutionInterceptorInterface
 {
+    #[\Override]
     public static function supports(object|string $target): bool
     {
         return false;
     }
 
+    #[\Override]
     public function intercept(object $instance): void
     {
         throw new LogicException('Should not be called');

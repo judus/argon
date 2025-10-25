@@ -7,15 +7,17 @@ namespace Tests\Integration\Mocks;
 use Maduser\Argon\Container\Contracts\PostResolutionInterceptorInterface;
 use Tests\Integration\Mocks\InterceptedClass;
 
-class SingletonPostInterceptor implements PostResolutionInterceptorInterface
+final class SingletonPostInterceptor implements PostResolutionInterceptorInterface
 {
     public static int $called = 0;
 
+    #[\Override]
     public static function supports(string|object $target): bool
     {
         return $target === InterceptedClass::class;
     }
 
+    #[\Override]
     public function intercept(object $instance): void
     {
         self::$called++;

@@ -29,6 +29,7 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
 
     private ?ServiceResolverInterface $resolver = null;
 
+    #[\Override]
     public function setResolver(ServiceResolverInterface $resolver): void
     {
         $this->resolver = $resolver;
@@ -37,6 +38,7 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
     /**
      * @throws ContainerException
      */
+    #[\Override]
     public function registerPost(string $interceptor): void
     {
         if (!class_exists($interceptor)) {
@@ -59,6 +61,7 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
     /**
      * @throws ContainerException
      */
+    #[\Override]
     public function registerPre(string $interceptor): void
     {
         if (!class_exists($interceptor)) {
@@ -81,6 +84,7 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
     /**
      * @return list<class-string<PostResolutionInterceptorInterface>>
      */
+    #[\Override]
     public function allPost(): array
     {
         return $this->post;
@@ -89,11 +93,13 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
     /**
      * @return list<class-string<PreResolutionInterceptorInterface>>
      */
+    #[\Override]
     public function allPre(): array
     {
         return $this->pre;
     }
 
+    #[\Override]
     public function matchPost(object $instance): object
     {
         foreach ($this->post as $interceptorClass) {
@@ -108,6 +114,7 @@ final class InterceptorRegistry implements InterceptorRegistryInterface
         return $instance;
     }
 
+    #[\Override]
     public function matchPre(string $id, array &$parameters = []): ?object
     {
         foreach ($this->pre as $interceptorClass) {

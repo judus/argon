@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container\Compiler;
 
 use Maduser\Argon\Container\ArgonContainer;
+use Maduser\Argon\Container\Exceptions\ContainerException;
+use Maduser\Argon\Container\Support\StringHelper;
 use Nette\PhpGenerator\ClassType;
 
 final class ServiceInvocationGenerator
@@ -50,8 +52,12 @@ final class ServiceInvocationGenerator
 
     private function buildMethodInvokerName(string $serviceId, string $method): string
     {
-        $sanitizedService = preg_replace('/[^A-Za-z0-9_]/', '_', $serviceId);
-        $sanitizedMethod  = preg_replace('/[^A-Za-z0-9_]/', '_', $method);
+        try {
+            $sanitizedService = StringHelper::sanitizeIdentifier($serviceId);
+            $sanitizedMethod  = StringHelper::sanitizeIdentifier($method);
+        } catch (ContainerException $exception) {
+            throw ContainerException::fromServiceId($serviceId, $exception->getMessage());
+        }
 
         return 'invoke_' . $sanitizedService . '__' . $sanitizedMethod;
     }

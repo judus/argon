@@ -7,7 +7,7 @@ namespace Tests\Unit\Container\Support;
 use Maduser\Argon\Container\Support\StringHelper;
 use PHPUnit\Framework\TestCase;
 
-class StringHelperTest extends TestCase
+final class StringHelperTest extends TestCase
 {
     public function testInvokeServiceMethodSanitizesProperly(): void
     {
@@ -28,5 +28,10 @@ class StringHelperTest extends TestCase
         $result = StringHelper::invokeServiceMethod('Test_123', 'someMethod_42');
 
         $this->assertSame('invoke_Test_123__someMethod_42', $result);
+    }
+
+    public function testSanitizeIdentifierExposed(): void
+    {
+        $this->assertSame('foo_bar', StringHelper::sanitizeIdentifier('foo-bar'));
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Mocks;
 
-class TestService
+final class TestService
 {
     public bool $called = false;
 
