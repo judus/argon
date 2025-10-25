@@ -176,10 +176,6 @@ final class ServiceDefinitionGenerator
 
     private function buildServiceMethodName(string $id): string
     {
-        try {
-            return 'get_' . StringHelper::sanitizeIdentifier($id);
-        } catch (ContainerException $exception) {
-            throw ContainerException::fromServiceId($id, $exception->getMessage());
-        }
+        return 'get_' . StringHelper::sanitizeIdentifier($id);
     }
 }

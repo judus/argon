@@ -227,30 +227,30 @@ final class TraceEntry
 
         if (isset($data['resolved']) && is_array($data['resolved'])) {
             $resolvedData = $data['resolved'];
+            $resolved = [];
 
-            if (self::isTraceMapArray($resolvedData)) {
-                $resolved = [];
-                foreach ($resolvedData as $class => $paramEntries) {
-                    if (!is_array($paramEntries)) {
-                        continue;
-                    }
-
-                    $converted = [];
-
-                    /** @psalm-suppress MixedAssignment */
-                    foreach ($paramEntries as $param => $entry) {
-                        if (!is_array($entry)) {
-                            continue;
-                        }
-
-                        $converted[(string) $param] = self::fromArray($entry);
-                    }
-
-                    if ($converted !== []) {
-                        $resolved[(string) $class] = $converted;
-                    }
+            foreach ($resolvedData as $class => $paramEntries) {
+                if (!is_array($paramEntries)) {
+                    continue;
                 }
 
+                $converted = [];
+
+                $onlyArrays = array_filter(
+                    $paramEntries,
+                    static fn($entry): bool => is_array($entry)
+                );
+
+                foreach ($onlyArrays as $param => $entry) {
+                    $converted[(string) $param] = self::fromArray($entry);
+                }
+
+                if ($converted !== []) {
+                    $resolved[(string) $class] = $converted;
+                }
+            }
+
+            if ($resolved !== []) {
                 $instance->setResolved($resolved);
             } else {
                 $instance->setResolvedRaw($resolvedData);
@@ -338,29 +338,5 @@ final class TraceEntry
         }
 
         return $diff;
-    }
-
-    private static function isTraceMapArray(array $data): bool
-    {
-        if ($data === []) {
-            return false;
-        }
-
-        foreach ($data as $params) {
-            if (!is_array($params)) {
-                return false;
-            }
-
-            $arraysOnly = array_filter(
-                $params,
-                static fn($value): bool => is_array($value)
-            );
-
-            if ($arraysOnly === [] || count($arraysOnly) !== count($params)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

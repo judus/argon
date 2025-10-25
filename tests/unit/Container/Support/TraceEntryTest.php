@@ -6,23 +6,24 @@ namespace Tests\Unit\Container\Support;
 
 use Maduser\Argon\Container\Support\TraceEntry;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 final class TraceEntryTest extends TestCase
 {
     public function testForValueCreatesReceivedSignature(): void
     {
-        $entry = TraceEntry::forValue('stdClass', new \stdClass());
+        $entry = TraceEntry::forValue('stdClass', new stdClass());
 
         $this->assertSame(
             [
                 'expected' => 'stdClass',
-                'received' => \stdClass::class,
+                'received' => stdClass::class,
             ],
             $entry->toArray()
         );
         $this->assertFalse($entry->hasErrors());
         $this->assertSame('stdClass', $entry->getExpected());
-        $this->assertSame(\stdClass::class, $entry->getReceived());
+        $this->assertSame(stdClass::class, $entry->getReceived());
         $this->assertNull($entry->getError());
     }
 
@@ -134,7 +135,7 @@ final class TraceEntryTest extends TestCase
                 'Raw' => [
                     'param' => [
                         'expected' => 'int',
-                        'received' => 'NULL',
+                        'error' => 'missing',
                     ],
                 ],
             ],
@@ -144,6 +145,36 @@ final class TraceEntryTest extends TestCase
 
         $this->assertTrue($entry->hasErrors());
         $this->assertSame($payload, $entry->toArray());
+    }
+
+    public function testRawResolvedDetectsErrorFlag(): void
+    {
+        $entry = TraceEntry::empty('foo');
+        $entry->setResolvedRaw(['payload' => ['error' => 'boom']]);
+
+        $this->assertTrue($entry->hasErrors());
+    }
+
+    public function testFromArrayParsesStructuredResolvedEntries(): void
+    {
+        $payload = [
+            'expected' => 'Foo',
+            'resolved' => [
+                'MyClass' => [
+                    'param' => [
+                        'expected' => 'int',
+                        'received' => 'integer',
+                    ],
+                ],
+            ],
+        ];
+
+        $entry = TraceEntry::fromArray($payload);
+        $resolved = $entry->getResolved();
+
+        $this->assertArrayHasKey('MyClass', $resolved);
+        $this->assertArrayHasKey('param', $resolved['MyClass']);
+        $this->assertSame('int', $resolved['MyClass']['param']->getExpected());
     }
 
     public function testFromArraySkipsInvalidResolvedChildren(): void
@@ -156,6 +187,30 @@ final class TraceEntryTest extends TestCase
                     'param' => 'not-array',
                     'valid' => ['expected' => 'int'],
                 ],
+            ],
+        ];
+
+        $entry = TraceEntry::fromArray($payload);
+
+        $this->assertSame(
+            [
+                'expected' => 'Foo',
+                'resolved' => [
+                    'PartiallyInvalid' => [
+                        'valid' => ['expected' => 'int'],
+                    ],
+                ],
+            ],
+            $entry->toArray()
+        );
+    }
+
+    public function testFromArrayFallsBackToRawWhenNoStructuredEntries(): void
+    {
+        $payload = [
+            'expected' => 'Foo',
+            'resolved' => [
+                'Broken' => 'string',
             ],
         ];
 
@@ -194,6 +249,53 @@ final class TraceEntryTest extends TestCase
         $this->assertNotNull($diff);
         $this->assertSame(['payload' => 'changed'], $diff->getResolvedRaw());
     }
+
+    public function testRawDiffHandlesNestedArrays(): void
+    {
+        $previous = TraceEntry::empty('foo');
+        $previous->setResolvedRaw([
+            'nested' => [
+                'inner' => ['value' => 'old'],
+            ],
+        ]);
+
+        $current = TraceEntry::empty('foo');
+        $current->setResolvedRaw([
+            'nested' => [
+                'inner' => ['value' => 'new'],
+            ],
+        ]);
+
+        $diff = $current->diff($previous);
+
+        $this->assertNotNull($diff);
+        $this->assertSame(
+            ['nested' => ['inner' => ['value' => 'new']]],
+            $diff->getResolvedRaw()
+        );
+    }
+
+    public function testRawDiffReturnsNullWhenNestedStructuresMatch(): void
+    {
+        $previous = TraceEntry::empty('foo');
+        $previous->setResolvedRaw([
+            'nested' => [
+                'inner' => ['value' => 'same'],
+            ],
+        ]);
+
+        $current = TraceEntry::empty('foo');
+        $current->setResolvedRaw([
+            'nested' => [
+                'inner' => ['value' => 'same'],
+            ],
+        ]);
+
+        $diff = $current->diff($previous);
+
+        $this->assertNull($diff);
+    }
+
 
     public function testRawResolvedHasErrorsReturnsFalseWhenClean(): void
     {

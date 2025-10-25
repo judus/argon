@@ -69,7 +69,7 @@ final class ContainerException extends Exception implements ContainerExceptionIn
 
     public static function fromInternalError(string $message): self
     {
-        return new self($message . self::appendTrace());
+        return new self($message);
     }
 
     private static function appendTrace(): string
