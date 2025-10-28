@@ -35,9 +35,8 @@ final class ServiceInvocationGeneratorTest extends TestCase
             . StringHelper::sanitizeIdentifier(ServiceWithTypedMethods::class)
             . '__handle';
 
+        self::assertTrue($class->hasMethod($methodName));
         $method = $class->getMethod($methodName);
-
-        self::assertNotNull($method);
         self::assertSame('mixed', $method->getReturnType());
 
         $parameters = $method->getParameters();
@@ -48,7 +47,6 @@ final class ServiceInvocationGeneratorTest extends TestCase
         self::assertSame([], $argsParameter->getDefaultValue());
 
         $body = $method->getBody();
-        self::assertIsString($body);
         $escapedServiceClass = str_replace('\\', '\\\\', ServiceWithTypedMethods::class);
         self::assertStringContainsString("\$controller = \$this->get('{$escapedServiceClass}');", $body);
         self::assertStringContainsString("\$this->get('dependency.service')", $body);
@@ -76,21 +74,18 @@ final class ServiceInvocationGeneratorTest extends TestCase
             . StringHelper::sanitizeIdentifier(ServiceWithTypedMethods::class)
             . '__undefinedMethod';
 
+        self::assertTrue($class->hasMethod($closureInvokerName));
+        self::assertTrue($class->hasMethod($missingInvokerName));
         $closureMethod = $class->getMethod($closureInvokerName);
         $missingMethod = $class->getMethod($missingInvokerName);
-
-        self::assertNotNull($closureMethod);
-        self::assertNotNull($missingMethod);
 
         $escapedServiceClass = str_replace('\\', '\\\\', ServiceWithTypedMethods::class);
 
         $closureBody = $closureMethod->getBody();
-        self::assertIsString($closureBody);
         self::assertStringNotContainsString('(int)', $closureBody);
         self::assertStringNotContainsString('(float)', $closureBody);
 
         $missingBody = $missingMethod->getBody();
-        self::assertIsString($missingBody);
         self::assertStringContainsString("\$controller = \$this->get('{$escapedServiceClass}');", $missingBody);
         self::assertStringContainsString("\$controller->undefinedMethod(...\$mergedArgs);", $missingBody);
     }
