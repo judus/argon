@@ -8,37 +8,25 @@
 
 # Argon Service Container
 
-A high-performance, PSR-11 compliant dependency injection container with optional compilation.
+Argon is a high-performance, PSR-11 compliant dependency injection container with optional compilation.
 
-_**Strict when you want it, magic when you allow it**_
+It compiles your service graph into native PHP, eliminating reflection and runtime resolution overhead in production. Explicit bindings are preferred, but autowiring remains available when desired — allowing you to choose between strict, predictable behavior and dynamic flexibility.
 
-Argon compiles your service graph into native PHP code, eliminating reflection and runtime resolution overhead. 
-When no binding exists, it seamlessly falls back to autowiring constructors, closures, and methods — offering predictable, optimized performance when declared, and ~~black magic~~ convenient flexibility when not.
+**Key Characteristics**
+- PSR-11 compliant
+- Optional compilation to pure PHP
+- Strict mode for explicit service registration
+- Autowiring support when enabled
+- No annotations, attributes, or external configuration formats
+- Framework-agnostic
 
-- **Adaptable**: strict or dynamic, compiled or runtime — it's up to you.
-- **Framework-agnostic**: no vendor lock-in, no framework dependencies.
-- **Optimized for production**: compiled output is pure PHP, ready for opcode caching.
-- **Feature-rich**: lifecycle hooks, contextual bindings, decorators, and more.
-- **Predictable**: clear and consistent API, no annotations, no attributes, no YAML. Just PHP.
+**Strict vs Dynamic**
 
-### Strict vs. Magic
+Strict mode resolves only explicitly registered services and throws NotFoundException for unbound classes.
 
-Every `ArgonContainer` instance can be created in **strict mode**:
+Dynamic mode (default) prefers explicit bindings but can autowire instantiable classes and invoke closures when no compiled binding exists.
 
-```php
-$container = new ArgonContainer(strictMode: true);
-```
-
-- **Strict mode** only resolves services you have explicitly registered. No autowiring. Requests for unbound classes throw `NotFoundException` (both at runtime and in compiled containers).
-- **Magic mode** (default) still prefers explicit bindings, but will autowire instantiable classes, invoke closures, and fall back to the dynamic resolver when compiled code doesn’t have a pre-generated method.
-
-When you compile the container, strict mode is baked into the generated class:
-
-```php
-$compiler->compile($file, 'ProdContainer', namespace: 'App\\Compiled', strictMode: true);
-```
-
-or simply let the compiler mirror the runtime flag if you instantiate with `strictMode: true`.
+Strictness can be enforced at runtime or baked into the compiled container.
 
 ---
 ## Installation
