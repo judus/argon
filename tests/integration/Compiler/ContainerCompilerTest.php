@@ -41,6 +41,40 @@ use Tests\Mocks\DummyProvider;
 
 final class ContainerCompilerTest extends TestCase
 {
+    private static ?string $compilerCacheDir = null;
+
+    #[\Override]
+    public static function setUpBeforeClass(): void
+    {
+        $cacheDir = sys_get_temp_dir() . '/argon-compiler-tests-' . bin2hex(random_bytes(8));
+
+        if (!mkdir($cacheDir) && !is_dir($cacheDir)) {
+            throw new RuntimeException('Failed to create compiler test cache directory.');
+        }
+
+        self::$compilerCacheDir = $cacheDir;
+    }
+
+    #[\Override]
+    public static function tearDownAfterClass(): void
+    {
+        $cacheDir = self::$compilerCacheDir;
+
+        if ($cacheDir === null || !is_dir($cacheDir)) {
+            return;
+        }
+
+        $files = glob($cacheDir . '/*.php');
+        if ($files !== false) {
+            foreach ($files as $file) {
+                unlink($file);
+            }
+        }
+
+        rmdir($cacheDir);
+        self::$compilerCacheDir = null;
+    }
+
     /**
      * @throws ContainerException
      * @throws ReflectionException
@@ -51,16 +85,13 @@ final class ContainerCompilerTest extends TestCase
         ?bool $strictMode = null
     ): ArgonContainer {
         $namespace = 'Tests\\Integration\\Compiler';
-        $file = __DIR__ . "/../../resources/cache/{$className}.php";
-
-        if (file_exists($file)) {
-            unlink($file);
-        }
+        $file = self::compilerCacheFile($className);
 
         $compiler = new ContainerCompiler($container);
         $effectiveStrictMode = $strictMode ?? $container->isStrictMode();
         $compiler->compile($file, $className, $namespace, $effectiveStrictMode);
 
+        /** @psalm-suppress UnresolvableInclude */
         require_once $file;
 
         $fqcn = "{$namespace}\\{$className}";
@@ -72,6 +103,14 @@ final class ContainerCompilerTest extends TestCase
         return new $fqcn();
     }
 
+    private static function compilerCacheFile(string $className): string
+    {
+        if (self::$compilerCacheDir === null) {
+            throw new RuntimeException('Compiler test cache directory has not been initialized.');
+        }
+
+        return self::$compilerCacheDir . "/{$className}.php";
+    }
 
     /**
      * @throws ContainerException
@@ -681,13 +720,9 @@ final class ContainerCompilerTest extends TestCase
         $container = new ArgonContainer();
         $container->set(DefaultValueService::class);
 
-        $outputPath = __DIR__ . '/../../resources/cache/testCompileHandlesDefaultParameterValues.php';
         $className = 'testCompileHandlesDefaultParameterValues';
+        $outputPath = self::compilerCacheFile($className);
         $namespace = 'Tests\\Integration\\Compiler';
-
-        if (file_exists($outputPath)) {
-            unlink($outputPath);
-        }
 
         $compiler = new ContainerCompiler($container);
         $compiler->compile($outputPath, $className, $namespace);
@@ -941,14 +976,13 @@ final class ContainerCompilerTest extends TestCase
             'Use skipCompilation() to exclude from compilation.'
         );
 
-        $output = __DIR__ . '/../../resources/cache/testCompileFailsWhenClosureIsNotIgnored.php';
+        $output = self::compilerCacheFile('testCompileFailsWhenClosureIsNotIgnored');
         $compiler = new \Maduser\Argon\Container\Compiler\ContainerCompiler($container);
         $compiler->compile(
             $output,
             'testCompileFailsWhenClosureIsNotIgnored',
             'Tests\\Integration\\Compiler'
         );
-        @unlink($output);
     }
 
     /**
@@ -970,14 +1004,13 @@ final class ContainerCompilerTest extends TestCase
         ]);
 
         $compiler = new ContainerCompiler($container);
-        $output = __DIR__ . '/../../resources/cache/TestClosureSkip.php';
+        $output = self::compilerCacheFile('TestClosureSkip');
 
         $compiler->compile($output, 'TestClosureSkip');
 
         $compiled = file_get_contents($output);
         $this->assertNotFalse($compiled);
         $this->assertStringNotContainsString('ClosureService', $compiled);
-        @unlink($output);
     }
 
     /**
@@ -1002,6 +1035,6 @@ final class ContainerCompilerTest extends TestCase
         ]);
 
         $compiler = new ContainerCompiler($container);
-        $compiler->compile(__DIR__ . '/../../resources/cache/Boom.php', 'Boom');
+        $compiler->compile(self::compilerCacheFile('Boom'), 'Boom');
     }
 }

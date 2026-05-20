@@ -9,6 +9,7 @@ All notable changes to `maduser/argon` will be documented in this file.
 - Runtime arguments for shared services are now accepted only before the shared instance is created. Passing runtime arguments after a shared service has already been resolved throws `ContainerException` instead of silently ignoring them.
 - `composer check` is now a non-mutating quality gate. Code style fixes remain available through `composer phpcs:fix`.
 - `composer test:coverage` no longer opens the generated coverage report as a GUI side effect.
+- Compiler integration tests now write generated containers to isolated temporary directories.
 
 ### Fixed
 
