@@ -8,6 +8,7 @@ All notable changes to `maduser/argon` will be documented in this file.
 
 - Runtime arguments for shared services are now accepted only before the shared instance is created. Passing runtime arguments after a shared service has already been resolved throws `ContainerException` instead of silently ignoring them.
 - `composer check` is now a non-mutating quality gate. Code style fixes remain available through `composer phpcs:fix`.
+- `composer check` now runs Psalm without cache so local static analysis cannot hide stale findings.
 - `composer test:coverage` no longer opens the generated coverage report as a GUI side effect.
 - Compiler integration tests now write generated containers to isolated temporary directories.
 - GitHub Actions now runs the test suite on PHP 8.2, 8.3, 8.4, and experimental PHP 8.5. The experimental PHP 8.5 job ignores dependency PHP platform requirements during install until development tools declare PHP 8.5 support.
