@@ -28,12 +28,16 @@ jobs:
         include:
           - php-version: '8.2'
             experimental: false
+            composer-options: ''
           - php-version: '8.3'
             experimental: false
+            composer-options: ''
           - php-version: '8.4'
             experimental: false
+            composer-options: ''
           - php-version: '8.5'
             experimental: true
+            composer-options: '--ignore-platform-req=php'
 
     steps:
     - name: Checkout code
@@ -58,7 +62,7 @@ jobs:
           ${{ runner.os }}-php-${{ matrix.php-version }}-
 
     - name: Install dependencies
-      run: composer install --prefer-dist --no-progress --no-suggest
+      run: composer install --prefer-dist --no-progress --no-suggest ${{ matrix.composer-options }}
 
     - name: Run PHPUnit
       if: matrix.php-version != '8.4'
