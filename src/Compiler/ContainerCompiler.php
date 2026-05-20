@@ -12,6 +12,7 @@ final class ContainerCompiler
 {
     private CompilationContextFactory $contextFactory;
     private CoreContainerGenerator $coreGenerator;
+    private ContainerDescriptorValidator $descriptorValidator;
     private ServiceDefinitionGenerator $serviceDefinitionGenerator;
     private ServiceInvocationGenerator $serviceInvocationGenerator;
 
@@ -19,12 +20,14 @@ final class ContainerCompiler
         private readonly ArgonContainer $container,
         ?CompilationContextFactory $contextFactory = null,
         ?CoreContainerGenerator $coreGenerator = null,
+        ?ContainerDescriptorValidator $descriptorValidator = null,
         ?ServiceDefinitionGenerator $serviceDefinitionGenerator = null,
         ?ServiceInvocationGenerator $serviceInvocationGenerator = null,
         ?ParameterExpressionResolver $parameterResolver = null
     ) {
         $this->contextFactory = $contextFactory ?? new CompilationContextFactory();
         $this->coreGenerator = $coreGenerator ?? new CoreContainerGenerator($container);
+        $this->descriptorValidator = $descriptorValidator ?? new ContainerDescriptorValidator();
 
         if ($serviceDefinitionGenerator === null) {
             $parameterResolver ??= new ParameterExpressionResolver($container, $container->getContextualBindings());
@@ -48,6 +51,8 @@ final class ContainerCompiler
         if (!$strictMode) {
             $strictMode = $this->container->isStrictMode();
         }
+
+        $this->descriptorValidator->validate($this->container);
 
         $context = $this->contextFactory->create($this->container, $namespace, $className, $strictMode);
 

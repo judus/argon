@@ -1015,19 +1015,51 @@ final class ContainerCompilerTest extends TestCase
 
         $container->set('some.closure', fn () => new \stdClass());
 
-        $this->expectException(\Maduser\Argon\Container\Exceptions\ContainerException::class);
-        $this->expectExceptionMessage(
-            'Cannot compile a container with closures: [some.closure]. ' .
-            'Use skipCompilation() to exclude from compilation.'
-        );
-
         $output = self::compilerCacheFile('testCompileFailsWhenClosureIsNotIgnored');
         $compiler = new \Maduser\Argon\Container\Compiler\ContainerCompiler($container);
-        $compiler->compile(
-            $output,
-            'testCompileFailsWhenClosureIsNotIgnored',
-            'Tests\\Integration\\Compiler'
-        );
+
+        try {
+            $compiler->compile(
+                $output,
+                'testCompileFailsWhenClosureIsNotIgnored',
+                'Tests\\Integration\\Compiler'
+            );
+            $this->fail('Expected closure binding validation to fail.');
+        } catch (ContainerException $exception) {
+            $this->assertStringContainsString(
+                'Cannot compile a container with closures: [some.closure]. ' .
+                'Use skipCompilation() to exclude from compilation.',
+                $exception->getMessage()
+            );
+            $this->assertFileDoesNotExist($output);
+        }
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testCompilerValidatesFactoryMethodBeforeWritingFile(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)->factory(MailerFactory::class, 'missingMethod');
+
+        $output = self::compilerCacheFile('testCompilerValidatesFactoryMethodBeforeWritingFile');
+        $compiler = new ContainerCompiler($container);
+
+        try {
+            $compiler->compile(
+                $output,
+                'testCompilerValidatesFactoryMethodBeforeWritingFile',
+                'Tests\\Integration\\Compiler'
+            );
+            $this->fail('Expected factory method validation to fail.');
+        } catch (ContainerException $exception) {
+            $this->assertStringContainsString(
+                'Factory method "missingMethod" not found on class "' . MailerFactory::class . '".',
+                $exception->getMessage()
+            );
+            $this->assertFileDoesNotExist($output);
+        }
     }
 
     /**
@@ -1063,9 +1095,6 @@ final class ContainerCompilerTest extends TestCase
      */
     public function testCompilerThrowsForNonInstantiableClass(): void
     {
-        $this->expectException(ContainerException::class);
-        $this->expectExceptionMessageMatches('/non-instantiable class/');
-
         $descriptor = $this->createConfiguredMock(ServiceDescriptorInterface::class, [
             'getId' => SomeInterface::class,
             'getConcrete' => SomeInterface::class,
@@ -1080,6 +1109,14 @@ final class ContainerCompilerTest extends TestCase
         ]);
 
         $compiler = new ContainerCompiler($container);
-        $compiler->compile(self::compilerCacheFile('Boom'), 'Boom');
+        $output = self::compilerCacheFile('Boom');
+
+        try {
+            $compiler->compile($output, 'Boom');
+            $this->fail('Expected non-instantiable service validation to fail.');
+        } catch (ContainerException $exception) {
+            $this->assertMatchesRegularExpression('/non-instantiable class/', $exception->getMessage());
+            $this->assertFileDoesNotExist($output);
+        }
     }
 }
