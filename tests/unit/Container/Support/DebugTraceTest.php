@@ -207,8 +207,6 @@ namespace Tests\Unit\Container\Support {
         public function testImportTraceMapSkipsNonArrayValues(): void
         {
             $method = new ReflectionMethod(DebugTrace::class, 'importTraceMap');
-            /** @psalm-suppress UnusedMethodCall */
-            $method->setAccessible(true);
 
             $result = $method->invoke(null, ['Class' => 'not-array']);
 
@@ -221,8 +219,6 @@ namespace Tests\Unit\Container\Support {
         public function testLooksLikeTraceMapReturnsFalseForEmptyArray(): void
         {
             $method = new ReflectionMethod(DebugTrace::class, 'looksLikeTraceMap');
-            /** @psalm-suppress UnusedMethodCall */
-            $method->setAccessible(true);
 
             $this->assertFalse($method->invoke(null, []));
         }
