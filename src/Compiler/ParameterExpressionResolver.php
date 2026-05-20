@@ -20,7 +20,7 @@ final class ParameterExpressionResolver
 
     public function __construct(
         private readonly ArgonContainer $container,
-        private readonly ContextualBindingsInterface $contextualBindings
+        ContextualBindingsInterface $contextualBindings
     ) {
         $this->planner = new ArgumentResolutionPlanner($contextualBindings);
     }
