@@ -29,6 +29,7 @@ use Tests\Integration\Compiler\Mocks\WithOptionalInterface;
 use Tests\Integration\Compiler\Mocks\WithOptionalService;
 use Tests\Integration\Mocks\CustomLogger;
 use Tests\Integration\Mocks\DeepGraph;
+use Tests\Integration\Mocks\Foo;
 use Tests\Integration\Mocks\InterceptedClass;
 use Tests\Integration\Mocks\Logger as AutowireLogger;
 use Tests\Integration\Mocks\LoggerInterface;
@@ -37,6 +38,7 @@ use Tests\Integration\Mocks\NeedsLogger;
 use Tests\Integration\Mocks\PostHook;
 use Tests\Integration\Mocks\PreArgOverride;
 use Tests\Integration\Mocks\SimpleService;
+use Tests\Integration\Mocks\StaticFooFactory;
 use Tests\Mocks\DummyProvider;
 
 final class ContainerCompilerTest extends TestCase
@@ -865,6 +867,25 @@ final class ContainerCompilerTest extends TestCase
 
         $this->assertInstanceOf(Mailer::class, $mailer);
         $this->assertInstanceOf(Logger::class, $mailer->logger);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testCompileHandlesStaticFactoryBinding(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(Foo::class)->factory(StaticFooFactory::class, 'createStatic');
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompileHandlesStaticFactoryBinding');
+
+        $foo = $compiled->get(Foo::class);
+
+        $this->assertInstanceOf(Foo::class, $foo);
+        $this->assertSame('from-static-method', $foo->label);
     }
 
     /**

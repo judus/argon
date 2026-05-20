@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container\Compiler;
 
-use Closure;
 use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
@@ -37,14 +36,6 @@ final class ServiceDefinitionGenerator
             $methodName = $this->buildServiceMethodName($id);
             $concrete = $descriptor->getConcrete();
 
-            if ($concrete instanceof Closure) {
-                throw new ContainerException(
-                    "Cannot compile a container with closures: [$id]. " .
-                    "Use skipCompilation() to exclude it, " .
-                    "or register the closure during boot/runtime after compilation."
-                );
-            }
-
             if ($descriptor->hasFactory()) {
                 $this->compileFactoryService(
                     $context->namespace,
@@ -57,19 +48,13 @@ final class ServiceDefinitionGenerator
                 continue;
             }
 
-            if (!(new ReflectionClass($concrete))->isInstantiable()) {
-                $target = " [$concrete]";
-                throw new ContainerException(
-                    "Service [$id] points to non-instantiable class$target."
-                );
-            }
-
             $singletonProperty = "singleton_{$methodName}";
 
             if ($descriptor->isShared()) {
                 $this->generateSingletonProperty($context->class, $singletonProperty, $id);
             }
 
+            /** @var class-string $concrete */
             $this->generateServiceMethod(
                 $context->class,
                 $concrete,
@@ -104,14 +89,6 @@ final class ServiceDefinitionGenerator
         assert($factoryClass !== null);
 
         $factoryReflection = new ReflectionClass($factoryClass);
-
-        if (!$factoryReflection->hasMethod($factoryMethod)) {
-            throw new ContainerException(sprintf(
-                'Factory method "%s" not found on class "%s".',
-                $factoryMethod,
-                $factoryClass
-            ));
-        }
 
         $methodReflection = $factoryReflection->getMethod($factoryMethod);
 

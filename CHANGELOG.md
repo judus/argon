@@ -31,6 +31,7 @@ All notable changes to `maduser/argon` will be documented in this file.
 - PHP 8.2 compatibility is preserved by avoiding typed class constants in internal argument resolution metadata.
 - PHP 8.5 test deprecations from redundant reflection accessibility calls were removed.
 - CI Psalm runs no longer report an unused contextual binding property in compiled parameter expression resolution.
+- Compiler validation and argument resolution edge cases now remain covered by tests after the 1.1.0 release bump.
 - Internal container contracts now use tighter PHPDoc shapes for bindings, contextual bindings, interceptors, and optional resolution.
 
 ### Documentation

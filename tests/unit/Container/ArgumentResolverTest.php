@@ -12,6 +12,8 @@ use Maduser\Argon\Container\Contracts\ContextualResolverInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\ArgumentResolutionPlan;
+use Maduser\Argon\Container\Support\ArgumentResolutionStep;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -211,6 +213,38 @@ final class ArgumentResolverTest extends TestCase
         $this->resolver->resolve($param);
     }
 
+    public function testExecutePlanThrowsWhenNoStepProducesValue(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Argument resolution plan did not produce a value.');
+
+        $this->invokeExecutePlan($this->makePlan([]));
+    }
+
+    public function testContextualStepRequiresDependency(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Contextual resolution step misses dependency.');
+
+        $this->invokeExecuteStep($this->makeStep(ArgumentResolutionStep::CONTEXTUAL_SERVICE));
+    }
+
+    public function testServiceStepRequiresServiceId(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Service resolution step misses service id.');
+
+        $this->invokeExecuteStep($this->makeStep(ArgumentResolutionStep::SERVICE));
+    }
+
+    public function testUnknownResolutionStepFails(): void
+    {
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage("Unknown argument resolution step 'unknown'.");
+
+        $this->invokeExecuteStep($this->makeStep('unknown'));
+    }
+
     /**
      * @psalm-param class-string $declaringClass
      * @psalm-param 42|null $defaultValue
@@ -247,6 +281,55 @@ final class ArgumentResolverTest extends TestCase
         }
 
         return $param;
+    }
+
+    /**
+     * @param list<ArgumentResolutionStep> $steps
+     */
+    private function makePlan(array $steps): ArgumentResolutionPlan
+    {
+        return new ArgumentResolutionPlan(
+            'value',
+            SomeClass::class,
+            SomeClass::class,
+            'mixed',
+            null,
+            false,
+            $steps
+        );
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function invokeExecutePlan(ArgumentResolutionPlan $plan): mixed
+    {
+        $method = new \ReflectionMethod(ArgumentResolver::class, 'executePlan');
+
+        return $method->invoke($this->resolver, $plan, []);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function invokeExecuteStep(ArgumentResolutionStep $step): mixed
+    {
+        $method = new \ReflectionMethod(ArgumentResolver::class, 'executeStep');
+
+        return $method->invoke($this->resolver, $this->makePlan([$step]), $step, []);
+    }
+
+    private function makeStep(string $kind): ArgumentResolutionStep
+    {
+        $reflection = new ReflectionClass(ArgumentResolutionStep::class);
+        $step = $reflection->newInstanceWithoutConstructor();
+        $constructor = $reflection->getConstructor();
+        self::assertNotNull($constructor);
+        $constructor->invoke($step, $kind);
+
+        return $step;
     }
 
     /**

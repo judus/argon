@@ -29,7 +29,6 @@ use Maduser\Argon\Container\Support\NullServiceProxy;
 use Override;
 use Psr\Container\ContainerInterface;
 use ReflectionClass;
-use ReflectionException;
 
 /**
  * Base container implementation.
@@ -357,11 +356,7 @@ class ArgonContainer implements ContainerInterface
             return false;
         }
 
-        try {
-            return (new ReflectionClass($id))->isInstantiable();
-        } catch (ReflectionException) {
-            return false;
-        }
+        return (new ReflectionClass($id))->isInstantiable();
     }
 
     /**

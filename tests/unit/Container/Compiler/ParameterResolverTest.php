@@ -6,7 +6,10 @@ namespace Tests\Unit\Container\Compiler;
 
 use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\Compiler\ParameterExpressionResolver;
+use Maduser\Argon\Container\Support\ArgumentResolutionPlan;
+use Maduser\Argon\Container\Support\ArgumentResolutionStep;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionParameter;
 use Tests\Integration\Mocks\Logger;
@@ -122,6 +125,72 @@ final class ParameterResolverTest extends TestCase
         $this->assertSame("array_key_exists('foo', \$args) ? \$args['foo'] : 'default'", $code);
     }
 
+    public function testReturnsFailureForUnresolvableMixedParameter(): void
+    {
+        $param = $this->makeParameterMock('value', 'mixed');
+        $resolver = $this->makeResolver();
+
+        $code = $resolver->resolveParameter($param, 'MixedService');
+
+        $this->assertSame(
+            "array_key_exists('value', \$args) ? \$args['value'] : " .
+            "throw ContainerException::fromServiceId('MixedService', " .
+            "'Cannot resolve parameter \$value in MixedService::__construct(): " .
+            "parameter is of type \\'mixed\\' with no default or nullability')",
+            $code
+        );
+    }
+
+    public function testContextualClosureBindingRendersCompilationFailure(): void
+    {
+        $param = $this->makeParameterMock('logger', LoggerInterface::class, isBuiltin: false);
+        $container = new ArgonContainer();
+        $container->for('SomeService')->set(LoggerInterface::class, fn(): Logger => new Logger());
+        $resolver = $this->makeResolver($container);
+
+        $code = $resolver->resolveParameter($param, 'SomeService');
+
+        $this->assertSame(
+            "array_key_exists('logger', \$args) ? " .
+            "(is_string(\$args['logger']) && is_a(\$args['logger'], " .
+            var_export(LoggerInterface::class, true) .
+            ", true) ? " .
+            "\$this->get(\$args['logger']) : \$args['logger']) : " .
+            "throw ContainerException::fromServiceId('SomeService', " .
+            "'Cannot compile contextual closure binding for parameter \\'logger\\'. " .
+            "Use skipCompilation() to exclude it, " .
+            "or register the closure during boot/runtime after compilation.')",
+            $code
+        );
+    }
+
+    public function testRenderStepFailsWhenPlanHasNoSteps(): void
+    {
+        $resolver = $this->makeResolver();
+        $plan = $this->makePlan([]);
+
+        $code = $this->invokeRenderStep($resolver, $plan, []);
+
+        $this->assertSame(
+            "throw ContainerException::fromServiceId('SomeService', 'Missing required argument \\'value\\'')",
+            $code
+        );
+    }
+
+    public function testRenderStepFailsWhenServiceStepMissesServiceId(): void
+    {
+        $resolver = $this->makeResolver();
+        $plan = $this->makePlan([]);
+        $step = $this->makeStep(ArgumentResolutionStep::SERVICE);
+
+        $code = $this->invokeRenderStep($resolver, $plan, [$step]);
+
+        $this->assertSame(
+            "throw ContainerException::fromServiceId('SomeService', 'Service resolution step misses service id.')",
+            $code
+        );
+    }
+
     // === Helpers ===
 
     private function makeResolver(?ArgonContainer $container = null): ParameterExpressionResolver
@@ -129,6 +198,49 @@ final class ParameterResolverTest extends TestCase
         $container ??= new ArgonContainer();
 
         return new ParameterExpressionResolver($container, $container->getContextualBindings());
+    }
+
+    /**
+     * @param list<ArgumentResolutionStep> $steps
+     */
+    private function makePlan(array $steps): ArgumentResolutionPlan
+    {
+        return new ArgumentResolutionPlan(
+            'value',
+            'SomeContext',
+            'SomeService',
+            'mixed',
+            null,
+            false,
+            $steps
+        );
+    }
+
+    /**
+     * @param list<ArgumentResolutionStep> $steps
+     */
+    private function invokeRenderStep(
+        ParameterExpressionResolver $resolver,
+        ArgumentResolutionPlan $plan,
+        array $steps
+    ): string {
+        $method = new \ReflectionMethod(ParameterExpressionResolver::class, 'renderStep');
+
+        $result = $method->invoke($resolver, $plan, $steps, 0, '$args');
+        self::assertIsString($result);
+
+        return $result;
+    }
+
+    private function makeStep(string $kind): ArgumentResolutionStep
+    {
+        $reflection = new ReflectionClass(ArgumentResolutionStep::class);
+        $step = $reflection->newInstanceWithoutConstructor();
+        $constructor = $reflection->getConstructor();
+        self::assertNotNull($constructor);
+        $constructor->invoke($step, $kind);
+
+        return $step;
     }
 
     private function makeParameterMock(
