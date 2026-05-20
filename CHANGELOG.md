@@ -25,6 +25,7 @@ All notable changes to `maduser/argon` will be documented in this file.
 - Closure compilation errors now explicitly point to `skipCompilation()` or boot-time/runtime registration.
 - `isResolvable()` now respects strict mode and only treats concrete instantiable classes as implicitly resolvable.
 - PHP 8.4 test deprecations for implicit nullable parameters were removed.
+- Compiler argument expression tests now exercise the real resolver instead of duplicated fake resolver logic.
 - Internal container contracts now use tighter PHPDoc shapes for bindings, contextual bindings, interceptors, and optional resolution.
 
 ### Documentation
