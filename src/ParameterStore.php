@@ -26,7 +26,7 @@ final class ParameterStore implements ParameterStoreInterface
     #[Override]
     public function get(string $key, int|string|bool|null $default = null): mixed
     {
-        return $this->store[$key] ?? $default;
+        return array_key_exists($key, $this->store) ? $this->store[$key] : $default;
     }
 
     #[Override]

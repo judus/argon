@@ -6,6 +6,12 @@ All notable changes to `maduser/argon` will be documented in this file.
 
 ### Fixed
 
+- `ParameterStore::get()` now preserves explicitly stored `null` values when a default value is provided.
+
+## [1.1.1] - 2026-05-20
+
+### Fixed
+
 - Runtime resolution now clears the circular-dependency guard after failed resolutions, preventing repeated failures from being misreported as circular dependencies.
 - `extend()` API documentation now matches its existing resolve-then-decorate behavior.
 

@@ -24,6 +24,23 @@ final class ParameterStoreTest extends TestCase
         $this->assertSame('default', $store->get('missing', 'default'));
     }
 
+    public function testGetPreservesExplicitNullWhenDefaultIsProvided(): void
+    {
+        $store = new ParameterStore();
+        $store->set('feature.flag', null);
+
+        $this->assertTrue($store->has('feature.flag'));
+        $this->assertNull($store->get('feature.flag', 'fallback'));
+    }
+
+    public function testGetReturnsNullForExplicitNullWithoutDefault(): void
+    {
+        $store = new ParameterStore();
+        $store->set('feature.flag', null);
+
+        $this->assertNull($store->get('feature.flag'));
+    }
+
     public function testHasReturnsCorrectly(): void
     {
         $store = new ParameterStore();
