@@ -219,12 +219,27 @@ class ArgonContainer implements ContainerInterface
             );
         }
 
-        if (is_subclass_of($interceptorClass, PreResolutionInterceptorInterface::class)) {
-            $this->interceptors->registerPre($interceptorClass);
+        $isPreInterceptor = is_subclass_of($interceptorClass, PreResolutionInterceptorInterface::class);
+        $isPostInterceptor = is_subclass_of($interceptorClass, PostResolutionInterceptorInterface::class);
+
+        if (!$isPreInterceptor && !$isPostInterceptor) {
+            throw ContainerException::fromInterceptor(
+                $interceptorClass,
+                "Interceptor '$interceptorClass' must implement PreResolutionInterceptorInterface " .
+                'or PostResolutionInterceptorInterface.'
+            );
         }
 
-        if (is_subclass_of($interceptorClass, PostResolutionInterceptorInterface::class)) {
-            $this->interceptors->registerPost($interceptorClass);
+        if ($isPreInterceptor) {
+            /** @var class-string<PreResolutionInterceptorInterface> $preInterceptorClass */
+            $preInterceptorClass = $interceptorClass;
+            $this->interceptors->registerPre($preInterceptorClass);
+        }
+
+        if ($isPostInterceptor) {
+            /** @var class-string<PostResolutionInterceptorInterface> $postInterceptorClass */
+            $postInterceptorClass = $interceptorClass;
+            $this->interceptors->registerPost($postInterceptorClass);
         }
 
         return $this;

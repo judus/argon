@@ -6,6 +6,7 @@ All notable changes to `maduser/argon` will be documented in this file.
 
 ### Fixed
 
+- `registerInterceptor()` now rejects classes that implement neither pre- nor post-resolution interceptor contracts.
 - `ParameterStore::get()` now preserves explicitly stored `null` values when a default value is provided.
 
 ## [1.1.1] - 2026-05-20

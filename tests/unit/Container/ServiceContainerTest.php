@@ -255,6 +255,20 @@ final class ServiceContainerTest extends TestCase
         $container->registerInterceptor('NotARealInterceptor');
     }
 
+    public function testRegisterInterceptorThrowsIfClassDoesNotImplementInterceptorContract(): void
+    {
+        $container = new ArgonContainer();
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage(
+            "[stdClass] Interceptor 'stdClass' must implement PreResolutionInterceptorInterface " .
+            'or PostResolutionInterceptorInterface.'
+        );
+
+        /** @psalm-suppress InvalidArgument */
+        $container->registerInterceptor(stdClass::class);
+    }
+
    /**
      * @throws ContainerException
      */
