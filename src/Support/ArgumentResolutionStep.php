@@ -6,14 +6,14 @@ namespace Maduser\Argon\Container\Support;
 
 final readonly class ArgumentResolutionStep
 {
-    public const string RUNTIME_ARGUMENT = 'runtime_argument';
-    public const string BOUND_ARGUMENT = 'bound_argument';
-    public const string CONTEXTUAL_SERVICE = 'contextual_service';
-    public const string SERVICE = 'service';
-    public const string DEFAULT_VALUE = 'default_value';
-    public const string NULL_VALUE = 'null_value';
-    public const string FAILURE = 'failure';
-    public const string PRIMITIVE_FAILURE = 'primitive_failure';
+    public const RUNTIME_ARGUMENT = 'runtime_argument';
+    public const BOUND_ARGUMENT = 'bound_argument';
+    public const CONTEXTUAL_SERVICE = 'contextual_service';
+    public const SERVICE = 'service';
+    public const DEFAULT_VALUE = 'default_value';
+    public const NULL_VALUE = 'null_value';
+    public const FAILURE = 'failure';
+    public const PRIMITIVE_FAILURE = 'primitive_failure';
 
     private function __construct(
         private string $kind,

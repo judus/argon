@@ -26,6 +26,7 @@ All notable changes to `maduser/argon` will be documented in this file.
 - `isResolvable()` now respects strict mode and only treats concrete instantiable classes as implicitly resolvable.
 - PHP 8.4 test deprecations for implicit nullable parameters were removed.
 - Compiler argument expression tests now exercise the real resolver instead of duplicated fake resolver logic.
+- PHP 8.2 compatibility is preserved by avoiding typed class constants in internal argument resolution metadata.
 - Internal container contracts now use tighter PHPDoc shapes for bindings, contextual bindings, interceptors, and optional resolution.
 
 ### Documentation
