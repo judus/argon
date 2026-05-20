@@ -79,7 +79,6 @@ final class ServiceResolver implements ServiceResolverInterface
         try {
             $result = $this->interceptors->matchPre($id, $args);
             if ($result !== null) {
-                $this->removeFromResolving($id);
                 return $result;
             }
 
@@ -94,15 +93,14 @@ final class ServiceResolver implements ServiceResolverInterface
                 throw new NotFoundException($id, $requestedBy);
             }
 
-            $this->removeFromResolving($id);
             return $instance;
         } catch (ReflectionException $e) {
-            $this->removeFromResolving($id);
             throw ContainerException::fromServiceId(
                 $id,
                 'Reflection error: ' . $e->getMessage()
             );
         } finally {
+            $this->removeFromResolving($id);
             array_pop(self::$resolutionStack);
         }
     }

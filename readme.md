@@ -481,7 +481,7 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 | `getTags()`               | –                                               | `array<string, list<string>>`              | Returns all tag definitions in the container.                                     |
 | `getTagged()`             | `string $tag`                                   | `list<object>`                             | Resolves all services tagged with the given label.                                |
 | `boot()`                  | –                                               | `ArgonContainer`                           | Bootstraps all registered service providers.                                      |
-| `extend()`                | `string $id`  `callable $decorator`             | `ArgonContainer`                           | Decorates an already-resolved service at runtime.                                 |
+| `extend()`                | `string $id`  `callable $decorator`             | `ArgonContainer`                           | Resolves then decorates a service, replacing the binding for future resolutions.  |
 | `for()`                   | `string $target`                                | `ContextualBindingBuilder`                 | Begins a contextual binding chain — call `->set()` to define per-target bindings. |
 | `getPreInterceptors()`    | –                                               | `list<class-string<InterceptorInterface>>` | Lists all registered pre-interceptors.                                            |
 | `getPostInterceptors()`   | –                                               | `list<class-string<InterceptorInterface>>` | Lists all registered post-interceptors.                                           |
