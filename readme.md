@@ -464,6 +464,9 @@ if (file_exists($file) && !$_ENV['DEV']) {
 ```
 The compiled container is a pure PHP class with zero runtime resolution logic for standard bindings. In **strict mode** the generated class omits the dynamic fallback entirely—missing registrations fail fast with `NotFoundException`. In magic mode it continues to fall back to the runtime resolver when needed.
 
+When `strictMode` is omitted, the compiler mirrors the source container's current strict-mode setting. Pass
+`strictMode: false` explicitly to force a lenient compiled container from a strict runtime container.
+
 ## `ArgonContainer` API
 
 | ArgonContainer            | Parameters                                      | Return                                     | Description                                                                       |

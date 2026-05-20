@@ -2,7 +2,16 @@
 
 All notable changes to `maduser/argon` will be documented in this file.
 
-## [Unreleased]
+## [1.1.2] - 2026-05-21
+
+### Fixed
+
+- `ContainerCompiler::compile()` now distinguishes omitted strict mode from an explicit `false` value.
+- Runtime resolution now detects circular alias chains while following class aliases.
+- `registerInterceptor()` now rejects classes that implement neither pre- nor post-resolution interceptor contracts.
+- `ParameterStore::get()` now preserves explicitly stored `null` values when a default value is provided.
+
+## [1.1.1] - 2026-05-20
 
 ### Fixed
 

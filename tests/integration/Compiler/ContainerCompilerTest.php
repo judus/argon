@@ -90,8 +90,7 @@ final class ContainerCompilerTest extends TestCase
         $file = self::compilerCacheFile($className);
 
         $compiler = new ContainerCompiler($container);
-        $effectiveStrictMode = $strictMode ?? $container->isStrictMode();
-        $compiler->compile($file, $className, $namespace, $effectiveStrictMode);
+        $compiler->compile($file, $className, $namespace, $strictMode);
 
         /** @psalm-suppress UnresolvableInclude */
         require_once $file;
@@ -635,6 +634,35 @@ final class ContainerCompilerTest extends TestCase
 
         $this->expectException(NotFoundException::class);
         $compiled->get(Logger::class);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledContainerMirrorsRuntimeStrictModeWhenStrictModeIsOmitted(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+
+        $compiled = $this->compileAndLoadContainer($container, 'StrictMirrorsRuntime');
+
+        $this->expectException(NotFoundException::class);
+        $compiled->get(Logger::class);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledContainerCanExplicitlyDisableStrictMode(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+
+        $compiled = $this->compileAndLoadContainer($container, 'ExplicitLenientFromStrict', strictMode: false);
+
+        $this->assertInstanceOf(Logger::class, $compiled->get(Logger::class));
     }
 
     /**

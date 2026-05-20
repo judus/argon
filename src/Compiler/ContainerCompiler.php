@@ -46,9 +46,9 @@ final class ContainerCompiler
         string $filePath,
         string $className,
         string $namespace = 'App\\Compiled',
-        bool $strictMode = false
+        ?bool $strictMode = null
     ): void {
-        if (!$strictMode) {
+        if ($strictMode === null) {
             $strictMode = $this->container->isStrictMode();
         }
 
