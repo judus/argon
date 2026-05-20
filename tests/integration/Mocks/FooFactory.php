@@ -20,4 +20,9 @@ final class FooFactory
     {
         return new Foo($label);
     }
+
+    public function makeWithLogger(Logger $logger): Foo
+    {
+        return new Foo($logger::class);
+    }
 }

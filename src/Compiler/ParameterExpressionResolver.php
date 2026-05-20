@@ -7,17 +7,22 @@ namespace Maduser\Argon\Container\Compiler;
 use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\Contracts\ContextualBindingsInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
+use Maduser\Argon\Container\Support\ArgumentResolutionPlan;
+use Maduser\Argon\Container\Support\ArgumentResolutionPlanner;
+use Maduser\Argon\Container\Support\ArgumentResolutionStep;
 use ReflectionClass;
 use ReflectionException;
-use ReflectionNamedType;
 use ReflectionParameter;
 
 final class ParameterExpressionResolver
 {
+    private readonly ArgumentResolutionPlanner $planner;
+
     public function __construct(
         private readonly ArgonContainer $container,
         private readonly ContextualBindingsInterface $contextualBindings
     ) {
+        $this->planner = new ArgumentResolutionPlanner($contextualBindings);
     }
 
     /**
@@ -57,85 +62,137 @@ final class ParameterExpressionResolver
         string $serviceId,
         string $argsVar = '$args'
     ): string {
-        $name = $parameter->getName();
-        $type = $parameter->getType();
-        $typeName = $type instanceof ReflectionNamedType ? $type->getName() : null;
-
-        $runtime = "{$argsVar}[" . var_export($name, true) . "]";
-        $fallbacks = [];
         $declaringClass = $parameter->getDeclaringClass();
         $context = $declaringClass?->getName() ?? $serviceId;
-
         $descriptor = $this->container->getDescriptor($serviceId);
-        if ($descriptor?->hasArgument($name)) {
-            /** @var mixed $value */
-            $value = $descriptor->getArgument($name);
+        $boundArguments = $descriptor?->getArguments() ?? [];
+        $plan = $this->planner->build(
+            $parameter,
+            $context,
+            $serviceId,
+            $boundArguments
+        );
 
-            if (
-                is_string($value) &&
-                $type instanceof ReflectionNamedType &&
-                !$type->isBuiltin() &&
-                class_exists($value)
-            ) {
-                $fallback = "\$this->get('{$value}')";
-            } else {
-                $fallback = var_export($value, true);
-            }
+        return $this->renderPlan($plan, $argsVar);
+    }
 
-            return $this->runtimeArgumentExpression($argsVar, $name, $runtime, $fallback);
+    private function renderPlan(ArgumentResolutionPlan $plan, string $argsVar): string
+    {
+        return $this->renderStep($plan, $plan->steps(), 0, $argsVar);
+    }
+
+    /**
+     * @param list<ArgumentResolutionStep> $steps
+     */
+    private function renderStep(
+        ArgumentResolutionPlan $plan,
+        array $steps,
+        int $index,
+        string $argsVar
+    ): string {
+        $step = $steps[$index] ?? null;
+        if ($step === null) {
+            return $this->renderFailure($plan, "Missing required argument '{$plan->parameterName()}'");
         }
 
-        if ($typeName !== null && $this->contextualBindings->has($context, $typeName)) {
-            $target = $this->contextualBindings->get($context, $typeName);
-            if (is_string($target)) {
-                $fallbacks[] = "\$this->get('{$target}')";
-            }
+        return match ($step->kind()) {
+            ArgumentResolutionStep::RUNTIME_ARGUMENT => $this->renderRuntimeArgument(
+                $plan,
+                $steps,
+                $index,
+                $argsVar
+            ),
+            ArgumentResolutionStep::BOUND_ARGUMENT => $this->renderValue($plan, $step->value()),
+            ArgumentResolutionStep::CONTEXTUAL_SERVICE => $this->renderContextualService($plan, $step),
+            ArgumentResolutionStep::SERVICE => $this->renderServiceStep($plan, $step),
+            ArgumentResolutionStep::DEFAULT_VALUE => var_export($step->value(), true),
+            ArgumentResolutionStep::NULL_VALUE => 'null',
+            ArgumentResolutionStep::PRIMITIVE_FAILURE => $this->renderFailure(
+                $plan,
+                "Missing required argument '{$plan->parameterName()}'"
+            ),
+            ArgumentResolutionStep::FAILURE => $this->renderFailure($plan, (string) $step->message()),
+            default => $this->renderFailure($plan, "Unknown argument resolution step '{$step->kind()}'."),
+        };
+    }
+
+    /**
+     * @param list<ArgumentResolutionStep> $steps
+     */
+    private function renderRuntimeArgument(
+        ArgumentResolutionPlan $plan,
+        array $steps,
+        int $index,
+        string $argsVar
+    ): string {
+        $name = var_export($plan->parameterName(), true);
+        $runtime = "{$argsVar}[{$name}]";
+        $value = $this->renderResolvableExpression($plan, $runtime);
+        $fallback = $this->renderStep($plan, $steps, $index + 1, $argsVar);
+
+        return "array_key_exists({$name}, {$argsVar}) ? {$value} : {$fallback}";
+    }
+
+    private function renderValue(ArgumentResolutionPlan $plan, mixed $value): string
+    {
+        $classString = $plan->resolveClassString($value);
+        if ($classString !== null) {
+            return $this->renderService($classString);
         }
 
-        if ($typeName !== null) {
-            if ($this->container->has($typeName)) {
-                $fallbacks[] = "\$this->get('{$typeName}')";
-            } elseif (class_exists($typeName) && !$parameter->allowsNull()) {
-                $fallbacks[] = "\$this->get('{$typeName}')";
-            }
+        return var_export($value, true);
+    }
+
+    private function renderResolvableExpression(ArgumentResolutionPlan $plan, string $expression): string
+    {
+        if (!$plan->canResolveClassStringParameter()) {
+            return $expression;
         }
 
-        if ($parameter->isDefaultValueAvailable()) {
-            $fallbacks[] = var_export($parameter->getDefaultValue(), true);
-        }
-
-        if (
-            empty($fallbacks) &&
-            $type instanceof ReflectionNamedType &&
-            $type->allowsNull()
-        ) {
-            $fallbacks[] = 'null';
-        }
-
-        if (!empty($fallbacks)) {
-            return $this->runtimeArgumentExpression($argsVar, $name, $runtime, implode(' ?? ', $fallbacks));
-        }
-
-        return $this->runtimeArgumentExpression(
-            $argsVar,
-            $name,
-            $runtime,
-            'throw ContainerException::fromServiceId(' .
-                var_export($serviceId, true) .
-                ', ' .
-                var_export("Missing required argument '$name'", true) .
-                ')'
+        return sprintf(
+            '(is_string(%1$s) && is_a(%1$s, %2$s, true) ? $this->get(%1$s) : %1$s)',
+            $expression,
+            var_export($plan->namedTypeName(), true)
         );
     }
 
-    private function runtimeArgumentExpression(
-        string $argsVar,
-        string $name,
-        string $runtime,
-        string $fallback
-    ): string {
-        return 'array_key_exists(' .
-            var_export($name, true) .
-            ", {$argsVar}) ? {$runtime} : {$fallback}";
+    private function renderContextualService(ArgumentResolutionPlan $plan, ArgumentResolutionStep $step): string
+    {
+        $serviceId = $step->serviceId();
+        if ($serviceId !== null) {
+            return $this->renderService($serviceId);
+        }
+
+        return $this->renderFailure(
+            $plan,
+            sprintf(
+                "Cannot compile contextual closure binding for parameter '%s'. Use skipCompilation() to exclude it.",
+                $plan->parameterName()
+            )
+        );
+    }
+
+    private function renderServiceStep(ArgumentResolutionPlan $plan, ArgumentResolutionStep $step): string
+    {
+        $serviceId = $step->serviceId();
+        if ($serviceId === null) {
+            return $this->renderFailure($plan, 'Service resolution step misses service id.');
+        }
+
+        return $this->renderService($serviceId);
+    }
+
+    private function renderService(string $serviceId): string
+    {
+        return '$this->get(' . var_export($serviceId, true) . ')';
+    }
+
+    private function renderFailure(ArgumentResolutionPlan $plan, string $message): string
+    {
+        return 'throw ContainerException::fromServiceId(' .
+            var_export($plan->serviceId(), true) .
+            ', ' .
+            var_export($message, true) .
+            ')';
     }
 }

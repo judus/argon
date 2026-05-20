@@ -292,6 +292,28 @@ final class ContainerCompilerTest extends TestCase
      * @throws ReflectionException
      * @throws ContainerException
      */
+    public function testCompiledClassStringRuntimeArgumentResolvesService(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(WithOptionalService::class);
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledClassStringRuntimeArgumentResolvesService'
+        );
+
+        $instance = $compiled->get(WithOptionalService::class, args: [
+            'logger' => Logger::class,
+        ]);
+
+        $this->assertInstanceOf(Logger::class, $instance->logger);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
     public function testCompiledInjectsOptionalInterfaceWhenBound(): void
     {
         $container = new ArgonContainer();
@@ -816,6 +838,29 @@ final class ContainerCompilerTest extends TestCase
         $container->set(Mailer::class)->factory(MailerFactory::class, 'create');
 
         $compiled = $this->compileAndLoadContainer($container, 'testCompileHandlesFactoryBinding');
+
+        $mailer = $compiled->get(Mailer::class);
+
+        $this->assertInstanceOf(Mailer::class, $mailer);
+        $this->assertInstanceOf(Logger::class, $mailer->logger);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testCompiledFactoryMethodParametersUseContainerResolution(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(Logger::class);
+        $container->set(Mailer::class)->factory(MailerFactory::class, 'createWithLogger');
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledFactoryMethodParametersUseContainerResolution'
+        );
 
         $mailer = $compiled->get(Mailer::class);
 

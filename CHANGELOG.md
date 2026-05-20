@@ -19,6 +19,8 @@ All notable changes to `maduser/argon` will be documented in this file.
 - Contextual closure bindings now resolve parameters through the container at runtime.
 - Compiled containers now throw `ContainerException` for missing required runtime arguments instead of leaking undefined-array-key notices.
 - Compiled argument resolution now preserves explicit `null` arguments instead of treating them as absent.
+- Runtime and compiled argument resolution now share the same resolution plan for constructor and factory method parameters.
+- Compiled runtime class-string arguments now resolve through the container when they target object-typed parameters.
 - `isResolvable()` now respects strict mode and only treats concrete instantiable classes as implicitly resolvable.
 - PHP 8.4 test deprecations for implicit nullable parameters were removed.
 
