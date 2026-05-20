@@ -117,6 +117,26 @@ final class ServiceResolverTest extends TestCase
     }
 
     /**
+     * @throws ContainerException
+     */
+    public function testFailedResolutionDoesNotPoisonCircularDependencyGuard(): void
+    {
+        $this->binder->method('getDescriptor')->willReturn(null);
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            try {
+                $this->resolver->resolve('NonExistentService');
+                $this->fail('Expected resolution to fail.');
+            } catch (NotFoundException $exception) {
+                $this->assertSame(
+                    "Service 'NonExistentService' not found (requested by unknown).",
+                    strtok($exception->getMessage(), "\n")
+                );
+            }
+        }
+    }
+
+    /**
      * @throws NotFoundException
      */
     public function testThrowsForNonInstantiableClass(): void

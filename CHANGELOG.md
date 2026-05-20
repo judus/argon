@@ -2,6 +2,12 @@
 
 All notable changes to `maduser/argon` will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- Runtime resolution now clears the circular-dependency guard after failed resolutions, preventing repeated failures from being misreported as circular dependencies.
+
 ## [1.1.0] - 2026-05-20
 
 ### Changed
