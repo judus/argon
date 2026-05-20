@@ -804,6 +804,86 @@ final class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
+    public function testExtendResolvesBoundServiceBeforeDecorating(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(stdClass::class, fn() => new stdClass());
+
+        $container->extend(stdClass::class, static function (stdClass $original): object {
+            return new class ($original) extends stdClass {
+                public function __construct(public stdClass $wrapped)
+                {
+                }
+            };
+        });
+
+        $resolved = $container->get(stdClass::class);
+
+        $this->assertInstanceOf(stdClass::class, $resolved);
+        $this->assertInstanceOf(stdClass::class, $resolved->wrapped);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testExtendAutowiresUnboundConcreteInDynamicMode(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->extend(stdClass::class, static function (stdClass $original): object {
+            return new class ($original) extends stdClass {
+                public function __construct(public stdClass $wrapped)
+                {
+                }
+            };
+        });
+
+        $resolved = $container->get(stdClass::class);
+
+        $this->assertInstanceOf(stdClass::class, $resolved);
+        $this->assertInstanceOf(stdClass::class, $resolved->wrapped);
+    }
+
+    /**
+     * @throws ContainerException
+     */
+    public function testExtendUnboundServiceFailsInStrictMode(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+
+        $this->expectException(NotFoundException::class);
+
+        $container->extend(stdClass::class, static fn(stdClass $original): object => $original);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testExtendTransientBindingStoresDecoratedInstanceForFutureResolutions(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(stdClass::class, fn() => new stdClass())->transient();
+
+        $container->extend(stdClass::class, static function (stdClass $original): object {
+            return new class ($original) extends stdClass {
+                public function __construct(public stdClass $wrapped)
+                {
+                }
+            };
+        });
+
+        $first = $container->get(stdClass::class);
+        $second = $container->get(stdClass::class);
+
+        $this->assertSame($first, $second);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testResolvesNestedDependencies(): void
     {
         $container = new ArgonContainer();

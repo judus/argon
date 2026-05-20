@@ -364,7 +364,9 @@ $container->registerInterceptor(StubInterceptor::class);
 
 ### Extending Services
 
-Extends an already-resolved service instance during runtime. Useful for wrapping, decorating, or modifying an existing service after resolution.
+`extend()` decorates a resolved service instance during runtime. It calls `get()` internally, so the service does
+not need to have been resolved before you extend it: a bound service is resolved immediately, then the decorated
+object replaces the binding for later calls.
 
 ```php
 // For example in a ServiceProvider 
@@ -378,6 +380,9 @@ public function boot(ArgonContainer $container): void
 
 From this point on, all calls to `get(LoggerInterface::class)` will return the wrapped instance.
 
+In dynamic mode, `extend()` can also decorate an unbound concrete class that the container can autowire. In strict
+mode, or for missing non-autowireable IDs, it fails the same way `get()` would. Extending a transient binding
+currently replaces it with the decorated object for future resolutions.
 
 ### Tags
 

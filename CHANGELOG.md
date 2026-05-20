@@ -32,3 +32,4 @@ All notable changes to `maduser/argon` will be documented in this file.
 - Clarified that `optional()` is intentionally binding-based and does not autowire unbound concrete classes.
 - Clarified runtime argument behavior for shared services and transient services.
 - Clarified runtime-only closure binding behavior and compiled-container limitations.
+- Clarified that `extend()` resolves then decorates a service and replaces the binding for future resolutions.
