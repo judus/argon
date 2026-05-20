@@ -166,7 +166,9 @@ final class ParameterExpressionResolver
         return $this->renderFailure(
             $plan,
             sprintf(
-                "Cannot compile contextual closure binding for parameter '%s'. Use skipCompilation() to exclude it.",
+                "Cannot compile contextual closure binding for parameter '%s'. " .
+                "Use skipCompilation() to exclude it, " .
+                "or register the closure during boot/runtime after compilation.",
                 $plan->parameterName()
             )
         );

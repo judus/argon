@@ -62,6 +62,19 @@ final class ServiceContainerTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
+    public function testClosureBindingParametersAreAutowiredAtRuntime(): void
+    {
+        $this->container->set('runtime.logger', fn (Logger $logger): Logger => $logger);
+
+        $resolved = $this->container->get('runtime.logger');
+
+        $this->assertInstanceOf(Logger::class, $resolved);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testInvokeMethodOnResolvedClass(): void
     {
         $this->container->set(Logger::class);

@@ -409,9 +409,14 @@ $container->optional(SomeLogger::class)->log('Only if logger exists');
 
 ### Closure Bindings with Autowired Parameters
 
-Closure bindings are convenient for CLI tools, prototyping, or runtime-only services — but they're not suited for production graphs or compilation. Since closures can't be compiled, you must either:
-- Register them during the boot() phase of a ServiceProvider, after compilation
-- Or explicitly mark them as excluded from compilation via skipCompilation()
+Closure bindings are convenient for CLI tools, prototyping, or runtime-only services. Their parameters are resolved
+through the container at runtime, so dependencies can still be autowired.
+
+Closures are not part of the compiled service graph. If a closure binding exists before compilation, either:
+
+- register it during the `boot()` phase of a service provider, after the compiled container has been created;
+- or explicitly mark it as excluded from compilation via `skipCompilation()`.
+
 ```php
 // In a ServiceProvider — boot() runs at runtime, safe for closures
 public function boot(ArgonContainer $container): void
@@ -427,6 +432,9 @@ $container->set(LoggerInterface::class, fn (Config $config) => {
     return new FileLogger($config->get('log.path'));
 })->skipCompilation();
 ```
+
+Skipped closures are not embedded in the generated class. In dynamic compiled containers, class-based skipped
+bindings can still fall back to normal autowiring; non-class runtime services should be registered during boot.
 
 ### Compiling the Container
 

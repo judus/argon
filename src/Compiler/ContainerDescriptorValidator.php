@@ -39,7 +39,8 @@ final class ContainerDescriptorValidator
         if ($concrete instanceof Closure) {
             throw new ContainerException(
                 "Cannot compile a container with closures: [$id]. " .
-                "Use skipCompilation() to exclude from compilation."
+                "Use skipCompilation() to exclude it, " .
+                "or register the closure during boot/runtime after compilation."
             );
         }
 

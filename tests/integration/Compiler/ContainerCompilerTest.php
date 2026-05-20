@@ -150,6 +150,28 @@ final class ContainerCompilerTest extends TestCase
 
     /**
      * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testRuntimeClosureCanBeRegisteredOnCompiledContainer(): void
+    {
+        $container = new ArgonContainer();
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testRuntimeClosureCanBeRegisteredOnCompiledContainer'
+        );
+
+        $compiled->set('runtime.mailer', fn(Logger $logger): Mailer => new Mailer($logger))->skipCompilation();
+
+        $mailer = $compiled->get('runtime.mailer');
+
+        $this->assertInstanceOf(Mailer::class, $mailer);
+        $this->assertInstanceOf(Logger::class, $mailer->logger);
+    }
+
+    /**
+     * @throws ContainerException
      * @throws ReflectionException
      * @throws NotFoundException
      */
@@ -1028,7 +1050,7 @@ final class ContainerCompilerTest extends TestCase
         } catch (ContainerException $exception) {
             $this->assertStringContainsString(
                 'Cannot compile a container with closures: [some.closure]. ' .
-                'Use skipCompilation() to exclude from compilation.',
+                'Use skipCompilation() to exclude it, or register the closure during boot/runtime after compilation.',
                 $exception->getMessage()
             );
             $this->assertFileDoesNotExist($output);

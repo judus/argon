@@ -22,6 +22,7 @@ All notable changes to `maduser/argon` will be documented in this file.
 - Runtime and compiled argument resolution now share the same resolution plan for constructor and factory method parameters.
 - Compiled runtime class-string arguments now resolve through the container when they target object-typed parameters.
 - Container compilation now validates closure bindings, factory methods, and non-instantiable concretes before writing generated PHP.
+- Closure compilation errors now explicitly point to `skipCompilation()` or boot-time/runtime registration.
 - `isResolvable()` now respects strict mode and only treats concrete instantiable classes as implicitly resolvable.
 - PHP 8.4 test deprecations for implicit nullable parameters were removed.
 - Internal container contracts now use tighter PHPDoc shapes for bindings, contextual bindings, interceptors, and optional resolution.
@@ -30,3 +31,4 @@ All notable changes to `maduser/argon` will be documented in this file.
 
 - Clarified that `optional()` is intentionally binding-based and does not autowire unbound concrete classes.
 - Clarified runtime argument behavior for shared services and transient services.
+- Clarified runtime-only closure binding behavior and compiled-container limitations.
