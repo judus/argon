@@ -294,10 +294,10 @@ class ArgonContainer implements ContainerInterface
     }
 
     /**
-     * Extends an already-resolved service at runtime.
+     * Resolves and decorates a service at runtime.
      *
-     * This method only works after the service has been resolved.
-     * It should be called during `boot()` or runtime setup — not `register()`.
+     * The service is resolved through get(), passed to the decorator, and then
+     * replaced by the decorated instance for later resolutions.
      *
      * @template T of object
      * @param class-string<T>|string $id
