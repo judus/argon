@@ -95,6 +95,44 @@ final class BindAndResolveTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
+    public function testAliasChainResolvesFinalConcrete(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(Foo::class, Bar::class);
+        $container->set(Bar::class, Silent::class);
+
+        $this->assertInstanceOf(Silent::class, $container->get(Foo::class));
+    }
+
+    public function testCircularAliasChainThrows(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(Foo::class, Bar::class);
+        $container->set(Bar::class, Foo::class);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessageMatches('/Circular dependency detected.*Foo.*Bar.*Foo/s');
+
+        $container->get(Foo::class);
+    }
+
+    public function testLongCircularAliasChainThrows(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(Foo::class, Bar::class);
+        $container->set(Bar::class, Silent::class);
+        $container->set(Silent::class, Foo::class);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessageMatches('/Circular dependency detected.*Foo.*Bar.*Silent.*Foo/s');
+
+        $container->get(Foo::class);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testGettingUnboundClassWithoutConstructorSucceeds(): void
     {
         $container = new ArgonContainer();

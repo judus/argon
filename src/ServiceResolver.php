@@ -135,7 +135,7 @@ final class ServiceResolver implements ServiceResolverInterface
 
             $instance = $concrete instanceof Closure
                 ? $this->resolveClosure($concrete, $args, $id)
-                : $this->resolveClass($concrete, $args);
+                : $this->resolveClass($concrete, $args, $concrete === $id ? [] : [$id]);
         }
 
         $instance = $this->interceptors->matchPost($instance);
@@ -210,14 +210,19 @@ final class ServiceResolver implements ServiceResolverInterface
      * @template T of object
      * @param class-string<T> $className
      * @param array<array-key, mixed> $args
+     * @param list<string> $aliasChain
      * @return object|null
      * @psalm-return ($className is class-string<T> ? T : object)
      *
      * @throws ContainerException
      * @throws NotFoundException
      */
-    private function resolveClass(string $className, array $args = []): ?object
+    private function resolveClass(string $className, array $args = [], array $aliasChain = []): ?object
     {
+        if (in_array($className, $aliasChain, true)) {
+            throw ContainerException::forCircularDependency($className, [...$aliasChain, $className]);
+        }
+
         if ($descriptor = $this->binder->getDescriptor($className)) {
             $concrete = $descriptor->getConcrete();
 
@@ -227,7 +232,7 @@ final class ServiceResolver implements ServiceResolverInterface
 
             if ($concrete !== $className) {
                 $args = array_merge($descriptor->getArguments(), $args);
-                return $this->resolveClass($concrete, $args);
+                return $this->resolveClass($concrete, $args, [...$aliasChain, $className]);
             }
         }
 
