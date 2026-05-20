@@ -19,7 +19,7 @@ final class ContextualBindings implements ContextualBindingsInterface
     private array $bindings = [];
 
     /**
-     * @return array
+     * @return array<string, array<string, string|Closure>>
      */
     #[Override]
     public function getBindings(): array
@@ -28,8 +28,8 @@ final class ContextualBindings implements ContextualBindingsInterface
     }
 
     /**
-     * @param string $consumer
-     * @param string $dependency
+     * @param class-string|string $consumer
+     * @param class-string|string $dependency
      * @param string|Closure $concrete
      * @return void
      */
@@ -40,8 +40,8 @@ final class ContextualBindings implements ContextualBindingsInterface
     }
 
     /**
-     * @param string $consumer
-     * @param string $dependency
+     * @param class-string|string $consumer
+     * @param class-string|string $dependency
      * @return string|Closure|null
      */
     #[Override]
@@ -51,8 +51,8 @@ final class ContextualBindings implements ContextualBindingsInterface
     }
 
     /**
-     * @param string $consumer
-     * @param string $dependency
+     * @param class-string|string $consumer
+     * @param class-string|string $dependency
      * @return bool
      */
     #[Override]

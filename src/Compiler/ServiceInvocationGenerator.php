@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container\Compiler;
 
 use Maduser\Argon\Container\ArgonContainer;
-use Maduser\Argon\Container\ServiceDescriptor;
+use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Support\StringHelper;
 use Nette\PhpGenerator\ClassType;
 use ReflectionException;
@@ -73,7 +73,7 @@ final class ServiceInvocationGenerator
     /**
      * @return list<string>
      */
-    private function buildPrimitiveCastLines(ServiceDescriptor $descriptor, string $method): array
+    private function buildPrimitiveCastLines(ServiceDescriptorInterface $descriptor, string $method): array
     {
         $concrete = $descriptor->getConcrete();
 

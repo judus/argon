@@ -26,7 +26,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
     /**
      * Creates a contextual binding builder for the given target.
      *
-     * @param string $target
+     * @param class-string|string $target
      * @return ContextualBindingBuilderInterface
      */
     #[Override]
@@ -38,8 +38,8 @@ final readonly class ContextualResolver implements ContextualResolverInterface
     /**
      * Resolves a contextual override or throws if not found.
      *
-     * @param string $consumer
-     * @param string $dependency
+     * @param class-string|string $consumer
+     * @param class-string|string $dependency
      * @return object
      *
      * @throws ContainerException
@@ -64,8 +64,8 @@ final readonly class ContextualResolver implements ContextualResolverInterface
     /**
      * Checks if a contextual override exists for the given consumer and dependency.
      *
-     * @param string $consumer
-     * @param string $dependency
+     * @param class-string|string $consumer
+     * @param class-string|string $dependency
      * @return bool
      */
     #[Override]

@@ -26,12 +26,12 @@ interface InterceptorRegistryInterface
     public function registerPre(string $interceptor): void;
 
     /**
-     * @return array<class-string<PostResolutionInterceptorInterface>>
+     * @return list<class-string<PostResolutionInterceptorInterface>>
      */
     public function allPost(): array;
 
     /**
-     * @return array<class-string<PreResolutionInterceptorInterface>>
+     * @return list<class-string<PreResolutionInterceptorInterface>>
      */
     public function allPre(): array;
 
@@ -42,6 +42,8 @@ interface InterceptorRegistryInterface
 
     /**
      * Match and return a pre-resolution interceptor (or null).
+     *
+     * @param array<array-key, mixed> $parameters
      */
     public function matchPre(string $id, array &$parameters = []): ?object;
 

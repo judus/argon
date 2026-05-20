@@ -157,9 +157,9 @@ class ArgonContainer implements ContainerInterface
     }
 
     /**
-     * @param string $id
+     * @param class-string|string $id
      * @param Closure|string|null $concrete
-     * @param array|null $args
+     * @param array<array-key, mixed>|null $args
      * @return BindingBuilderInterface
      * @throws ContainerException
      */
@@ -177,7 +177,7 @@ class ArgonContainer implements ContainerInterface
     }
 
     /**
-     * @return array<string, ServiceDescriptor>
+     * @return array<string, ServiceDescriptorInterface>
      */
     public function getBindings(): array
     {
@@ -208,7 +208,7 @@ class ArgonContainer implements ContainerInterface
     /**
      * Registers an interceptor (pre- or post-resolution).
      *
-     * @param class-string $interceptorClass
+     * @param class-string<PreResolutionInterceptorInterface|PostResolutionInterceptorInterface> $interceptorClass
      * @throws ContainerException
      */
     public function registerInterceptor(string $interceptorClass): ArgonContainer
@@ -318,6 +318,9 @@ class ArgonContainer implements ContainerInterface
         return $this;
     }
 
+    /**
+     * @param class-string|string $target
+     */
     public function for(string $target): ContextualBindingBuilderInterface
     {
         return $this->contextual->for($target);
@@ -336,7 +339,7 @@ class ArgonContainer implements ContainerInterface
     }
 
     /**
-     * @param string $id
+     * @param class-string|string $id
      * @return object
      * @throws ContainerException
      * @throws NotFoundException

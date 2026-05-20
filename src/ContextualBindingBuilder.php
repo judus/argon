@@ -23,7 +23,7 @@ final readonly class ContextualBindingBuilder implements ContextualBindingBuilde
     /**
      * Registers a contextual binding for a given dependency.
      *
-     * @param string $dependency The dependency identifier (usually interface or class name).
+     * @param class-string|string $dependency The dependency identifier (usually interface or class name).
      * @param string|Closure $concrete The concrete implementation or a Closure factory.
      * @return void
      */

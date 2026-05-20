@@ -24,6 +24,7 @@ All notable changes to `maduser/argon` will be documented in this file.
 - Container compilation now validates closure bindings, factory methods, and non-instantiable concretes before writing generated PHP.
 - `isResolvable()` now respects strict mode and only treats concrete instantiable classes as implicitly resolvable.
 - PHP 8.4 test deprecations for implicit nullable parameters were removed.
+- Internal container contracts now use tighter PHPDoc shapes for bindings, contextual bindings, interceptors, and optional resolution.
 
 ### Documentation
 

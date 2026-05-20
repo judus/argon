@@ -6,8 +6,8 @@ namespace Maduser\Argon\Container\Compiler;
 
 use Closure;
 use Maduser\Argon\Container\ArgonContainer;
+use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
-use Maduser\Argon\Container\ServiceDescriptor;
 use Maduser\Argon\Container\Support\StringHelper;
 use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\PhpNamespace;
@@ -93,7 +93,7 @@ final class ServiceDefinitionGenerator
         ClassType $class,
         string $id,
         string $methodName,
-        ServiceDescriptor $descriptor,
+        ServiceDescriptorInterface $descriptor,
         array &$serviceMap
     ): void {
         $factoryClass = $descriptor->getFactoryClass();
