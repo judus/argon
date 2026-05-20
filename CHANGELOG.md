@@ -2,7 +2,7 @@
 
 All notable changes to `maduser/argon` will be documented in this file.
 
-## Unreleased
+## [1.1.0] - 2026-05-20
 
 ### Changed
 
