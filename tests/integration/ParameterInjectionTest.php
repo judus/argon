@@ -64,6 +64,32 @@ final class ParameterInjectionTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
+    public function testSharedServiceAcceptsRuntimeArgumentsOnlyBeforeFirstResolution(): void
+    {
+        $this->container->set(ApiClient::class);
+
+        $client = $this->container->get(ApiClient::class, [
+            'apiKey' => 'first-key',
+            'apiUrl' => 'https://first.example.com',
+        ]);
+
+        $this->assertSame($client, $this->container->get(ApiClient::class));
+        $this->assertSame('first-key', $client->apiKey);
+        $this->assertSame('https://first.example.com', $client->apiUrl);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Cannot pass runtime arguments to an already resolved shared service.');
+
+        $this->container->get(ApiClient::class, [
+            'apiKey' => 'second-key',
+            'apiUrl' => 'https://second.example.com',
+        ]);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testManualRegistryLookupUsedInBinding(): void
     {
         $params = $this->container->getParameters();

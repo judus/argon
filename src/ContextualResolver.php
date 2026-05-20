@@ -55,7 +55,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
         }
 
         if ($override instanceof Closure) {
-            return (object) $override();
+            return (object) $this->container->invoke($override);
         }
 
         return $this->container->get($override);

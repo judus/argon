@@ -37,20 +37,7 @@ final class FakeResolver
         $declaringClass = $parameter->getDeclaringClass();
         $context = $declaringClass?->getName() ?? $serviceId;
 
-        // Contextual binding
-        if ($typeName !== null && $this->contextualBindings->has($context, $typeName)) {
-            $target = $this->contextualBindings->get($context, $typeName);
-            $fallbacks[] = "\$this->get('{$target}')";
-        }
-
-        // Registered service
-        if ($typeName !== null && $this->container->has($typeName)) {
-            $fallbacks[] = "\$this->get('{$typeName}')";
-        }
-
-        // Explicit descriptor argument
         $descriptor = $this->container->getDescriptor($serviceId);
-
 
         if ($descriptor !== null && $descriptor->hasArgument($name)) {
             /**
@@ -64,18 +51,27 @@ final class FakeResolver
                 !$type->isBuiltin() &&
                 class_exists($value)
             ) {
-                $fallbacks[] = "\$this->get('{$value}')";
+                $fallback = "\$this->get('{$value}')";
             } else {
-                $fallbacks[] = var_export($value, true);
+                $fallback = var_export($value, true);
             }
+
+            return $this->runtimeArgumentExpression($argsVar, $name, $runtime, $fallback);
         }
 
-        // Method default value
+        if ($typeName !== null && $this->contextualBindings->has($context, $typeName)) {
+            $target = $this->contextualBindings->get($context, $typeName);
+            $fallbacks[] = "\$this->get('{$target}')";
+        }
+
+        if ($typeName !== null && $this->container->has($typeName)) {
+            $fallbacks[] = "\$this->get('{$typeName}')";
+        }
+
         if ($parameter->isDefaultValueAvailable()) {
             $fallbacks[] = var_export($parameter->getDefaultValue(), true);
         }
 
-        // Fallback to null ONLY if no viable candidate exists and nullable
         if (
             empty($fallbacks) &&
             $type instanceof ReflectionNamedType &&
@@ -84,12 +80,30 @@ final class FakeResolver
             $fallbacks[] = 'null';
         }
 
-        // Final fallback chain
         if (!empty($fallbacks)) {
-            return $runtime . ' ?? ' . implode(' ?? ', $fallbacks);
+            return $this->runtimeArgumentExpression($argsVar, $name, $runtime, implode(' ?? ', $fallbacks));
         }
 
-        // No fallbacks—return raw
-        return $runtime;
+        return $this->runtimeArgumentExpression(
+            $argsVar,
+            $name,
+            $runtime,
+            'throw ContainerException::fromServiceId(' .
+                var_export($serviceId, true) .
+                ', ' .
+                var_export("Missing required argument '$name'", true) .
+                ')'
+        );
+    }
+
+    private function runtimeArgumentExpression(
+        string $argsVar,
+        string $name,
+        string $runtime,
+        string $fallback
+    ): string {
+        return 'array_key_exists(' .
+            var_export($name, true) .
+            ", {$argsVar}) ? {$runtime} : {$fallback}";
     }
 }

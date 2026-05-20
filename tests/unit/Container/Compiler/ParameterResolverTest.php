@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Container\Compiler;
 
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionParameter;
 use Tests\Integration\Mocks\Logger;
@@ -20,7 +19,11 @@ final class ParameterResolverTest extends TestCase
         $resolver = new FakeResolver();
 
         $code = $resolver->resolveParameter($param, 'SomeService');
-        $this->assertSame('$args[\'id\']', $code);
+        $this->assertSame(
+            "array_key_exists('id', \$args) ? \$args['id'] : " .
+            "throw ContainerException::fromServiceId('SomeService', 'Missing required argument \\'id\\'')",
+            $code
+        );
     }
 
     public function testReturnsNullFallbackIfAllowedAndNothingElse(): void
@@ -29,7 +32,7 @@ final class ParameterResolverTest extends TestCase
         $resolver = new FakeResolver();
 
         $code = $resolver->resolveParameter($param, 'NoBindings');
-        $this->assertSame('$args[\'logger\'] ?? null', $code);
+        $this->assertSame("array_key_exists('logger', \$args) ? \$args['logger'] : null", $code);
     }
 
     public function testUsesContextualBindingIfAvailable(): void
@@ -40,7 +43,11 @@ final class ParameterResolverTest extends TestCase
         ]]);
 
         $code = $resolver->resolveParameter($param, 'SomeService');
-        $this->assertSame('$args[\'service\'] ?? $this->get(\'Tests\Integration\Mocks\Logger\')', $code);
+        $this->assertSame(
+            "array_key_exists('service', \$args) ? \$args['service'] : " .
+            "\$this->get('Tests\Integration\Mocks\Logger')",
+            $code
+        );
     }
 
     public function testUsesContainerIfServiceExists(): void
@@ -50,7 +57,10 @@ final class ParameterResolverTest extends TestCase
         $resolver->container->hasServices[] = Logger::class;
 
         $code = $resolver->resolveParameter($param, 'AnyService');
-        $this->assertSame('$args[\'logger\'] ?? $this->get(\'' . Logger::class . '\')', $code);
+        $this->assertSame(
+            "array_key_exists('logger', \$args) ? \$args['logger'] : \$this->get('" . Logger::class . "')",
+            $code
+        );
     }
 
     public function testResolvesDescriptorArgumentValue(): void
@@ -60,7 +70,7 @@ final class ParameterResolverTest extends TestCase
         $resolver->container->descriptorArgs = ['foo' => 123];
 
         $code = $resolver->resolveParameter($param, 'ServiceId');
-        $this->assertSame('$args[\'foo\'] ?? 123', $code);
+        $this->assertSame("array_key_exists('foo', \$args) ? \$args['foo'] : 123", $code);
     }
 
     public function testResolvesDescriptorArgumentAsClass(): void
@@ -70,7 +80,10 @@ final class ParameterResolverTest extends TestCase
         $resolver->container->descriptorArgs = ['foo' => Logger::class];
 
         $code = $resolver->resolveParameter($param, 'ServiceId');
-        $this->assertSame('$args[\'foo\'] ?? $this->get(\'' . Logger::class . '\')', $code);
+        $this->assertSame(
+            "array_key_exists('foo', \$args) ? \$args['foo'] : \$this->get('" . Logger::class . "')",
+            $code
+        );
     }
 
     public function testReturnsDefaultValue(): void
@@ -79,7 +92,7 @@ final class ParameterResolverTest extends TestCase
         $resolver = new FakeResolver();
 
         $code = $resolver->resolveParameter($param, 'ServiceId');
-        $this->assertSame('$args[\'foo\'] ?? \'default\'', $code);
+        $this->assertSame("array_key_exists('foo', \$args) ? \$args['foo'] : 'default'", $code);
     }
 
     // === Helpers ===

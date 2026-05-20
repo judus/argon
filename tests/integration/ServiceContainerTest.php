@@ -38,17 +38,9 @@ final class ServiceContainerTest extends TestCase
         // 1. Self resolution works
         $this->assertSame($container, $container->get(ArgonContainer::class));
 
-        // 2. It cannot be bound manually
         $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('The container cannot be rebound to itself.');
         $container->set(ArgonContainer::class, fn () => new ArgonContainer());
-
-        // 3. It cannot be bound as singleton either
-        try {
-            $container->set(ArgonContainer::class, fn () => new ArgonContainer());
-            $this->fail('Binding ArgonContainer::class should throw an exception.');
-        } catch (ContainerException $e) {
-            $this->assertStringContainsString('maniac', $e->getMessage());
-        }
     }
 
     /**
@@ -175,7 +167,7 @@ final class ServiceContainerTest extends TestCase
     public function testSingletonSelfBindingThrowsException(): void
     {
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage("Don't bind the container to itself, you maniac.");
+        $this->expectExceptionMessage('The container cannot be rebound to itself.');
 
         $container = new ArgonContainer();
         $container->set(ArgonContainer::class);
@@ -184,7 +176,7 @@ final class ServiceContainerTest extends TestCase
     public function testBindSelfBindingThrowsException(): void
     {
         $this->expectException(ContainerException::class);
-        $this->expectExceptionMessage("Don't bind the container to itself, you maniac.");
+        $this->expectExceptionMessage('The container cannot be rebound to itself.');
 
         $container = new ArgonContainer();
         $container->set(ArgonContainer::class);

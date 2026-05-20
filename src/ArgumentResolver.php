@@ -123,7 +123,6 @@ final class ArgumentResolver implements ArgumentResolverInterface
         if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
             $typeName = $type->getName();
 
-            // 👇 If it's nullable and no contextual or argument binding exists, back off!
             if (
                 $param->allowsNull()
                 && !$this->contextualBindings->has($className, $typeName)
@@ -175,11 +174,6 @@ final class ArgumentResolver implements ArgumentResolverInterface
      */
     private function resolveUnionType(ReflectionUnionType $type, string $className, string $paramName): object
     {
-        // TODO: I won't support this BS (yet), user shall make up his mind, ain't a sushi bar...
-        // class MyClass {
-        //     public function __construct(public StringableObject|string $string) {}
-        // }
-
         $userDefined = [];
 
         foreach ($type->getTypes() as $unionType) {
@@ -189,29 +183,12 @@ final class ArgumentResolver implements ArgumentResolverInterface
                 if ($this->contextualBindings->has($className, $typeName)) {
                     $userDefined[] = fn(): object => $this->contextualResolver->resolve($className, $typeName);
                 }
-
-                // See note below. This part of the BF. Don't do it! Not again! :)
-                // If we have union type, meaning we have multiple classes, we'll always have an ambiguous situation
-                // In a mixed situation, userDefined and fromAutoResolution, userDefined takes precedence anyway.
-                // Try to unit test that, LMAO!
-                // elseif (class_exists($typeName)) {
-                //     $fromAutoResolution[] = fn(): object => $this->resolveTypeName($typeName, $className);
-                // }
             }
         }
 
-        // Prioritize contextual bindings
         if (count($userDefined) === 1) {
             return $userDefined[0]();
         }
-
-        // Unless PHP allows type hinting non-existing classes, nothing gets executed.
-        // Leave this note here, so I remember next time before I spent hours on this BF.
-        //
-        // If no $userDefined, fall back to auto resolution (<-- nope! Union type means greater than 1!)
-        // if (count($userDefined) === 0 && count($fromAutoResolution) === 1) {
-        //     return $fromAutoResolution[0]();
-        // }
 
         $typeList = implode(', ', array_map(
             fn(ReflectionNamedType $t): string => $t->getName(),

@@ -28,6 +28,8 @@ use Maduser\Argon\Container\Support\CallableInvoker;
 use Maduser\Argon\Container\Support\NullServiceProxy;
 use Override;
 use Psr\Container\ContainerInterface;
+use ReflectionClass;
+use ReflectionException;
 
 /**
  * Base container implementation.
@@ -168,7 +170,7 @@ class ArgonContainer implements ContainerInterface
     ): BindingBuilderInterface {
 
         if ($id === ArgonContainer::class) {
-            throw new ContainerException("Don't bind the container to itself, you maniac.");
+            throw new ContainerException('The container cannot be rebound to itself.');
         }
 
         return $this->binder->set($id, $concrete, $args);
@@ -278,7 +280,7 @@ class ArgonContainer implements ContainerInterface
 
     public function isResolvable(string $id): bool
     {
-        return $this->binder->has($id) || class_exists($id);
+        return $this->binder->has($id) || $this->isAutowireableClass($id);
     }
 
     /**
@@ -344,6 +346,19 @@ class ArgonContainer implements ContainerInterface
         return $this->has($id)
             ? $this->get($id)
             : new NullServiceProxy();
+    }
+
+    private function isAutowireableClass(string $id): bool
+    {
+        if ($this->strictMode || !class_exists($id)) {
+            return false;
+        }
+
+        try {
+            return (new ReflectionClass($id))->isInstantiable();
+        } catch (ReflectionException) {
+            return false;
+        }
     }
 
     /**

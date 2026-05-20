@@ -16,6 +16,7 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Support\DebugTrace;
 use Override;
 use ReflectionException;
+use ReflectionFunction;
 use ReflectionNamedType;
 use ReflectionParameter;
 use Throwable;
@@ -113,8 +114,19 @@ final class ServiceResolver implements ServiceResolverInterface
      */
     private function resolveFromDescriptor(string $id, ServiceDescriptorInterface $descriptor, array $args): object
     {
-        if ($descriptor->isShared() && $instance = $descriptor->getInstance()) {
-            return $instance;
+        if ($descriptor->isShared()) {
+            $instance = $descriptor->getInstance();
+
+            if ($instance !== null) {
+                if ($args !== []) {
+                    throw ContainerException::fromServiceId(
+                        $id,
+                        'Cannot pass runtime arguments to an already resolved shared service.'
+                    );
+                }
+
+                return $instance;
+            }
         }
 
         if ($descriptor->hasFactory()) {
@@ -124,7 +136,7 @@ final class ServiceResolver implements ServiceResolverInterface
             $args = array_merge($descriptor->getArguments(), $args);
 
             $instance = $concrete instanceof Closure
-                ? (object) $concrete()
+                ? $this->resolveClosure($concrete, $args, $id)
                 : $this->resolveClass($concrete, $args);
         }
 
@@ -247,7 +259,7 @@ final class ServiceResolver implements ServiceResolverInterface
             $concrete = $descriptor->getConcrete();
 
             if ($concrete instanceof Closure) {
-                return (object) $concrete();
+                return $this->resolveClosure($concrete, $args, $className);
             }
 
             if ($concrete !== $className) {
@@ -295,6 +307,23 @@ final class ServiceResolver implements ServiceResolverInterface
             fn(ReflectionParameter $param): mixed => $this->argumentResolver->resolve($param, $overrides),
             $params
         );
+    }
+
+    /**
+     * @param Closure $closure
+     * @param array<array-key, mixed> $args
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function resolveClosure(Closure $closure, array $args, string $contextId): object
+    {
+        $reflection = new ReflectionFunction($closure);
+        $dependencies = array_map(
+            fn(ReflectionParameter $param): mixed => $this->argumentResolver->resolve($param, $args, $contextId),
+            $reflection->getParameters()
+        );
+
+        return (object) $closure(...$dependencies);
     }
 
     /**

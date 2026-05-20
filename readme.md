@@ -112,7 +112,7 @@ $container->set(ApiClient::class, args: [
 
 These arguments are attached to the service binding and used **every time** it's resolved.
 
-#### Override arguments during resolution (transients only)
+#### Pass arguments during resolution
 
 ```php
 $client = $container->get(ApiClient::class, args: [
@@ -121,7 +121,9 @@ $client = $container->get(ApiClient::class, args: [
 ]);
 ```
 
-This works only for **transient** services. Shared services are constructed once, and cannot be reconfigured at runtime.
+For **transient** services, runtime arguments may vary on every call. For **shared** services, runtime arguments
+are accepted only before the shared instance has been created; after that, passing runtime arguments throws a
+`ContainerException` instead of silently ignoring them. Prefer binding arguments for stable singleton configuration.
 
 ### Automatic Dependency Resolution
 
@@ -393,13 +395,16 @@ foreach ($loggers as $logger) {
 
 ### Conditional Service Access
 
-`optional()` returns a proxy if the service is unavailable — safe for optional dependencies.
+`optional()` is intentionally **binding-based**: it resolves the service only when a binding exists, otherwise it
+returns a no-op proxy. This is useful for optional collaborators, plugins, or integrations where "not registered"
+should mean "do nothing", even in dynamic mode where `get()` could autowire an unbound concrete class.
 
 ```php
 // Suppose SomeLogger is optional
 $container->optional(SomeLogger::class)->log('Only if logger exists');
 
-// This won't throw, even if SomeLogger wasn't registered
+// This won't throw, even if SomeLogger wasn't registered.
+// If SomeLogger is autowireable but unbound, optional() still returns the proxy.
 ```
 
 ### Closure Bindings with Autowired Parameters
@@ -469,7 +474,7 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 | `getPostInterceptors()`   | –                                               | `list<class-string<InterceptorInterface>>` | Lists all registered post-interceptors.                                           |
 | `invoke()`                | `callable $target`, `array $params = []`        | `mixed`                                    | Calls a method or closure with injected dependencies.                             |
 | `isResolvable()`          | `string $id`                                    | `bool`                                     | Checks if a service can be resolved, even if not explicitly bound.                |
-| `optional()`              | `string $id`                                    | `object`                                   | Resolves a service or returns a NullServiceProxy if not found.                    |
+| `optional()`              | `string $id`                                    | `object`                                   | Resolves an explicitly bound service or returns a NullServiceProxy if unbound.    |
 | `isStrictMode()`          | –                                               | `bool`                                     | Indicates whether the container was instantiated in strict mode.                 |
 | `isSharedByDefault()`     | –                                               | `bool`                                     | Reveals whether new bindings default to shared or transient lifecycle.           |
 

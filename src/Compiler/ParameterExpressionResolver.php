@@ -66,6 +66,25 @@ final class ParameterExpressionResolver
         $declaringClass = $parameter->getDeclaringClass();
         $context = $declaringClass?->getName() ?? $serviceId;
 
+        $descriptor = $this->container->getDescriptor($serviceId);
+        if ($descriptor?->hasArgument($name)) {
+            /** @var mixed $value */
+            $value = $descriptor->getArgument($name);
+
+            if (
+                is_string($value) &&
+                $type instanceof ReflectionNamedType &&
+                !$type->isBuiltin() &&
+                class_exists($value)
+            ) {
+                $fallback = "\$this->get('{$value}')";
+            } else {
+                $fallback = var_export($value, true);
+            }
+
+            return $this->runtimeArgumentExpression($argsVar, $name, $runtime, $fallback);
+        }
+
         if ($typeName !== null && $this->contextualBindings->has($context, $typeName)) {
             $target = $this->contextualBindings->get($context, $typeName);
             if (is_string($target)) {
@@ -78,23 +97,6 @@ final class ParameterExpressionResolver
                 $fallbacks[] = "\$this->get('{$typeName}')";
             } elseif (class_exists($typeName) && !$parameter->allowsNull()) {
                 $fallbacks[] = "\$this->get('{$typeName}')";
-            }
-        }
-
-        $descriptor = $this->container->getDescriptor($serviceId);
-        if ($descriptor?->hasArgument($name)) {
-            /** @var mixed $value */
-            $value = $descriptor->getArgument($name);
-
-            if (
-                is_string($value) &&
-                $type instanceof ReflectionNamedType &&
-                !$type->isBuiltin() &&
-                class_exists($value)
-            ) {
-                $fallbacks[] = "\$this->get('{$value}')";
-            } else {
-                $fallbacks[] = var_export($value, true);
             }
         }
 
@@ -111,9 +113,29 @@ final class ParameterExpressionResolver
         }
 
         if (!empty($fallbacks)) {
-            return $runtime . ' ?? ' . implode(' ?? ', $fallbacks);
+            return $this->runtimeArgumentExpression($argsVar, $name, $runtime, implode(' ?? ', $fallbacks));
         }
 
-        return $runtime;
+        return $this->runtimeArgumentExpression(
+            $argsVar,
+            $name,
+            $runtime,
+            'throw ContainerException::fromServiceId(' .
+                var_export($serviceId, true) .
+                ', ' .
+                var_export("Missing required argument '$name'", true) .
+                ')'
+        );
+    }
+
+    private function runtimeArgumentExpression(
+        string $argsVar,
+        string $name,
+        string $runtime,
+        string $fallback
+    ): string {
+        return 'array_key_exists(' .
+            var_export($name, true) .
+            ", {$argsVar}) ? {$runtime} : {$fallback}";
     }
 }

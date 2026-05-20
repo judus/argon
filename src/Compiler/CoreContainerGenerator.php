@@ -125,9 +125,7 @@ final class CoreContainerGenerator
                     throw new NotFoundException($id, 'compiled');
                 }
 
-                $instance = $this->{$this->serviceMap[$id]}($args);
-
-                return $this->applyPostInterceptors($instance);
+                return $this->{$this->serviceMap[$id]}($args);
         PHP;
 
         $lenientBody = <<<'PHP'
@@ -136,11 +134,11 @@ final class CoreContainerGenerator
                     return $instance;
                 }
 
-                $instance = isset($this->serviceMap[$id])
-                    ? $this->{$this->serviceMap[$id]}($args)
-                    : parent::get($id, $args);
+                if (isset($this->serviceMap[$id])) {
+                    return $this->{$this->serviceMap[$id]}($args);
+                }
 
-                return $this->applyPostInterceptors($instance);
+                return $this->applyPostInterceptors(parent::get($id, $args));
         PHP;
 
         $method->setBody($this->strictMode ? $strictBody : $lenientBody);
