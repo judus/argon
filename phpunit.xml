@@ -17,12 +17,4 @@
         </include>
     </source>
 
-    <!-- Coverage configuration (optional) -->
-    <coverage includeUncoveredFiles="true">
-        <report>
-            <clover outputFile="build/logs/clover.xml"/>
-            <html outputDirectory="build/coverage/html"/>
-            <text outputFile="php://stdout"/>
-        </report>
-    </coverage>
 </phpunit>

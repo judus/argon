@@ -28,6 +28,7 @@ use Maduser\Argon\Container\Support\CallableInvoker;
 use Maduser\Argon\Container\Support\NullServiceProxy;
 use Override;
 use Psr\Container\ContainerInterface;
+use ReflectionClass;
 
 /**
  * Base container implementation.
@@ -155,9 +156,9 @@ class ArgonContainer implements ContainerInterface
     }
 
     /**
-     * @param string $id
+     * @param class-string|string $id
      * @param Closure|string|null $concrete
-     * @param array|null $args
+     * @param array<array-key, mixed>|null $args
      * @return BindingBuilderInterface
      * @throws ContainerException
      */
@@ -168,14 +169,14 @@ class ArgonContainer implements ContainerInterface
     ): BindingBuilderInterface {
 
         if ($id === ArgonContainer::class) {
-            throw new ContainerException("Don't bind the container to itself, you maniac.");
+            throw new ContainerException('The container cannot be rebound to itself.');
         }
 
         return $this->binder->set($id, $concrete, $args);
     }
 
     /**
-     * @return array<string, ServiceDescriptor>
+     * @return array<string, ServiceDescriptorInterface>
      */
     public function getBindings(): array
     {
@@ -206,7 +207,7 @@ class ArgonContainer implements ContainerInterface
     /**
      * Registers an interceptor (pre- or post-resolution).
      *
-     * @param class-string $interceptorClass
+     * @param class-string<PreResolutionInterceptorInterface|PostResolutionInterceptorInterface> $interceptorClass
      * @throws ContainerException
      */
     public function registerInterceptor(string $interceptorClass): ArgonContainer
@@ -278,7 +279,7 @@ class ArgonContainer implements ContainerInterface
 
     public function isResolvable(string $id): bool
     {
-        return $this->binder->has($id) || class_exists($id);
+        return $this->binder->has($id) || $this->isAutowireableClass($id);
     }
 
     /**
@@ -316,6 +317,9 @@ class ArgonContainer implements ContainerInterface
         return $this;
     }
 
+    /**
+     * @param class-string|string $target
+     */
     public function for(string $target): ContextualBindingBuilderInterface
     {
         return $this->contextual->for($target);
@@ -334,7 +338,7 @@ class ArgonContainer implements ContainerInterface
     }
 
     /**
-     * @param string $id
+     * @param class-string|string $id
      * @return object
      * @throws ContainerException
      * @throws NotFoundException
@@ -344,6 +348,15 @@ class ArgonContainer implements ContainerInterface
         return $this->has($id)
             ? $this->get($id)
             : new NullServiceProxy();
+    }
+
+    private function isAutowireableClass(string $id): bool
+    {
+        if ($this->strictMode || !class_exists($id)) {
+            return false;
+        }
+
+        return (new ReflectionClass($id))->isInstantiable();
     }
 
     /**

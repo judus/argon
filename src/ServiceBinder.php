@@ -58,7 +58,7 @@ final class ServiceBinder implements ServiceBinderInterface
     /**
      * Registers a singleton service.
      *
-     * @param string $id
+     * @param class-string|string $id
      * @param Closure|string|null $concrete
      * @param array<array-key, mixed>|null $args
      * @return BindingBuilderInterface

@@ -18,7 +18,7 @@ class TestSubject
     {
     }
 
-    public function nullable(SomeClass $maybe = null, string $optional = 'hello'): void
+    public function nullable(?SomeClass $maybe = null, string $optional = 'hello'): void
     {
     }
 
@@ -30,7 +30,7 @@ class TestSubject
     {
     }
 
-    public function closureDefault(callable $cb = null): void
+    public function closureDefault(?callable $cb = null): void
     {
     }
 

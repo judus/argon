@@ -14,6 +14,7 @@ use ReflectionException;
 use Tests\Integration\Mocks\Foo;
 use Tests\Integration\Mocks\FooFactory;
 use Tests\Integration\Mocks\InvokableFactory;
+use Tests\Integration\Mocks\Logger;
 use Tests\Integration\Mocks\StaticFooFactory;
 
 final class FactoryIntegrationTest extends TestCase
@@ -80,6 +81,21 @@ final class FactoryIntegrationTest extends TestCase
 
         $this->assertInstanceOf(Foo::class, $foo);
         $this->assertSame('default-label', $foo->label);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testFactoryMethodParametersUseContainerResolution(): void
+    {
+        $this->container->set(Logger::class);
+        $this->container->set(Foo::class)->factory(FooFactory::class, 'makeWithLogger');
+
+        $foo = $this->container->get(Foo::class);
+
+        $this->assertInstanceOf(Foo::class, $foo);
+        $this->assertSame(Logger::class, $foo->label);
     }
 
     /**

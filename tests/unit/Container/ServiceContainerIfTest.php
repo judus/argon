@@ -9,7 +9,6 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\ArgonContainer;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
-use Tests\Mocks\MyService;
 use Tests\Mocks\TestService;
 
 final class ServiceContainerIfTest extends TestCase

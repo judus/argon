@@ -112,7 +112,7 @@ $container->set(ApiClient::class, args: [
 
 These arguments are attached to the service binding and used **every time** it's resolved.
 
-#### Override arguments during resolution (transients only)
+#### Pass arguments during resolution
 
 ```php
 $client = $container->get(ApiClient::class, args: [
@@ -121,7 +121,9 @@ $client = $container->get(ApiClient::class, args: [
 ]);
 ```
 
-This works only for **transient** services. Shared services are constructed once, and cannot be reconfigured at runtime.
+For **transient** services, runtime arguments may vary on every call. For **shared** services, runtime arguments
+are accepted only before the shared instance has been created; after that, passing runtime arguments throws a
+`ContainerException` instead of silently ignoring them. Prefer binding arguments for stable singleton configuration.
 
 ### Automatic Dependency Resolution
 
@@ -362,7 +364,9 @@ $container->registerInterceptor(StubInterceptor::class);
 
 ### Extending Services
 
-Extends an already-resolved service instance during runtime. Useful for wrapping, decorating, or modifying an existing service after resolution.
+`extend()` decorates a resolved service instance during runtime. It calls `get()` internally, so the service does
+not need to have been resolved before you extend it: a bound service is resolved immediately, then the decorated
+object replaces the binding for later calls.
 
 ```php
 // For example in a ServiceProvider 
@@ -376,6 +380,9 @@ public function boot(ArgonContainer $container): void
 
 From this point on, all calls to `get(LoggerInterface::class)` will return the wrapped instance.
 
+In dynamic mode, `extend()` can also decorate an unbound concrete class that the container can autowire. In strict
+mode, or for missing non-autowireable IDs, it fails the same way `get()` would. Extending a transient binding
+currently replaces it with the decorated object for future resolutions.
 
 ### Tags
 
@@ -393,20 +400,28 @@ foreach ($loggers as $logger) {
 
 ### Conditional Service Access
 
-`optional()` returns a proxy if the service is unavailable — safe for optional dependencies.
+`optional()` is intentionally **binding-based**: it resolves the service only when a binding exists, otherwise it
+returns a no-op proxy. This is useful for optional collaborators, plugins, or integrations where "not registered"
+should mean "do nothing", even in dynamic mode where `get()` could autowire an unbound concrete class.
 
 ```php
 // Suppose SomeLogger is optional
 $container->optional(SomeLogger::class)->log('Only if logger exists');
 
-// This won't throw, even if SomeLogger wasn't registered
+// This won't throw, even if SomeLogger wasn't registered.
+// If SomeLogger is autowireable but unbound, optional() still returns the proxy.
 ```
 
 ### Closure Bindings with Autowired Parameters
 
-Closure bindings are convenient for CLI tools, prototyping, or runtime-only services — but they're not suited for production graphs or compilation. Since closures can't be compiled, you must either:
-- Register them during the boot() phase of a ServiceProvider, after compilation
-- Or explicitly mark them as excluded from compilation via skipCompilation()
+Closure bindings are convenient for CLI tools, prototyping, or runtime-only services. Their parameters are resolved
+through the container at runtime, so dependencies can still be autowired.
+
+Closures are not part of the compiled service graph. If a closure binding exists before compilation, either:
+
+- register it during the `boot()` phase of a service provider, after the compiled container has been created;
+- or explicitly mark it as excluded from compilation via `skipCompilation()`.
+
 ```php
 // In a ServiceProvider — boot() runs at runtime, safe for closures
 public function boot(ArgonContainer $container): void
@@ -422,6 +437,9 @@ $container->set(LoggerInterface::class, fn (Config $config) => {
     return new FileLogger($config->get('log.path'));
 })->skipCompilation();
 ```
+
+Skipped closures are not embedded in the generated class. In dynamic compiled containers, class-based skipped
+bindings can still fall back to normal autowiring; non-class runtime services should be registered during boot.
 
 ### Compiling the Container
 
@@ -469,7 +487,7 @@ The compiled container is a pure PHP class with zero runtime resolution logic fo
 | `getPostInterceptors()`   | –                                               | `list<class-string<InterceptorInterface>>` | Lists all registered post-interceptors.                                           |
 | `invoke()`                | `callable $target`, `array $params = []`        | `mixed`                                    | Calls a method or closure with injected dependencies.                             |
 | `isResolvable()`          | `string $id`                                    | `bool`                                     | Checks if a service can be resolved, even if not explicitly bound.                |
-| `optional()`              | `string $id`                                    | `object`                                   | Resolves a service or returns a NullServiceProxy if not found.                    |
+| `optional()`              | `string $id`                                    | `object`                                   | Resolves an explicitly bound service or returns a NullServiceProxy if unbound.    |
 | `isStrictMode()`          | –                                               | `bool`                                     | Indicates whether the container was instantiated in strict mode.                 |
 | `isSharedByDefault()`     | –                                               | `bool`                                     | Reveals whether new bindings default to shared or transient lifecycle.           |
 

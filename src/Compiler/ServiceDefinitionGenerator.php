@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Maduser\Argon\Container\Compiler;
 
-use Closure;
 use Maduser\Argon\Container\ArgonContainer;
+use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
-use Maduser\Argon\Container\ServiceDescriptor;
 use Maduser\Argon\Container\Support\StringHelper;
 use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\PhpNamespace;
@@ -37,13 +36,6 @@ final class ServiceDefinitionGenerator
             $methodName = $this->buildServiceMethodName($id);
             $concrete = $descriptor->getConcrete();
 
-            if ($concrete instanceof Closure) {
-                throw new ContainerException(
-                    "Cannot compile a container with closures: [$id]. " .
-                    "Use skipCompilation() to exclude from compilation."
-                );
-            }
-
             if ($descriptor->hasFactory()) {
                 $this->compileFactoryService(
                     $context->namespace,
@@ -56,17 +48,21 @@ final class ServiceDefinitionGenerator
                 continue;
             }
 
-            if (!(new ReflectionClass($concrete))->isInstantiable()) {
-                $target = " [$concrete]";
-                throw new ContainerException(
-                    "Service [$id] points to non-instantiable class$target."
-                );
-            }
-
             $singletonProperty = "singleton_{$methodName}";
 
-            $this->generateSingletonProperty($context->class, $singletonProperty, $id);
-            $this->generateServiceMethod($context->class, $concrete, $id, $methodName, $singletonProperty);
+            if ($descriptor->isShared()) {
+                $this->generateSingletonProperty($context->class, $singletonProperty, $id);
+            }
+
+            /** @var class-string $concrete */
+            $this->generateServiceMethod(
+                $context->class,
+                $concrete,
+                $id,
+                $methodName,
+                $singletonProperty,
+                $descriptor->isShared()
+            );
 
             $serviceMap[$id] = $methodName;
         }
@@ -83,7 +79,7 @@ final class ServiceDefinitionGenerator
         ClassType $class,
         string $id,
         string $methodName,
-        ServiceDescriptor $descriptor,
+        ServiceDescriptorInterface $descriptor,
         array &$serviceMap
     ): void {
         $factoryClass = $descriptor->getFactoryClass();
@@ -94,26 +90,30 @@ final class ServiceDefinitionGenerator
 
         $factoryReflection = new ReflectionClass($factoryClass);
 
-        if ($factoryReflection->hasMethod($factoryMethod)) {
-            $methodReflection = $factoryReflection->getMethod($factoryMethod);
+        $methodReflection = $factoryReflection->getMethod($factoryMethod);
 
-            foreach ($methodReflection->getParameters() as $param) {
-                $args[] = $this->parameterResolver->resolveParameter($param, $id, '$args');
-            }
+        foreach ($methodReflection->getParameters() as $param) {
+            $args[] = $this->parameterResolver->resolveParameter($param, $id, '$args');
         }
 
         $argString = implode(",\n", $args);
 
         $fqFactory = '\\' . ltrim($factoryClass, '\\');
-        $returnType = class_exists($id) ? '\\' . ltrim($id, '\\') : 'object';
+        $returnType = class_exists($id) || interface_exists($id) ? '\\' . ltrim($id, '\\') : 'object';
         $singletonProperty = "singleton_{$methodName}";
+        $serviceId = var_export($id, true);
+        $factoryInvocation = $methodReflection->isStatic()
+            ? "{$fqFactory}::{$factoryMethod}(\n                    {$argString}\n                )"
+            : "\$factory->{$factoryMethod}(\n                    {$argString}\n                )";
 
         $namespace->addUse($factoryClass);
 
-        $class->addProperty($singletonProperty)
-            ->setPrivate()
-            ->setType('?' . $returnType)
-            ->setValue(null);
+        if ($descriptor->isShared()) {
+            $class->addProperty($singletonProperty)
+                ->setPrivate()
+                ->setType('?' . $returnType)
+                ->setValue(null);
+        }
 
         $method = $class->addMethod($methodName);
         $method->setPrivate()
@@ -124,15 +124,25 @@ final class ServiceDefinitionGenerator
             ->setDefaultValue([])
             ->setReference();
 
-        $method->setBody(<<<PHP
-            if (\$this->{$singletonProperty} === null) {
+        if ($descriptor->isShared()) {
+            $method->setBody(<<<PHP
+                if (\$this->{$singletonProperty} === null) {
+                    \$factory = \$this->get({$fqFactory}::class, \$args);
+                    \$this->{$singletonProperty} = \$this->applyPostInterceptors({$factoryInvocation});
+                } elseif (\$args !== []) {
+                    throw ContainerException::fromServiceId(
+                        {$serviceId},
+                        'Cannot pass runtime arguments to an already resolved shared service.'
+                    );
+                }
+                return \$this->{$singletonProperty};
+            PHP);
+        } else {
+            $method->setBody(<<<PHP
                 \$factory = \$this->get({$fqFactory}::class, \$args);
-                \$this->{$singletonProperty} = \$factory->{$factoryMethod}(
-                    {$argString}
-                );
-            }
-            return \$this->{$singletonProperty};
-        PHP);
+                return \$this->applyPostInterceptors({$factoryInvocation});
+            PHP);
+        }
 
         $serviceMap[$id] = $methodName;
     }
@@ -147,27 +157,42 @@ final class ServiceDefinitionGenerator
         string $concrete,
         string $id,
         string $methodName,
-        string $singletonProperty
+        string $singletonProperty,
+        bool $shared
     ): void {
         $fqcn = '\\' . ltrim($concrete, '\\');
         $args = $this->parameterResolver->resolveConstructorArguments($concrete, $id, '$args');
         $argString = implode(",\n", $args);
+        $serviceId = var_export($id, true);
 
-        $class->addMethod($methodName)
+        $method = $class->addMethod($methodName)
             ->setPrivate()
-            ->setReturnType('object')
-            ->setBody(<<<PHP
+            ->setReturnType('object');
+
+        if ($shared) {
+            $method->setBody(<<<PHP
                 if (\$this->{$singletonProperty} === null) {
-                    \$this->{$singletonProperty} = new {$fqcn}({$argString});
+                    \$this->{$singletonProperty} = \$this->applyPostInterceptors(new {$fqcn}({$argString}));
+                } elseif (\$args !== []) {
+                    throw ContainerException::fromServiceId(
+                        {$serviceId},
+                        'Cannot pass runtime arguments to an already resolved shared service.'
+                    );
                 }
                 return \$this->{$singletonProperty};
-            PHP)
-            ->addParameter('args')->setType('array')->setDefaultValue([]);
+            PHP);
+        } else {
+            $method->setBody(<<<PHP
+                return \$this->applyPostInterceptors(new {$fqcn}({$argString}));
+            PHP);
+        }
+
+        $method->addParameter('args')->setType('array')->setDefaultValue([]);
     }
 
     private function generateSingletonProperty(ClassType $class, string $propertyName, string $id): void
     {
-        $typeHint = class_exists($id) ? '\\' . ltrim($id, '\\') : 'object';
+        $typeHint = class_exists($id) || interface_exists($id) ? '\\' . ltrim($id, '\\') : 'object';
         $class->addProperty($propertyName)
             ->setPrivate()
             ->setType('?' . $typeHint)

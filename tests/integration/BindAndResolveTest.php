@@ -153,6 +153,25 @@ final class BindAndResolveTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
+    public function testClosureBindingParametersAreAutowired(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(
+            'logger.consumer',
+            fn(\Tests\Integration\Mocks\Logger $logger): object => new UsesLogger($logger)
+        );
+
+        $service = $container->get('logger.consumer');
+
+        $this->assertInstanceOf(UsesLogger::class, $service);
+        $this->assertInstanceOf(\Tests\Integration\Mocks\Logger::class, $service->logger);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testRegisterFactoryAsTransient(): void
     {
         $container = new ArgonContainer();
@@ -205,6 +224,17 @@ final class BindAndResolveTest extends TestCase
     {
         $container = new ArgonContainer();
         $this->assertFalse($container->isResolvable('Does\Not\Exist'));
+    }
+
+    public function testIsResolvableHonorsStrictMode(): void
+    {
+        $container = new ArgonContainer(strictMode: true);
+
+        $this->assertFalse($container->isResolvable(Silent::class));
+
+        $container->set(Silent::class);
+
+        $this->assertTrue($container->isResolvable(Silent::class));
     }
 
     /**

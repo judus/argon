@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Compiler;
 
-use ErrorException;
 use Maduser\Argon\Container\ArgonContainer;
 use Maduser\Argon\Container\Compiler\ContainerCompiler;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
@@ -30,16 +29,54 @@ use Tests\Integration\Compiler\Mocks\WithOptionalInterface;
 use Tests\Integration\Compiler\Mocks\WithOptionalService;
 use Tests\Integration\Mocks\CustomLogger;
 use Tests\Integration\Mocks\DeepGraph;
+use Tests\Integration\Mocks\Foo;
+use Tests\Integration\Mocks\InterceptedClass;
 use Tests\Integration\Mocks\Logger as AutowireLogger;
 use Tests\Integration\Mocks\LoggerInterface;
 use Tests\Integration\Mocks\MidLevel;
 use Tests\Integration\Mocks\NeedsLogger;
+use Tests\Integration\Mocks\PostHook;
 use Tests\Integration\Mocks\PreArgOverride;
 use Tests\Integration\Mocks\SimpleService;
+use Tests\Integration\Mocks\StaticFooFactory;
 use Tests\Mocks\DummyProvider;
 
 final class ContainerCompilerTest extends TestCase
 {
+    private static ?string $compilerCacheDir = null;
+
+    #[\Override]
+    public static function setUpBeforeClass(): void
+    {
+        $cacheDir = sys_get_temp_dir() . '/argon-compiler-tests-' . bin2hex(random_bytes(8));
+
+        if (!mkdir($cacheDir) && !is_dir($cacheDir)) {
+            throw new RuntimeException('Failed to create compiler test cache directory.');
+        }
+
+        self::$compilerCacheDir = $cacheDir;
+    }
+
+    #[\Override]
+    public static function tearDownAfterClass(): void
+    {
+        $cacheDir = self::$compilerCacheDir;
+
+        if ($cacheDir === null || !is_dir($cacheDir)) {
+            return;
+        }
+
+        $files = glob($cacheDir . '/*.php');
+        if ($files !== false) {
+            foreach ($files as $file) {
+                unlink($file);
+            }
+        }
+
+        rmdir($cacheDir);
+        self::$compilerCacheDir = null;
+    }
+
     /**
      * @throws ContainerException
      * @throws ReflectionException
@@ -50,16 +87,13 @@ final class ContainerCompilerTest extends TestCase
         ?bool $strictMode = null
     ): ArgonContainer {
         $namespace = 'Tests\\Integration\\Compiler';
-        $file = __DIR__ . "/../../resources/cache/{$className}.php";
-
-        if (file_exists($file)) {
-            unlink($file);
-        }
+        $file = self::compilerCacheFile($className);
 
         $compiler = new ContainerCompiler($container);
         $effectiveStrictMode = $strictMode ?? $container->isStrictMode();
         $compiler->compile($file, $className, $namespace, $effectiveStrictMode);
 
+        /** @psalm-suppress UnresolvableInclude */
         require_once $file;
 
         $fqcn = "{$namespace}\\{$className}";
@@ -71,6 +105,14 @@ final class ContainerCompilerTest extends TestCase
         return new $fqcn();
     }
 
+    private static function compilerCacheFile(string $className): string
+    {
+        if (self::$compilerCacheDir === null) {
+            throw new RuntimeException('Compiler test cache directory has not been initialized.');
+        }
+
+        return self::$compilerCacheDir . "/{$className}.php";
+    }
 
     /**
      * @throws ContainerException
@@ -87,12 +129,7 @@ final class ContainerCompilerTest extends TestCase
         $container->set(Mailer::class, fn() => new Mailer($container->get(Logger::class)));
         $container->set(DefaultValueService::class, fn() => new DefaultValueService())->skipCompilation();
 
-        $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesClosures');
-
-        $mailer = $compiled->get(Mailer::class);
-
-        $this->assertInstanceOf(Mailer::class, $mailer);
-        $this->assertInstanceOf(Logger::class, $mailer->logger);
+        $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesClosures');
     }
 
     /**
@@ -111,6 +148,28 @@ final class ContainerCompilerTest extends TestCase
         // For now, we just check that compiler does not throw an error,
         // just a dummy assertion
         $this->assertNotSame($service, $compiled->get(DefaultValueService::class));
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testRuntimeClosureCanBeRegisteredOnCompiledContainer(): void
+    {
+        $container = new ArgonContainer();
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testRuntimeClosureCanBeRegisteredOnCompiledContainer'
+        );
+
+        $compiled->set('runtime.mailer', fn(Logger $logger): Mailer => new Mailer($logger))->skipCompilation();
+
+        $mailer = $compiled->get('runtime.mailer');
+
+        $this->assertInstanceOf(Mailer::class, $mailer);
+        $this->assertInstanceOf(Logger::class, $mailer->logger);
     }
 
     /**
@@ -156,9 +215,12 @@ final class ContainerCompilerTest extends TestCase
         $compiled = $this->compileAndLoadContainer($container, 'testCompiledContainerResolvesTransients');
 
         $mailer = $compiled->get(Mailer::class);
+        $mailer2 = $compiled->get(Mailer::class);
 
         $this->assertInstanceOf(Mailer::class, $mailer);
         $this->assertInstanceOf(Logger::class, $mailer->logger);
+        $this->assertNotSame($mailer, $mailer2);
+        $this->assertNotSame($mailer->logger, $mailer2->logger);
     }
 
     /**
@@ -244,6 +306,28 @@ final class ContainerCompilerTest extends TestCase
 
         $instance = $compiled->get(WithOptionalService::class, args: [
             'logger' => $compiled->get(Logger::class),
+        ]);
+
+        $this->assertInstanceOf(Logger::class, $instance->logger);
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws ContainerException
+     */
+    public function testCompiledClassStringRuntimeArgumentResolvesService(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(WithOptionalService::class);
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledClassStringRuntimeArgumentResolvesService'
+        );
+
+        $instance = $compiled->get(WithOptionalService::class, args: [
+            'logger' => Logger::class,
         ]);
 
         $this->assertInstanceOf(Logger::class, $instance->logger);
@@ -472,6 +556,53 @@ final class ContainerCompilerTest extends TestCase
      * @throws NotFoundException
      * @throws ReflectionException
      */
+    public function testCompiledContainerRunsPostInterceptorOnlyWhenSharedServiceIsCreated(): void
+    {
+        InterceptedClass::reset();
+
+        $container = new ArgonContainer();
+        $container->set(InterceptedClass::class);
+        $container->registerInterceptor(PostHook::class);
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledContainerRunsPostInterceptorOnlyWhenSharedServiceIsCreated'
+        );
+
+        $first = $compiled->get(InterceptedClass::class);
+        $second = $compiled->get(InterceptedClass::class);
+
+        $this->assertSame($first, $second);
+        $this->assertSame(1, InterceptedClass::$validatedCalls);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledFallbackDoesNotRunPostInterceptorTwice(): void
+    {
+        InterceptedClass::reset();
+
+        $container = new ArgonContainer();
+        $container->registerInterceptor(PostHook::class);
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledFallbackDoesNotRunPostInterceptorTwice'
+        );
+
+        $compiled->get(InterceptedClass::class);
+
+        $this->assertSame(1, InterceptedClass::$validatedCalls);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
     public function testCompiledInterceptorsResolveDependenciesViaContainer(): void
     {
         $container = new ArgonContainer();
@@ -560,15 +691,45 @@ final class ContainerCompilerTest extends TestCase
      * @throws NotFoundException
      * @throws ReflectionException
      */
+    public function testCompiledSharedServiceRejectsRuntimeArgumentsAfterFirstResolution(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(PrimitiveService::class);
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledSharedServiceRejectsRuntimeArgumentsAfterFirstResolution'
+        );
+
+        $service = $compiled->get(PrimitiveService::class, [
+            'path' => '/tmp/first',
+        ]);
+
+        $this->assertSame($service, $compiled->get(PrimitiveService::class));
+        $this->assertSame('/tmp/first', $service->path);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Cannot pass runtime arguments to an already resolved shared service.');
+
+        $compiled->get(PrimitiveService::class, [
+            'path' => '/tmp/second',
+        ]);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
     public function testPreInterceptorModifiesParameters(): void
     {
         $container = new ArgonContainer();
 
         $container->registerInterceptor(PreArgOverride::class);
 
-        $this->compileAndLoadContainer($container, 'testPreInterceptorModifiesParameters');
+        $compiled = $this->compileAndLoadContainer($container, 'testPreInterceptorModifiesParameters');
 
-        $instance = $container->get(SimpleService::class);
+        $instance = $compiled->get(SimpleService::class);
 
         $this->assertSame('from-interceptor', $instance->value);
     }
@@ -605,13 +766,9 @@ final class ContainerCompilerTest extends TestCase
         $container = new ArgonContainer();
         $container->set(DefaultValueService::class);
 
-        $outputPath = __DIR__ . '/../../resources/cache/testCompileHandlesDefaultParameterValues.php';
         $className = 'testCompileHandlesDefaultParameterValues';
+        $outputPath = self::compilerCacheFile($className);
         $namespace = 'Tests\\Integration\\Compiler';
-
-        if (file_exists($outputPath)) {
-            unlink($outputPath);
-        }
 
         $compiler = new ContainerCompiler($container);
         $compiler->compile($outputPath, $className, $namespace);
@@ -713,6 +870,48 @@ final class ContainerCompilerTest extends TestCase
     }
 
     /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testCompileHandlesStaticFactoryBinding(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(Foo::class)->factory(StaticFooFactory::class, 'createStatic');
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompileHandlesStaticFactoryBinding');
+
+        $foo = $compiled->get(Foo::class);
+
+        $this->assertInstanceOf(Foo::class, $foo);
+        $this->assertSame('from-static-method', $foo->label);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testCompiledFactoryMethodParametersUseContainerResolution(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(Logger::class);
+        $container->set(Mailer::class)->factory(MailerFactory::class, 'createWithLogger');
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledFactoryMethodParametersUseContainerResolution'
+        );
+
+        $mailer = $compiled->get(Mailer::class);
+
+        $this->assertInstanceOf(Mailer::class, $mailer);
+        $this->assertInstanceOf(Logger::class, $mailer->logger);
+    }
+
+    /**
      * @throws ContainerException
      * @throws ReflectionException
      * @throws NotFoundException
@@ -729,6 +928,26 @@ final class ContainerCompilerTest extends TestCase
 
         $this->assertInstanceOf(DefaultValueService::class, $service);
         $this->assertSame('default-label', $service->label);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
+    public function testCompiledFactoryHonorsTransientLifecycle(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createWithDefault')
+            ->transient();
+
+        $compiled = $this->compileAndLoadContainer($container, 'testCompiledFactoryHonorsTransientLifecycle');
+
+        $first = $compiled->get(DefaultValueService::class);
+        $second = $compiled->get(DefaultValueService::class);
+
+        $this->assertNotSame($first, $second);
     }
 
     /**
@@ -753,34 +972,52 @@ final class ContainerCompilerTest extends TestCase
     }
 
     /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
+    public function testCompiledSharedFactoryRejectsRuntimeArgumentsAfterFirstResolution(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createWithRequired');
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledSharedFactoryRejectsRuntimeArgumentsAfterFirstResolution'
+        );
+
+        $service = $compiled->get(DefaultValueService::class, ['label' => 'first']);
+
+        $this->assertSame($service, $compiled->get(DefaultValueService::class));
+        $this->assertSame('first', $service->label);
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Cannot pass runtime arguments to an already resolved shared service.');
+
+        $compiled->get(DefaultValueService::class, ['label' => 'second']);
+    }
+
+    /**
      * @throws ReflectionException
      * @throws ContainerException
-     * @throws ErrorException
      * @throws NotFoundException
      */
     public function testCompiledFactoryThrowsIfRequiredArgumentMissing(): void
     {
-        $this->expectException(ErrorException::class);
-        $this->expectExceptionMessage('Undefined array key "label"');
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createWithRequired');
 
-        set_error_handler(function ($severity, $message, $file, $line) {
-            throw new ErrorException($message, 0, $severity, $file, $line);
-        });
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledFactoryThrowsIfRequiredArgumentMissing'
+        );
 
-        try {
-            $container = new ArgonContainer();
-            $container->set(DefaultValueService::class)
-                ->factory(MailerFactory::class, 'createWithRequired');
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage("Missing required argument 'label'");
 
-            $compiled = $this->compileAndLoadContainer(
-                $container,
-                'testCompiledFactoryThrowsIfRequiredArgumentMissing'
-            );
-
-            $compiled->get(DefaultValueService::class);
-        } finally {
-            restore_error_handler(); // Ensure handler restored even on exception
-        }
+        $compiled->get(DefaultValueService::class);
     }
 
     /**
@@ -821,20 +1058,51 @@ final class ContainerCompilerTest extends TestCase
 
         $container->set('some.closure', fn () => new \stdClass());
 
-        $this->expectException(\Maduser\Argon\Container\Exceptions\ContainerException::class);
-        $this->expectExceptionMessage(
-            'Cannot compile a container with closures: [some.closure]. ' .
-            'Use skipCompilation() to exclude from compilation.'
-        );
-
-        $output = __DIR__ . '/../../resources/cache/testCompileFailsWhenClosureIsNotIgnored.php';
+        $output = self::compilerCacheFile('testCompileFailsWhenClosureIsNotIgnored');
         $compiler = new \Maduser\Argon\Container\Compiler\ContainerCompiler($container);
-        $compiler->compile(
-            $output,
-            'testCompileFailsWhenClosureIsNotIgnored',
-            'Tests\\Integration\\Compiler'
-        );
-        @unlink($output);
+
+        try {
+            $compiler->compile(
+                $output,
+                'testCompileFailsWhenClosureIsNotIgnored',
+                'Tests\\Integration\\Compiler'
+            );
+            $this->fail('Expected closure binding validation to fail.');
+        } catch (ContainerException $exception) {
+            $this->assertStringContainsString(
+                'Cannot compile a container with closures: [some.closure]. ' .
+                'Use skipCompilation() to exclude it, or register the closure during boot/runtime after compilation.',
+                $exception->getMessage()
+            );
+            $this->assertFileDoesNotExist($output);
+        }
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testCompilerValidatesFactoryMethodBeforeWritingFile(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)->factory(MailerFactory::class, 'missingMethod');
+
+        $output = self::compilerCacheFile('testCompilerValidatesFactoryMethodBeforeWritingFile');
+        $compiler = new ContainerCompiler($container);
+
+        try {
+            $compiler->compile(
+                $output,
+                'testCompilerValidatesFactoryMethodBeforeWritingFile',
+                'Tests\\Integration\\Compiler'
+            );
+            $this->fail('Expected factory method validation to fail.');
+        } catch (ContainerException $exception) {
+            $this->assertStringContainsString(
+                'Factory method "missingMethod" not found on class "' . MailerFactory::class . '".',
+                $exception->getMessage()
+            );
+            $this->assertFileDoesNotExist($output);
+        }
     }
 
     /**
@@ -856,14 +1124,13 @@ final class ContainerCompilerTest extends TestCase
         ]);
 
         $compiler = new ContainerCompiler($container);
-        $output = __DIR__ . '/../../resources/cache/TestClosureSkip.php';
+        $output = self::compilerCacheFile('TestClosureSkip');
 
         $compiler->compile($output, 'TestClosureSkip');
 
         $compiled = file_get_contents($output);
         $this->assertNotFalse($compiled);
         $this->assertStringNotContainsString('ClosureService', $compiled);
-        @unlink($output);
     }
 
     /**
@@ -871,9 +1138,6 @@ final class ContainerCompilerTest extends TestCase
      */
     public function testCompilerThrowsForNonInstantiableClass(): void
     {
-        $this->expectException(ContainerException::class);
-        $this->expectExceptionMessageMatches('/non-instantiable class/');
-
         $descriptor = $this->createConfiguredMock(ServiceDescriptorInterface::class, [
             'getId' => SomeInterface::class,
             'getConcrete' => SomeInterface::class,
@@ -888,6 +1152,14 @@ final class ContainerCompilerTest extends TestCase
         ]);
 
         $compiler = new ContainerCompiler($container);
-        $compiler->compile(__DIR__ . '/../../resources/cache/Boom.php', 'Boom');
+        $output = self::compilerCacheFile('Boom');
+
+        try {
+            $compiler->compile($output, 'Boom');
+            $this->fail('Expected non-instantiable service validation to fail.');
+        } catch (ContainerException $exception) {
+            $this->assertMatchesRegularExpression('/non-instantiable class/', $exception->getMessage());
+            $this->assertFileDoesNotExist($output);
+        }
     }
 }

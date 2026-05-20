@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container;
 
 use Closure;
-use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
+use Maduser\Argon\Container\Contracts\InterceptorRegistryInterface;
 use Maduser\Argon\Container\Contracts\ReflectionCacheInterface;
 use Maduser\Argon\Container\Contracts\ServiceBinderInterface;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
@@ -16,6 +16,7 @@ use Maduser\Argon\Container\Exceptions\NotFoundException;
 use Maduser\Argon\Container\Support\DebugTrace;
 use Override;
 use ReflectionException;
+use ReflectionFunction;
 use ReflectionNamedType;
 use ReflectionParameter;
 use Throwable;
@@ -113,8 +114,19 @@ final class ServiceResolver implements ServiceResolverInterface
      */
     private function resolveFromDescriptor(string $id, ServiceDescriptorInterface $descriptor, array $args): object
     {
-        if ($descriptor->isShared() && $instance = $descriptor->getInstance()) {
-            return $instance;
+        if ($descriptor->isShared()) {
+            $instance = $descriptor->getInstance();
+
+            if ($instance !== null) {
+                if ($args !== []) {
+                    throw ContainerException::fromServiceId(
+                        $id,
+                        'Cannot pass runtime arguments to an already resolved shared service.'
+                    );
+                }
+
+                return $instance;
+            }
         }
 
         if ($descriptor->hasFactory()) {
@@ -124,7 +136,7 @@ final class ServiceResolver implements ServiceResolverInterface
             $args = array_merge($descriptor->getArguments(), $args);
 
             $instance = $concrete instanceof Closure
-                ? (object) $concrete()
+                ? $this->resolveClosure($concrete, $args, $id)
                 : $this->resolveClass($concrete, $args);
         }
 
@@ -166,42 +178,7 @@ final class ServiceResolver implements ServiceResolverInterface
             ->getMethod($method);
 
         $mergedArgs = array_merge($descriptor->getArguments(), $args);
-
-        /** @var list<null|bool|int|float|string|array|object> $orderedArgs */
-        $orderedArgs = [];
-
-        foreach ($reflection->getParameters() as $param) {
-            $name = $param->getName();
-
-            if (array_key_exists($name, $mergedArgs)) {
-                /** @var null|bool|int|float|string|array|object $arg */
-                $arg = $mergedArgs[$name];
-                DebugTrace::add(
-                    $id,
-                    $name,
-                    $param->getType() instanceof ReflectionNamedType ? $param->getType()->getName() : 'mixed',
-                    is_scalar($arg) ? (string) $arg : gettype($arg)
-                );
-                $orderedArgs[] = $arg;
-            } elseif ($param->isDefaultValueAvailable()) {
-                /** @var null|bool|int|float|string|array|object $arg */
-                $arg = $param->getDefaultValue();
-                DebugTrace::add(
-                    $id,
-                    $name,
-                    $param->getType() instanceof ReflectionNamedType ? $param->getType()->getName() : 'mixed',
-                    is_scalar($arg) ? (string) $arg : gettype($arg)
-                );
-                $orderedArgs[] = $arg;
-            } else {
-                DebugTrace::fail(
-                    $id,
-                    $name,
-                    $param->getType() instanceof ReflectionNamedType ? $param->getType()->getName() : 'mixed'
-                );
-                throw ContainerException::fromServiceId($id, "Missing required argument '$name'");
-            }
-        }
+        $orderedArgs = $this->resolveFactoryParameters($reflection->getParameters(), $mergedArgs, $id);
 
         return $reflection->isStatic()
             ? (object) (call_user_func([$factoryClass, $method], ...$orderedArgs))
@@ -247,7 +224,7 @@ final class ServiceResolver implements ServiceResolverInterface
             $concrete = $descriptor->getConcrete();
 
             if ($concrete instanceof Closure) {
-                return (object) $concrete();
+                return $this->resolveClosure($concrete, $args, $className);
             }
 
             if ($concrete !== $className) {
@@ -295,6 +272,91 @@ final class ServiceResolver implements ServiceResolverInterface
             fn(ReflectionParameter $param): mixed => $this->argumentResolver->resolve($param, $overrides),
             $params
         );
+    }
+
+    /**
+     * @param array<int, ReflectionParameter> $params
+     * @param array<array-key, mixed> $overrides
+     * @return array<int, mixed>
+     *
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function resolveFactoryParameters(array $params, array $overrides, string $contextId): array
+    {
+        /** @var list<null|bool|int|float|string|array|object> $resolved */
+        $resolved = [];
+
+        foreach ($params as $param) {
+            $resolved[] = $this->resolveFactoryParameter($param, $overrides, $contextId);
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * @param array<array-key, mixed> $overrides
+     * @return null|bool|int|float|string|array|object
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function resolveFactoryParameter(
+        ReflectionParameter $param,
+        array $overrides,
+        string $contextId
+    ): null|bool|int|float|string|array|object {
+        $name = $param->getName();
+
+        if (array_key_exists($name, $overrides) || $this->factoryParameterUsesContainerResolution($param)) {
+            /** @var null|bool|int|float|string|array|object $resolved */
+            $resolved = $this->argumentResolver->resolve($param, $overrides, $contextId);
+
+            return $resolved;
+        }
+
+        if ($param->isDefaultValueAvailable()) {
+            /** @var null|bool|int|float|string|array|object $arg */
+            $arg = $param->getDefaultValue();
+            DebugTrace::add(
+                $contextId,
+                $name,
+                $param->getType() instanceof ReflectionNamedType ? $param->getType()->getName() : 'mixed',
+                is_scalar($arg) ? (string) $arg : gettype($arg)
+            );
+
+            return $arg;
+        }
+
+        DebugTrace::fail(
+            $contextId,
+            $name,
+            $param->getType() instanceof ReflectionNamedType ? $param->getType()->getName() : 'mixed'
+        );
+        throw ContainerException::fromServiceId($contextId, "Missing required argument '$name'");
+    }
+
+    private function factoryParameterUsesContainerResolution(ReflectionParameter $param): bool
+    {
+        $type = $param->getType();
+
+        return !$type instanceof ReflectionNamedType || !$type->isBuiltin();
+    }
+
+    /**
+     * @param Closure $closure
+     * @param array<array-key, mixed> $args
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function resolveClosure(Closure $closure, array $args, string $contextId): object
+    {
+        $reflection = new ReflectionFunction($closure);
+        $dependencies = array_map(
+            fn(ReflectionParameter $param): mixed => $this->argumentResolver->resolve($param, $args, $contextId),
+            $reflection->getParameters()
+        );
+
+        return (object) $closure(...$dependencies);
     }
 
     /**

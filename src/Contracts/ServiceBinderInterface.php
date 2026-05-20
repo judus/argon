@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Maduser\Argon\Container\Contracts;
 
 use Closure;
-use Maduser\Argon\Container\BindingBuilder;
 use Maduser\Argon\Container\Exceptions\ContainerException;
-use Maduser\Argon\Container\ServiceDescriptor;
 
 /**
  * Handles service registrations into the container.
@@ -15,7 +13,7 @@ use Maduser\Argon\Container\ServiceDescriptor;
 interface ServiceBinderInterface
 {
     /**
-     * @return array<string, ServiceDescriptor>
+     * @return array<string, ServiceDescriptorInterface>
      */
     public function getDescriptors(): array;
 
@@ -33,9 +31,9 @@ interface ServiceBinderInterface
     /**
      * Registers a singleton service.
      *
-     * @param string $id
+     * @param class-string|string $id
      * @param Closure|string|null $concrete
-     * @param array|null $args
+     * @param array<array-key, mixed>|null $args
      * @return BindingBuilderInterface
      * @throws ContainerException
      */

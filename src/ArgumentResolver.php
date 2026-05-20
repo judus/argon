@@ -11,12 +11,12 @@ use Maduser\Argon\Container\Contracts\ArgumentResolverInterface;
 use Maduser\Argon\Container\Contracts\ServiceResolverInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\ArgumentResolutionPlan;
+use Maduser\Argon\Container\Support\ArgumentResolutionPlanner;
+use Maduser\Argon\Container\Support\ArgumentResolutionStep;
 use Maduser\Argon\Container\Support\DebugTrace;
 use Override;
-use ReflectionNamedType;
 use ReflectionParameter;
-use ReflectionType;
-use ReflectionUnionType;
 
 /**
  * Resolves constructor and method parameters with contextual or container-based resolution.
@@ -25,11 +25,14 @@ final class ArgumentResolver implements ArgumentResolverInterface
 {
     private ?ServiceResolverInterface $serviceResolver = null;
 
+    private readonly ArgumentResolutionPlanner $planner;
+
     public function __construct(
         private readonly ContextualResolverInterface $contextualResolver,
         private readonly ArgumentMapInterface $arguments,
         private readonly ContextualBindingsInterface $contextualBindings
     ) {
+        $this->planner = new ArgumentResolutionPlanner($contextualBindings);
     }
 
     #[Override]
@@ -54,192 +57,127 @@ final class ArgumentResolver implements ArgumentResolverInterface
         ?string $contextId = null
     ): mixed {
         $context = $contextId ?? $param->getDeclaringClass()?->getName() ?? 'global';
-        $paramName = $param->getName();
+        $boundArguments = $this->arguments->get($context);
+        $plan = $this->planner->build(
+            $param,
+            $context,
+            $context,
+            $boundArguments
+        );
 
-        $merged = array_merge($this->arguments->get($context), $overrides);
-
-        $paramType = $param->getType();
-        $expectedType = $paramType instanceof ReflectionNamedType ? $paramType->getName() : 'mixed';
-
-        if (array_key_exists($paramName, $merged)) {
-            /** @var null|bool|int|float|string|array|object $value */
-            $value = $merged[$paramName];
-            DebugTrace::add(
-                $context,
-                $paramName,
-                $expectedType,
-                is_scalar($value) ? (string) $value : gettype($value)
-            );
-
-            if (
-                $paramType instanceof ReflectionNamedType &&
-                !$paramType->isBuiltin() &&
-                is_string($value) &&
-                is_a($value, $paramType->getName(), true)
-            ) {
-                return $this->resolveTypeName($value, $context, $paramName, $expectedType);
-            }
-
-            return $value;
-        }
-
-        return $this->resolveByType($param, $context, $paramName);
+        return $this->executePlan($plan, $overrides);
     }
 
     /**
-     * @param ReflectionParameter $param
-     * @param string              $className
-     * @param string              $paramName
-     *
-     * @return mixed
-     *
+     * @param array<array-key, mixed> $overrides
      * @throws ContainerException
      * @throws NotFoundException
      */
-    private function resolveByType(ReflectionParameter $param, string $className, string $paramName): mixed
+    private function executePlan(ArgumentResolutionPlan $plan, array $overrides): mixed
     {
-        $type = $param->getType();
-
-        if (
-            $type instanceof ReflectionNamedType
-            && $type->getName() === 'mixed'
-            && !$param->isDefaultValueAvailable()
-
-            // mixed is allowed *only* if default or optional (PHP's reflection is flaky here)
-            && !$param->isOptional()
-        ) {
-            DebugTrace::fail($className, $paramName, 'mixed');
-            throw ContainerException::fromServiceId(
-                $className,
-                sprintf(
-                    "Cannot resolve parameter \$%s in %s::__construct(): " .
-                    "parameter is of type 'mixed' with no default or nullability",
-                    $paramName,
-                    $className
-                )
-            );
-        }
-
-        if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
-            $typeName = $type->getName();
-
-            // 👇 If it's nullable and no contextual or argument binding exists, back off!
+        foreach ($plan->steps() as $step) {
             if (
-                $param->allowsNull()
-                && !$this->contextualBindings->has($className, $typeName)
-                && !$this->arguments->has($className, $paramName)
+                $step->kind() === ArgumentResolutionStep::RUNTIME_ARGUMENT
+                && !array_key_exists($plan->parameterName(), $overrides)
             ) {
-                DebugTrace::add($className, $paramName, $typeName, null);
-                return null;
+                continue;
             }
 
-            return $this->resolveTypeName($typeName, $className, $paramName, $typeName);
+            return $this->executeStep($plan, $step, $overrides);
         }
 
-        if ($type instanceof ReflectionUnionType) {
-            return $this->resolveUnionType($type, $className, $paramName);
+        throw ContainerException::fromInternalError('Argument resolution plan did not produce a value.');
+    }
+
+    /**
+     * @param array<array-key, mixed> $overrides
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    private function executeStep(
+        ArgumentResolutionPlan $plan,
+        ArgumentResolutionStep $step,
+        array $overrides
+    ): mixed {
+        $paramName = $plan->parameterName();
+
+        switch ($step->kind()) {
+            case ArgumentResolutionStep::RUNTIME_ARGUMENT:
+                return $this->resolveValue($plan, $overrides[$paramName]);
+
+            case ArgumentResolutionStep::BOUND_ARGUMENT:
+            case ArgumentResolutionStep::DEFAULT_VALUE:
+                return $this->resolveValue($plan, $step->value());
+
+            case ArgumentResolutionStep::CONTEXTUAL_SERVICE:
+                $dependency = $step->dependency();
+                if ($dependency === null) {
+                    throw ContainerException::fromInternalError('Contextual resolution step misses dependency.');
+                }
+
+                return $this->resolveTypeName(
+                    $dependency,
+                    $plan->context(),
+                    $paramName,
+                    $plan->expectedType()
+                );
+
+            case ArgumentResolutionStep::SERVICE:
+                $serviceId = $step->serviceId();
+                if ($serviceId === null) {
+                    throw ContainerException::fromInternalError('Service resolution step misses service id.');
+                }
+
+                return $this->resolveTypeName(
+                    $serviceId,
+                    $plan->context(),
+                    $paramName,
+                    $plan->expectedType()
+                );
+
+            case ArgumentResolutionStep::NULL_VALUE:
+                DebugTrace::add($plan->context(), $paramName, $plan->expectedType(), null);
+                return null;
+
+            case ArgumentResolutionStep::PRIMITIVE_FAILURE:
+                DebugTrace::fail($plan->context(), $paramName, $plan->expectedType());
+                throw ContainerException::forUnresolvedPrimitive($plan->context(), $paramName);
+
+            case ArgumentResolutionStep::FAILURE:
+                DebugTrace::fail($plan->context(), $paramName, $plan->expectedType());
+                throw ContainerException::fromServiceId($plan->serviceId(), (string) $step->message());
         }
 
-        if ($param->isDefaultValueAvailable()) {
-            /** @var null|bool|int|float|string|object|array $value */
-            $value = $param->getDefaultValue();
-            DebugTrace::add(
-                $className,
-                $paramName,
-                $type instanceof ReflectionNamedType ? $type->getName() : 'mixed',
-                is_scalar($value) ? (string) $value : gettype($value)
-            );
-            return $value;
-        }
-
-        if ($param->allowsNull()) {
-            DebugTrace::add(
-                $className,
-                $paramName,
-                $type instanceof ReflectionNamedType ? $type->getName() : 'mixed',
-                null
-            );
-            return null;
-        }
-
-        DebugTrace::fail(
-            $className,
-            $paramName,
-            $type instanceof ReflectionNamedType ? $type->getName() : 'mixed'
-        );
-        throw ContainerException::forUnresolvedPrimitive($className, $paramName);
+        throw ContainerException::fromInternalError("Unknown argument resolution step '{$step->kind()}'.");
     }
 
     /**
      * @throws ContainerException
+     * @throws NotFoundException
      */
-    private function resolveUnionType(ReflectionUnionType $type, string $className, string $paramName): object
+    private function resolveValue(ArgumentResolutionPlan $plan, mixed $value): mixed
     {
-        // TODO: I won't support this BS (yet), user shall make up his mind, ain't a sushi bar...
-        // class MyClass {
-        //     public function __construct(public StringableObject|string $string) {}
-        // }
-
-        $userDefined = [];
-
-        foreach ($type->getTypes() as $unionType) {
-            if ($unionType instanceof ReflectionNamedType && !$unionType->isBuiltin()) {
-                $typeName = $unionType->getName();
-
-                if ($this->contextualBindings->has($className, $typeName)) {
-                    $userDefined[] = fn(): object => $this->contextualResolver->resolve($className, $typeName);
-                }
-
-                // See note below. This part of the BF. Don't do it! Not again! :)
-                // If we have union type, meaning we have multiple classes, we'll always have an ambiguous situation
-                // In a mixed situation, userDefined and fromAutoResolution, userDefined takes precedence anyway.
-                // Try to unit test that, LMAO!
-                // elseif (class_exists($typeName)) {
-                //     $fromAutoResolution[] = fn(): object => $this->resolveTypeName($typeName, $className);
-                // }
-            }
+        $classString = $plan->resolveClassString($value);
+        if ($classString !== null) {
+            return $this->resolveTypeName(
+                $classString,
+                $plan->context(),
+                $plan->parameterName(),
+                $plan->expectedType()
+            );
         }
 
-        // Prioritize contextual bindings
-        if (count($userDefined) === 1) {
-            return $userDefined[0]();
-        }
-
-        // Unless PHP allows type hinting non-existing classes, nothing gets executed.
-        // Leave this note here, so I remember next time before I spent hours on this BF.
-        //
-        // If no $userDefined, fall back to auto resolution (<-- nope! Union type means greater than 1!)
-        // if (count($userDefined) === 0 && count($fromAutoResolution) === 1) {
-        //     return $fromAutoResolution[0]();
-        // }
-
-        $typeList = implode(', ', array_map(
-            fn(ReflectionNamedType $t): string => $t->getName(),
-            array_filter(
-                $type->getTypes(),
-                fn(ReflectionType $t): bool => $t instanceof ReflectionNamedType
-            )
-        ));
-
-        DebugTrace::fail($className, $paramName, $typeList);
-
-        throw ContainerException::fromServiceId(
-            $className,
-            sprintf(
-                'Ambiguous union type for parameter $%s in %s::__construct(): [%s]',
-                $paramName,
-                $className,
-                $typeList
-            )
+        DebugTrace::add(
+            $plan->context(),
+            $plan->parameterName(),
+            $plan->expectedType(),
+            is_scalar($value) ? (string) $value : gettype($value)
         );
+
+        return $value;
     }
 
     /**
-     * @template TGet of object
-     * @param string $serviceId
-     * @param class-string<TGet>|string $className
-     * @param string|null $paramName
-     * @param string|null $expectedType
      * @return object
      * @throws ContainerException
      * @throws NotFoundException

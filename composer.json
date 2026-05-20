@@ -38,11 +38,11 @@
   },
   "scripts": {
     "test": "vendor/bin/phpunit",
-    "test:coverage": "vendor/bin/phpunit  --coverage-clover=coverage.xml --coverage-html coverage-report && open coverage-report/index.html",
+    "test:coverage": "vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-html coverage-report",
     "phpcs": "vendor/bin/phpcs --standard=phpcs.xml",
-    "psalm": "vendor/bin/psalm --output-format=github",
+    "psalm": "vendor/bin/psalm --no-cache --output-format=github",
     "phpcs:fix": "vendor/bin/phpcbf --standard=phpcs.xml",
-    "check": ["@test", "@psalm", "@phpcs:fix", "@phpcs"],
+    "check": ["@test", "@psalm", "@phpcs"],
     "ci": ["@test", "@test:coverage", "@psalm", "@phpcs"]
   },
   "config": {

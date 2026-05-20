@@ -84,8 +84,8 @@ final class ContextualBindingTest extends TestCase
 
         $container->set(ServiceA::class);
 
-        $container->for(ServiceA::class)->set(LoggerInterface::class, function (): LoggerInterface {
-            return new FileLogger();
+        $container->for(ServiceA::class)->set(LoggerInterface::class, function (FileLogger $logger): LoggerInterface {
+            return $logger;
         });
 
         $a = $container->get(ServiceA::class);
