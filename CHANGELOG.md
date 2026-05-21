@@ -11,6 +11,7 @@ All notable changes to `maduser/argon` will be documented in this file.
 ### Fixed
 
 - Container compilation now rejects `defineInvocation()` metadata for missing or non-public target methods before writing generated PHP.
+- Factory-backed services now keep factory object resolution arguments separate from factory method arguments.
 
 ## [1.1.2] - 2026-05-21
 

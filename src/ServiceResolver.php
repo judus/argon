@@ -161,7 +161,7 @@ final class ServiceResolver implements ServiceResolverInterface
             throw ContainerException::fromServiceId($id, 'Factory class not defined.');
         }
 
-        $factoryInstance = $this->resolve($factoryClass, $args);
+        $factoryInstance = $this->resolve($factoryClass);
 
         if (!method_exists($factoryInstance, $method)) {
             throw new ContainerException(sprintf(

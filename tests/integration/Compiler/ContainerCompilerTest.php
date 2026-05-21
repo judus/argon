@@ -27,6 +27,7 @@ use Tests\Integration\Compiler\Mocks\PrimitiveService;
 use Tests\Integration\Compiler\Mocks\RouteStyleController;
 use Tests\Integration\Compiler\Mocks\ServiceWithDependency;
 use Tests\Integration\Compiler\Mocks\SomeInterface;
+use Tests\Integration\Compiler\Mocks\StatefulDefaultValueFactory;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
 use Tests\Integration\Compiler\Mocks\WithOptionalInterface;
 use Tests\Integration\Compiler\Mocks\WithOptionalService;
@@ -1063,6 +1064,30 @@ final class ContainerCompilerTest extends TestCase
 
         $this->assertInstanceOf(DefaultValueService::class, $instance);
         $this->assertSame('runtime-supplied', $instance->label);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
+    public function testCompiledFactoryRuntimeArgumentsDoNotConfigureFactoryObject(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(StatefulDefaultValueFactory::class, args: ['label' => 'factory-config']);
+        $container->set(DefaultValueService::class)
+            ->factory(StatefulDefaultValueFactory::class, 'create');
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledFactoryRuntimeArgumentsDoNotConfigureFactoryObject'
+        );
+
+        $service = $compiled->get(DefaultValueService::class, ['label' => 'product-runtime']);
+        $factory = $compiled->get(StatefulDefaultValueFactory::class);
+
+        $this->assertSame('factory-config:product-runtime', $service->label);
+        $this->assertInstanceOf(StatefulDefaultValueFactory::class, $factory);
     }
 
     /**

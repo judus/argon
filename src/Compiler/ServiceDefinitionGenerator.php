@@ -127,7 +127,7 @@ final class ServiceDefinitionGenerator
         if ($descriptor->isShared()) {
             $method->setBody(<<<PHP
                 if (\$this->{$singletonProperty} === null) {
-                    \$factory = \$this->get({$fqFactory}::class, \$args);
+                    \$factory = \$this->get({$fqFactory}::class);
                     \$this->{$singletonProperty} = \$this->applyPostInterceptors({$factoryInvocation});
                 } elseif (\$args !== []) {
                     throw ContainerException::fromServiceId(
@@ -139,7 +139,7 @@ final class ServiceDefinitionGenerator
             PHP);
         } else {
             $method->setBody(<<<PHP
-                \$factory = \$this->get({$fqFactory}::class, \$args);
+                \$factory = \$this->get({$fqFactory}::class);
                 return \$this->applyPostInterceptors({$factoryInvocation});
             PHP);
         }
