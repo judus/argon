@@ -80,10 +80,6 @@ jobs:
       if: matrix.experimental == false
       run: vendor/bin/phpcs --standard=phpcs.xml
 
-    - name: Run PHP CS Fixer (dry-run)
-      if: matrix.experimental == false
-      run: vendor/bin/php-cs-fixer fix --dry-run --diff --ansi || true
-
     - name: Upload coverage reports to Codecov
       if: matrix.php-version == '8.4'
       uses: codecov/codecov-action@v5

@@ -4,6 +4,10 @@ All notable changes to `maduser/argon` will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Removed the non-enforcing php-cs-fixer CI step so PHPCS/Slevomat remains the single enforced style gate.
+
 ## [1.2.0] - 2026-05-21
 
 ### Added
