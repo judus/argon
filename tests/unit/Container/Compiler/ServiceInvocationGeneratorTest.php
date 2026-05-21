@@ -72,4 +72,42 @@ final class ServiceInvocationGeneratorTest extends TestCase
 
         self::assertFalse($class->hasMethod($closureInvokerName));
     }
+
+    public function testGenerateOmitsPrimitiveCastsForClosureConcrete(): void
+    {
+        $container = new ArgonContainer();
+        $container->set('closure.service', static fn() => new ServiceWithTypedMethods())
+            ->defineInvocation('handle', ['id' => 1]);
+
+        $generator = new ServiceInvocationGenerator($container);
+        $class = new ClassType('CompiledContainer');
+
+        $generator->generate($class);
+
+        $method = $class->getMethod('invoke_closure_service__handle');
+
+        self::assertStringNotContainsString('(int)', $method->getBody());
+        self::assertStringContainsString('return $controller->handle(...$mergedArgs);', $method->getBody());
+    }
+
+    public function testGenerateOmitsPrimitiveCastsForUnknownInvocationMethod(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(ServiceWithTypedMethods::class)
+            ->defineInvocation('missing', ['id' => 1]);
+
+        $generator = new ServiceInvocationGenerator($container);
+        $class = new ClassType('CompiledContainer');
+
+        $generator->generate($class);
+
+        $methodName = 'invoke_'
+            . StringHelper::sanitizeIdentifier(ServiceWithTypedMethods::class)
+            . '__missing';
+
+        $method = $class->getMethod($methodName);
+
+        self::assertStringNotContainsString('(int)', $method->getBody());
+        self::assertStringContainsString('return $controller->missing(...$mergedArgs);', $method->getBody());
+    }
 }
