@@ -1201,6 +1201,33 @@ final class ContainerCompilerTest extends TestCase
 
     /**
      * @throws ReflectionException
+     */
+    public function testCompilerValidatesInvocationMethodBeforeWritingFile(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(RouteStyleController::class)->defineInvocation('missingMethod', []);
+
+        $output = self::compilerCacheFile('testCompilerValidatesInvocationMethodBeforeWritingFile');
+        $compiler = new ContainerCompiler($container);
+
+        try {
+            $compiler->compile(
+                $output,
+                'testCompilerValidatesInvocationMethodBeforeWritingFile',
+                'Tests\\Integration\\Compiler'
+            );
+            $this->fail('Expected invocation method validation to fail.');
+        } catch (ContainerException $exception) {
+            $this->assertStringContainsString(
+                'Invocation method "missingMethod" not found on class "' . RouteStyleController::class . '".',
+                $exception->getMessage()
+            );
+            $this->assertFileDoesNotExist($output);
+        }
+    }
+
+    /**
+     * @throws ReflectionException
      * @throws ContainerException
      */
     public function testCompilerSkipsClosureWhenMarkedSkipCompilation(): void

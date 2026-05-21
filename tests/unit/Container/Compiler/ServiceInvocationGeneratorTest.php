@@ -54,13 +54,12 @@ final class ServiceInvocationGeneratorTest extends TestCase
         self::assertStringContainsString("(float) \$mergedArgs['ratio']", $body);
     }
 
-    public function testGenerateSkipsPrimitiveCastsForNonClassAndMissingMethod(): void
+    public function testGenerateSkipsDescriptorsExcludedFromCompilation(): void
     {
         $container = new ArgonContainer();
         $container->set('closure.service', static fn() => new ServiceWithTypedMethods())
+            ->skipCompilation()
             ->defineInvocation('handle', ['id' => 1]);
-        $container->set(ServiceWithTypedMethods::class)
-            ->defineInvocation('undefinedMethod', []);
 
         $generator = new ServiceInvocationGenerator($container);
         $class = new ClassType('CompiledContainer');
@@ -70,23 +69,7 @@ final class ServiceInvocationGeneratorTest extends TestCase
         $closureInvokerName = 'invoke_'
             . StringHelper::sanitizeIdentifier('closure.service')
             . '__handle';
-        $missingInvokerName = 'invoke_'
-            . StringHelper::sanitizeIdentifier(ServiceWithTypedMethods::class)
-            . '__undefinedMethod';
 
-        self::assertTrue($class->hasMethod($closureInvokerName));
-        self::assertTrue($class->hasMethod($missingInvokerName));
-        $closureMethod = $class->getMethod($closureInvokerName);
-        $missingMethod = $class->getMethod($missingInvokerName);
-
-        $escapedServiceClass = str_replace('\\', '\\\\', ServiceWithTypedMethods::class);
-
-        $closureBody = $closureMethod->getBody();
-        self::assertStringNotContainsString('(int)', $closureBody);
-        self::assertStringNotContainsString('(float)', $closureBody);
-
-        $missingBody = $missingMethod->getBody();
-        self::assertStringContainsString("\$controller = \$this->get('{$escapedServiceClass}');", $missingBody);
-        self::assertStringContainsString("\$controller->undefinedMethod(...\$mergedArgs);", $missingBody);
+        self::assertFalse($class->hasMethod($closureInvokerName));
     }
 }

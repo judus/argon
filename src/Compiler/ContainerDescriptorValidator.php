@@ -44,6 +44,8 @@ final class ContainerDescriptorValidator
             );
         }
 
+        $this->validateInvocations($id, $descriptor, $concrete);
+
         if ($descriptor->hasFactory()) {
             $this->validateFactory($id, $descriptor);
             return;
@@ -87,6 +89,42 @@ final class ContainerDescriptorValidator
                 $id,
                 sprintf('Factory method "%s" on class "%s" is not public.', $factoryMethod, $factoryClass)
             );
+        }
+    }
+
+    /**
+     * @param class-string $concrete
+     * @throws ContainerException
+     * @throws ReflectionException
+     */
+    private function validateInvocations(
+        string $id,
+        ServiceDescriptorInterface $descriptor,
+        string $concrete
+    ): void {
+        $invocations = $descriptor->getInvocationMap();
+
+        if ($invocations === []) {
+            return;
+        }
+
+        $reflection = new ReflectionClass($concrete);
+
+        foreach (array_keys($invocations) as $methodName) {
+            if (!$reflection->hasMethod($methodName)) {
+                throw ContainerException::fromServiceId(
+                    $id,
+                    sprintf('Invocation method "%s" not found on class "%s".', $methodName, $concrete)
+                );
+            }
+
+            $method = $reflection->getMethod($methodName);
+            if (!$method->isPublic()) {
+                throw ContainerException::fromServiceId(
+                    $id,
+                    sprintf('Invocation method "%s" on class "%s" is not public.', $methodName, $concrete)
+                );
+            }
         }
     }
 }

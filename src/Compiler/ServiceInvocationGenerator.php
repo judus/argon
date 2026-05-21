@@ -21,6 +21,10 @@ final class ServiceInvocationGenerator
     public function generate(ClassType $class): void
     {
         foreach ($this->container->getBindings() as $serviceId => $descriptor) {
+            if ($descriptor->shouldCompile() === false) {
+                continue;
+            }
+
             foreach ($descriptor->getInvocationMap() as $method => $args) {
                 $compiledMethodName = $this->buildMethodInvokerName($serviceId, $method);
                 $controllerFetch = "\$controller = \$this->get(" . var_export($serviceId, true) . ");";
