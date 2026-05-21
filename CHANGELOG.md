@@ -2,6 +2,12 @@
 
 All notable changes to `maduser/argon` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Added runtime/compiled `ServiceInvoker` parity coverage for route-style invocation maps.
+
 ## [1.1.2] - 2026-05-21
 
 ### Fixed

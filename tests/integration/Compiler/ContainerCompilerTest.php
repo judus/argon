@@ -9,6 +9,8 @@ use Maduser\Argon\Container\Compiler\ContainerCompiler;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\ReflectionUtils;
+use Maduser\Argon\Container\Support\ServiceInvoker;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use ReflectionMethod;
@@ -22,6 +24,7 @@ use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
 use Tests\Integration\Compiler\Mocks\MailerFactory;
 use Tests\Integration\Compiler\Mocks\PrimitiveService;
+use Tests\Integration\Compiler\Mocks\RouteStyleController;
 use Tests\Integration\Compiler\Mocks\ServiceWithDependency;
 use Tests\Integration\Compiler\Mocks\SomeInterface;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
@@ -528,6 +531,69 @@ final class ContainerCompilerTest extends TestCase
         $result = $compiled->invoke([ServiceWithDependency::class, 'doSomething']);
 
         $this->assertSame('from-invoker', $result);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledServiceInvokerMatchesRuntimeForRouteStyleInvocation(): void
+    {
+        $runtime = new ArgonContainer();
+        $runtime->set(Logger::class);
+        $runtime->set(RouteStyleController::class)
+            ->defineInvocation(
+                'show',
+                ReflectionUtils::getMethodParameters(RouteStyleController::class, 'show')
+            );
+
+        $compiled = $this->compileAndLoadContainer(
+            $runtime,
+            'testCompiledServiceInvokerMatchesRuntimeForRouteStyleInvocation'
+        );
+
+        $arguments = ['id' => '42'];
+        $runtimeResult = (new ServiceInvoker($runtime, RouteStyleController::class, 'show'))($arguments);
+        $compiledResult = (new ServiceInvoker($compiled, RouteStyleController::class, 'show'))($arguments);
+
+        $this->assertSame($runtimeResult, $compiledResult);
+        $this->assertSame([
+            'id' => '42',
+            'log' => 'route-hit',
+        ], $compiledResult);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledServiceInvokerMatchesRuntimeForRouteStylePrimitiveCasting(): void
+    {
+        $runtime = new ArgonContainer();
+        $runtime->set(Logger::class);
+        $runtime->set(RouteStyleController::class)
+            ->defineInvocation(
+                'typed',
+                ReflectionUtils::getMethodParameters(RouteStyleController::class, 'typed')
+            );
+
+        $compiled = $this->compileAndLoadContainer(
+            $runtime,
+            'testCompiledServiceInvokerMatchesRuntimeForRouteStylePrimitiveCasting'
+        );
+
+        $arguments = ['id' => '42'];
+        $runtimeResult = (new ServiceInvoker($runtime, RouteStyleController::class, 'typed'))($arguments);
+        $compiledResult = (new ServiceInvoker($compiled, RouteStyleController::class, 'typed'))($arguments);
+
+        $this->assertSame($runtimeResult, $compiledResult);
+        $this->assertSame([
+            'id' => 42,
+            'ratio' => 1.5,
+            'log' => 'typed-route-hit',
+        ], $compiledResult);
     }
 
 
