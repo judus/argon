@@ -2,6 +2,18 @@
 
 All notable changes to `maduser/argon` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Added runtime/compiled `ServiceInvoker` parity coverage for route-style invocation maps.
+
+### Fixed
+
+- Container compilation now rejects `defineInvocation()` metadata for missing or non-public target methods before writing generated PHP.
+- Factory-backed services now keep factory object resolution arguments separate from factory method arguments.
+- Runtime and compiled service factories, closure bindings, and contextual closure bindings now reject non-object service results instead of casting them to objects.
+
 ## [1.1.2] - 2026-05-21
 
 ### Fixed

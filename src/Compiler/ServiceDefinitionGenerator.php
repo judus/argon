@@ -105,6 +105,7 @@ final class ServiceDefinitionGenerator
         $factoryInvocation = $methodReflection->isStatic()
             ? "{$fqFactory}::{$factoryMethod}(\n                    {$argString}\n                )"
             : "\$factory->{$factoryMethod}(\n                    {$argString}\n                )";
+        $factorySource = var_export(sprintf('Factory method "%s::%s()"', $factoryClass, $factoryMethod), true);
 
         $namespace->addUse($factoryClass);
 
@@ -127,8 +128,11 @@ final class ServiceDefinitionGenerator
         if ($descriptor->isShared()) {
             $method->setBody(<<<PHP
                 if (\$this->{$singletonProperty} === null) {
-                    \$factory = \$this->get({$fqFactory}::class, \$args);
-                    \$this->{$singletonProperty} = \$this->applyPostInterceptors({$factoryInvocation});
+                    \$factory = \$this->get({$fqFactory}::class);
+                    \$result = {$factoryInvocation};
+                    \$this->{$singletonProperty} = \$this->applyPostInterceptors(
+                        \$this->ensureObjectServiceResult({$serviceId}, \$result, {$factorySource})
+                    );
                 } elseif (\$args !== []) {
                     throw ContainerException::fromServiceId(
                         {$serviceId},
@@ -139,8 +143,11 @@ final class ServiceDefinitionGenerator
             PHP);
         } else {
             $method->setBody(<<<PHP
-                \$factory = \$this->get({$fqFactory}::class, \$args);
-                return \$this->applyPostInterceptors({$factoryInvocation});
+                \$factory = \$this->get({$fqFactory}::class);
+                \$result = {$factoryInvocation};
+                return \$this->applyPostInterceptors(
+                    \$this->ensureObjectServiceResult({$serviceId}, \$result, {$factorySource})
+                );
             PHP);
         }
 

@@ -54,13 +54,12 @@ final class ServiceInvocationGeneratorTest extends TestCase
         self::assertStringContainsString("(float) \$mergedArgs['ratio']", $body);
     }
 
-    public function testGenerateSkipsPrimitiveCastsForNonClassAndMissingMethod(): void
+    public function testGenerateSkipsDescriptorsExcludedFromCompilation(): void
     {
         $container = new ArgonContainer();
         $container->set('closure.service', static fn() => new ServiceWithTypedMethods())
+            ->skipCompilation()
             ->defineInvocation('handle', ['id' => 1]);
-        $container->set(ServiceWithTypedMethods::class)
-            ->defineInvocation('undefinedMethod', []);
 
         $generator = new ServiceInvocationGenerator($container);
         $class = new ClassType('CompiledContainer');
@@ -70,23 +69,45 @@ final class ServiceInvocationGeneratorTest extends TestCase
         $closureInvokerName = 'invoke_'
             . StringHelper::sanitizeIdentifier('closure.service')
             . '__handle';
-        $missingInvokerName = 'invoke_'
+
+        self::assertFalse($class->hasMethod($closureInvokerName));
+    }
+
+    public function testGenerateOmitsPrimitiveCastsForClosureConcrete(): void
+    {
+        $container = new ArgonContainer();
+        $container->set('closure.service', static fn() => new ServiceWithTypedMethods())
+            ->defineInvocation('handle', ['id' => 1]);
+
+        $generator = new ServiceInvocationGenerator($container);
+        $class = new ClassType('CompiledContainer');
+
+        $generator->generate($class);
+
+        $method = $class->getMethod('invoke_closure_service__handle');
+
+        self::assertStringNotContainsString('(int)', $method->getBody());
+        self::assertStringContainsString('return $controller->handle(...$mergedArgs);', $method->getBody());
+    }
+
+    public function testGenerateOmitsPrimitiveCastsForUnknownInvocationMethod(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(ServiceWithTypedMethods::class)
+            ->defineInvocation('missing', ['id' => 1]);
+
+        $generator = new ServiceInvocationGenerator($container);
+        $class = new ClassType('CompiledContainer');
+
+        $generator->generate($class);
+
+        $methodName = 'invoke_'
             . StringHelper::sanitizeIdentifier(ServiceWithTypedMethods::class)
-            . '__undefinedMethod';
+            . '__missing';
 
-        self::assertTrue($class->hasMethod($closureInvokerName));
-        self::assertTrue($class->hasMethod($missingInvokerName));
-        $closureMethod = $class->getMethod($closureInvokerName);
-        $missingMethod = $class->getMethod($missingInvokerName);
+        $method = $class->getMethod($methodName);
 
-        $escapedServiceClass = str_replace('\\', '\\\\', ServiceWithTypedMethods::class);
-
-        $closureBody = $closureMethod->getBody();
-        self::assertStringNotContainsString('(int)', $closureBody);
-        self::assertStringNotContainsString('(float)', $closureBody);
-
-        $missingBody = $missingMethod->getBody();
-        self::assertStringContainsString("\$controller = \$this->get('{$escapedServiceClass}');", $missingBody);
-        self::assertStringContainsString("\$controller->undefinedMethod(...\$mergedArgs);", $missingBody);
+        self::assertStringNotContainsString('(int)', $method->getBody());
+        self::assertStringContainsString('return $controller->missing(...$mergedArgs);', $method->getBody());
     }
 }

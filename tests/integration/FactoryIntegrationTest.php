@@ -13,8 +13,10 @@ use ReflectionClass;
 use ReflectionException;
 use Tests\Integration\Mocks\Foo;
 use Tests\Integration\Mocks\FooFactory;
+use Tests\Integration\Mocks\InvalidFooFactory;
 use Tests\Integration\Mocks\InvokableFactory;
 use Tests\Integration\Mocks\Logger;
+use Tests\Integration\Mocks\StatefulFooFactory;
 use Tests\Integration\Mocks\StaticFooFactory;
 
 final class FactoryIntegrationTest extends TestCase
@@ -102,6 +104,45 @@ final class FactoryIntegrationTest extends TestCase
      * @throws ContainerException
      * @throws NotFoundException
      */
+    public function testFactoryRuntimeArgumentsDoNotConfigureFactoryObject(): void
+    {
+        $this->container->set(StatefulFooFactory::class, args: ['label' => 'factory-config']);
+        $this->container->set(Foo::class)
+            ->factory(StatefulFooFactory::class, 'make')
+            ->transient();
+
+        $foo = $this->container->get(Foo::class, ['label' => 'product-runtime']);
+        $factory = $this->container->get(StatefulFooFactory::class);
+
+        $this->assertSame('factory-config:product-runtime', $foo->label);
+        $this->assertSame('factory-config', $factory->label);
+        $this->assertSame(1, $factory->calls);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testSharedFactoryObjectIgnoresDifferentProductRuntimeArguments(): void
+    {
+        $this->container->set(StatefulFooFactory::class, args: ['label' => 'factory-config']);
+        $this->container->set(Foo::class)
+            ->factory(StatefulFooFactory::class, 'make')
+            ->transient();
+
+        $first = $this->container->get(Foo::class, ['label' => 'first-product']);
+        $second = $this->container->get(Foo::class, ['label' => 'second-product']);
+        $factory = $this->container->get(StatefulFooFactory::class);
+
+        $this->assertSame('factory-config:first-product', $first->label);
+        $this->assertSame('factory-config:second-product', $second->label);
+        $this->assertSame(2, $factory->calls);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
     public function testFactoryThrowsIfRequiredArgumentIsMissing(): void
     {
         $this->container->set(Foo::class)->factory(FooFactory::class, 'makeWithArgs');
@@ -135,6 +176,21 @@ final class FactoryIntegrationTest extends TestCase
         $this->expectExceptionMessage("Factory method \"missingMethod\" not found on class");
 
         $this->container->set(Foo::class)->factory(FooFactory::class, 'missingMethod');
+
+        $this->container->get(Foo::class);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testFactoryReturningNonObjectThrowsContainerException(): void
+    {
+        $this->container->set(Foo::class)->factory(InvalidFooFactory::class, 'makeString');
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Factory method "' . InvalidFooFactory::class . '::makeString()"');
+        $this->expectExceptionMessage('must return an object, got string');
 
         $this->container->get(Foo::class);
     }

@@ -55,7 +55,7 @@ final readonly class ContextualResolver implements ContextualResolverInterface
         }
 
         if ($override instanceof Closure) {
-            return (object) $this->container->invoke($override);
+            return $this->ensureObjectResult($consumer, $dependency, $this->container->invoke($override));
         }
 
         return $this->container->get($override);
@@ -72,5 +72,21 @@ final readonly class ContextualResolver implements ContextualResolverInterface
     public function has(string $consumer, string $dependency): bool
     {
         return $this->bindings->has($consumer, $dependency);
+    }
+
+    private function ensureObjectResult(string $consumer, string $dependency, mixed $value): object
+    {
+        if (!is_object($value)) {
+            throw ContainerException::fromServiceId(
+                $dependency,
+                sprintf(
+                    'Contextual closure binding for "%s" must return an object, got %s.',
+                    $consumer,
+                    get_debug_type($value)
+                )
+            );
+        }
+
+        return $value;
     }
 }

@@ -206,6 +206,17 @@ final class BindAndResolveTest extends TestCase
         $this->assertInstanceOf(\Tests\Integration\Mocks\Logger::class, $service->logger);
     }
 
+    public function testClosureBindingReturningNonObjectThrowsContainerException(): void
+    {
+        $container = new ArgonContainer();
+        $container->set('invalid.closure', fn(): string => 'not-a-service');
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Closure binding must return an object, got string.');
+
+        $container->get('invalid.closure');
+    }
+
     /**
      * @throws ContainerException
      * @throws NotFoundException

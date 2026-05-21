@@ -24,6 +24,7 @@ final class CoreContainerGenerator
         $this->generateConstructor($class);
         $this->generateCoreProperties($class);
         $this->generateInterceptorMethods($class);
+        $this->generateObjectResultValidationMethod($class);
         $this->generateHasMethod($class);
         $this->generateGetMethod($class);
         $this->generateGetTaggedMethod($class);
@@ -107,6 +108,28 @@ final class CoreContainerGenerator
                 $resolved->intercept($instance);
             }
             return $instance;
+        PHP);
+    }
+
+    private function generateObjectResultValidationMethod(ClassType $class): void
+    {
+        $method = $class->addMethod('ensureObjectServiceResult');
+        $method->setPrivate()
+            ->setReturnType('object');
+
+        $method->addParameter('id')->setType('string');
+        $method->addParameter('value')->setType('mixed');
+        $method->addParameter('source')->setType('string');
+
+        $method->setBody(<<<'PHP'
+            if (!is_object($value)) {
+                throw ContainerException::fromServiceId(
+                    $id,
+                    sprintf('%s must return an object, got %s.', $source, get_debug_type($value))
+                );
+            }
+
+            return $value;
         PHP);
     }
 

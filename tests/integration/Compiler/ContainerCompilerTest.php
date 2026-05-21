@@ -9,6 +9,8 @@ use Maduser\Argon\Container\Compiler\ContainerCompiler;
 use Maduser\Argon\Container\Contracts\ServiceDescriptorInterface;
 use Maduser\Argon\Container\Exceptions\ContainerException;
 use Maduser\Argon\Container\Exceptions\NotFoundException;
+use Maduser\Argon\Container\Support\ReflectionUtils;
+use Maduser\Argon\Container\Support\ServiceInvoker;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use ReflectionMethod;
@@ -22,8 +24,10 @@ use Tests\Integration\Compiler\Mocks\LoggerInterceptor;
 use Tests\Integration\Compiler\Mocks\Mailer;
 use Tests\Integration\Compiler\Mocks\MailerFactory;
 use Tests\Integration\Compiler\Mocks\PrimitiveService;
+use Tests\Integration\Compiler\Mocks\RouteStyleController;
 use Tests\Integration\Compiler\Mocks\ServiceWithDependency;
 use Tests\Integration\Compiler\Mocks\SomeInterface;
+use Tests\Integration\Compiler\Mocks\StatefulDefaultValueFactory;
 use Tests\Integration\Compiler\Mocks\TestServiceWithMultipleParams;
 use Tests\Integration\Compiler\Mocks\WithOptionalInterface;
 use Tests\Integration\Compiler\Mocks\WithOptionalService;
@@ -530,6 +534,69 @@ final class ContainerCompilerTest extends TestCase
         $this->assertSame('from-invoker', $result);
     }
 
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledServiceInvokerMatchesRuntimeForRouteStyleInvocation(): void
+    {
+        $runtime = new ArgonContainer();
+        $runtime->set(Logger::class);
+        $runtime->set(RouteStyleController::class)
+            ->defineInvocation(
+                'show',
+                ReflectionUtils::getMethodParameters(RouteStyleController::class, 'show')
+            );
+
+        $compiled = $this->compileAndLoadContainer(
+            $runtime,
+            'testCompiledServiceInvokerMatchesRuntimeForRouteStyleInvocation'
+        );
+
+        $arguments = ['id' => '42'];
+        $runtimeResult = (new ServiceInvoker($runtime, RouteStyleController::class, 'show'))($arguments);
+        $compiledResult = (new ServiceInvoker($compiled, RouteStyleController::class, 'show'))($arguments);
+
+        $this->assertSame($runtimeResult, $compiledResult);
+        $this->assertSame([
+            'id' => '42',
+            'log' => 'route-hit',
+        ], $compiledResult);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     */
+    public function testCompiledServiceInvokerMatchesRuntimeForRouteStylePrimitiveCasting(): void
+    {
+        $runtime = new ArgonContainer();
+        $runtime->set(Logger::class);
+        $runtime->set(RouteStyleController::class)
+            ->defineInvocation(
+                'typed',
+                ReflectionUtils::getMethodParameters(RouteStyleController::class, 'typed')
+            );
+
+        $compiled = $this->compileAndLoadContainer(
+            $runtime,
+            'testCompiledServiceInvokerMatchesRuntimeForRouteStylePrimitiveCasting'
+        );
+
+        $arguments = ['id' => '42'];
+        $runtimeResult = (new ServiceInvoker($runtime, RouteStyleController::class, 'typed'))($arguments);
+        $compiledResult = (new ServiceInvoker($compiled, RouteStyleController::class, 'typed'))($arguments);
+
+        $this->assertSame($runtimeResult, $compiledResult);
+        $this->assertSame([
+            'id' => 42,
+            'ratio' => 1.5,
+            'log' => 'typed-route-hit',
+        ], $compiledResult);
+    }
+
 
     /**
      * @throws ContainerException
@@ -1004,6 +1071,30 @@ final class ContainerCompilerTest extends TestCase
      * @throws ReflectionException
      * @throws NotFoundException
      */
+    public function testCompiledFactoryRuntimeArgumentsDoNotConfigureFactoryObject(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(StatefulDefaultValueFactory::class, args: ['label' => 'factory-config']);
+        $container->set(DefaultValueService::class)
+            ->factory(StatefulDefaultValueFactory::class, 'create');
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledFactoryRuntimeArgumentsDoNotConfigureFactoryObject'
+        );
+
+        $service = $compiled->get(DefaultValueService::class, ['label' => 'product-runtime']);
+        $factory = $compiled->get(StatefulDefaultValueFactory::class);
+
+        $this->assertSame('factory-config:product-runtime', $service->label);
+        $this->assertInstanceOf(StatefulDefaultValueFactory::class, $factory);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws ReflectionException
+     * @throws NotFoundException
+     */
     public function testCompiledSharedFactoryRejectsRuntimeArgumentsAfterFirstResolution(): void
     {
         $container = new ArgonContainer();
@@ -1044,6 +1135,29 @@ final class ContainerCompilerTest extends TestCase
 
         $this->expectException(ContainerException::class);
         $this->expectExceptionMessage("Missing required argument 'label'");
+
+        $compiled->get(DefaultValueService::class);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testCompiledFactoryReturningNonObjectThrowsContainerException(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createString');
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledFactoryReturningNonObjectThrowsContainerException'
+        );
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Factory method "' . MailerFactory::class . '::createString()"');
+        $this->expectExceptionMessage('must return an object, got string');
 
         $compiled->get(DefaultValueService::class);
     }
@@ -1127,6 +1241,33 @@ final class ContainerCompilerTest extends TestCase
         } catch (ContainerException $exception) {
             $this->assertStringContainsString(
                 'Factory method "missingMethod" not found on class "' . MailerFactory::class . '".',
+                $exception->getMessage()
+            );
+            $this->assertFileDoesNotExist($output);
+        }
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testCompilerValidatesInvocationMethodBeforeWritingFile(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(RouteStyleController::class)->defineInvocation('missingMethod', []);
+
+        $output = self::compilerCacheFile('testCompilerValidatesInvocationMethodBeforeWritingFile');
+        $compiler = new ContainerCompiler($container);
+
+        try {
+            $compiler->compile(
+                $output,
+                'testCompilerValidatesInvocationMethodBeforeWritingFile',
+                'Tests\\Integration\\Compiler'
+            );
+            $this->fail('Expected invocation method validation to fail.');
+        } catch (ContainerException $exception) {
+            $this->assertStringContainsString(
+                'Invocation method "missingMethod" not found on class "' . RouteStyleController::class . '".',
                 $exception->getMessage()
             );
             $this->assertFileDoesNotExist($output);
