@@ -13,6 +13,7 @@ use ReflectionClass;
 use ReflectionException;
 use Tests\Integration\Mocks\Foo;
 use Tests\Integration\Mocks\FooFactory;
+use Tests\Integration\Mocks\InvalidFooFactory;
 use Tests\Integration\Mocks\InvokableFactory;
 use Tests\Integration\Mocks\Logger;
 use Tests\Integration\Mocks\StatefulFooFactory;
@@ -175,6 +176,21 @@ final class FactoryIntegrationTest extends TestCase
         $this->expectExceptionMessage("Factory method \"missingMethod\" not found on class");
 
         $this->container->set(Foo::class)->factory(FooFactory::class, 'missingMethod');
+
+        $this->container->get(Foo::class);
+    }
+
+    /**
+     * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testFactoryReturningNonObjectThrowsContainerException(): void
+    {
+        $this->container->set(Foo::class)->factory(InvalidFooFactory::class, 'makeString');
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Factory method "' . InvalidFooFactory::class . '::makeString()"');
+        $this->expectExceptionMessage('must return an object, got string');
 
         $this->container->get(Foo::class);
     }

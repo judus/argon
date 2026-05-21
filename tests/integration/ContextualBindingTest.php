@@ -92,4 +92,19 @@ final class ContextualBindingTest extends TestCase
 
         $this->assertInstanceOf(FileLogger::class, $a->logger);
     }
+
+    public function testContextualClosureBindingReturningNonObjectThrowsContainerException(): void
+    {
+        $container = new ArgonContainer();
+
+        $container->set(ServiceA::class);
+
+        $container->for(ServiceA::class)->set(LoggerInterface::class, fn(): string => 'not-a-service');
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Contextual closure binding for "' . ServiceA::class . '"');
+        $this->expectExceptionMessage('must return an object, got string.');
+
+        $container->get(ServiceA::class);
+    }
 }

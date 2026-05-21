@@ -178,9 +178,13 @@ final class ServiceResolver implements ServiceResolverInterface
         $mergedArgs = array_merge($descriptor->getArguments(), $args);
         $orderedArgs = $this->resolveFactoryParameters($reflection->getParameters(), $mergedArgs, $id);
 
-        return $reflection->isStatic()
-            ? (object) (call_user_func([$factoryClass, $method], ...$orderedArgs))
-            : (object) (call_user_func([$factoryInstance, $method], ...$orderedArgs));
+        return $this->ensureObjectResult(
+            $id,
+            $reflection->isStatic()
+                ? call_user_func([$factoryClass, $method], ...$orderedArgs)
+                : call_user_func([$factoryInstance, $method], ...$orderedArgs),
+            sprintf('Factory method "%s::%s()"', $factoryClass, $method)
+        );
     }
 
     /**
@@ -359,7 +363,19 @@ final class ServiceResolver implements ServiceResolverInterface
             $reflection->getParameters()
         );
 
-        return (object) $closure(...$dependencies);
+        return $this->ensureObjectResult($contextId, $closure(...$dependencies), 'Closure binding');
+    }
+
+    private function ensureObjectResult(string $id, mixed $value, string $source): object
+    {
+        if (!is_object($value)) {
+            throw ContainerException::fromServiceId(
+                $id,
+                sprintf('%s must return an object, got %s.', $source, get_debug_type($value))
+            );
+        }
+
+        return $value;
     }
 
     /**

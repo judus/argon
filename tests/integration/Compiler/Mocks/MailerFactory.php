@@ -25,4 +25,9 @@ final class MailerFactory
     {
         return new DefaultValueService($label);
     }
+
+    public function createString(): string
+    {
+        return 'not-a-service';
+    }
 }

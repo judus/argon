@@ -54,12 +54,14 @@ final class ContextualResolverTest extends TestCase
     public function testResolveReturnsClosureResult(): void
     {
         $closure = fn(): object => new stdClass();
+        $object = new stdClass();
 
         $this->registry->method('get')->with('Consumer', 'Dep')->willReturn($closure);
+        $this->container->expects($this->once())->method('invoke')->with($closure)->willReturn($object);
 
         $result = $this->resolver->resolve('Consumer', 'Dep');
 
-        $this->assertInstanceOf(stdClass::class, $result);
+        $this->assertSame($object, $result);
     }
 
     /**

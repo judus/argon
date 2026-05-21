@@ -1142,6 +1142,29 @@ final class ContainerCompilerTest extends TestCase
     /**
      * @throws ReflectionException
      * @throws ContainerException
+     * @throws NotFoundException
+     */
+    public function testCompiledFactoryReturningNonObjectThrowsContainerException(): void
+    {
+        $container = new ArgonContainer();
+        $container->set(DefaultValueService::class)
+            ->factory(MailerFactory::class, 'createString');
+
+        $compiled = $this->compileAndLoadContainer(
+            $container,
+            'testCompiledFactoryReturningNonObjectThrowsContainerException'
+        );
+
+        $this->expectException(ContainerException::class);
+        $this->expectExceptionMessage('Factory method "' . MailerFactory::class . '::createString()"');
+        $this->expectExceptionMessage('must return an object, got string');
+
+        $compiled->get(DefaultValueService::class);
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws ContainerException
      */
     public function testGenerateServiceMethodInvokerInjectsClassFromAtSymbol(): void
     {
