@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `maduser/argon` will be documented in this file.
+All notable changes to `maduser/argon-container` will be documented in this file.
 
 ## [Unreleased]
 
