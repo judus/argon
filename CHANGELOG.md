@@ -4,6 +4,14 @@ All notable changes to `maduser/argon-container` will be documented in this file
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-24
+
+### Changed
+
+- Renamed the Composer package from `maduser/argon` to `maduser/argon-container`.
+- Added temporary Composer replacement metadata for `maduser/argon`.
+- Updated repository, Packagist, and documentation references for the container package identity.
+
 ## [1.2.0] - 2026-05-21
 
 ### Added
